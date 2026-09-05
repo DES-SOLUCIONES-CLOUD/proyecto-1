@@ -1,7 +1,16 @@
 # Plataforma MOOC
 
+## Integrantes
+
+- Juan David Guzman Casadiego
+- Laura Fernanda Martinez Galindo
+- Tatiana Luna Perez Suancha
+- Maria Alejandra Rojas Garzon
+
+## Descripción
+
 Plataforma web de cursos masivos abiertos en línea (proyecto del curso Cloud).
-Administradores, profesores y estudiantes; jerarquía Curso → Módulo → Unidad →
+Administradores, profesores y estudiantes; jerarquía Curso -> Módulo -> Unidad ->
 Recurso; multimedia con procesamiento asíncrono a HLS; quizzes calificados en
 servidor; progreso validado e insignias digitales verificables.
 
@@ -12,15 +21,15 @@ para el enunciado completo.
 
 ```
 .
-├── backend/            Monolito modular en Go (API) + workers independientes
-│   ├── cmd/api/        Punto de entrada de la API REST (/api/v1)
-│   ├── cmd/worker/     Punto de entrada de los workers asíncronos
-│   ├── internal/domain/    Entidades y reglas de negocio (sin dependencias de framework)
-│   ├── internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola (asynq)
-│   └── migrations/     Migraciones SQL de PostgreSQL
-├── frontend/           Next.js + TypeScript
-├── docs/               Especificación OpenAPI y documentación técnica
-└── docker-compose.yml  Orquestación local: Postgres, Redis, MinIO, Mailpit, API, workers, frontend
+|-- backend/            Monolito modular en Go (API) + workers independientes
+|   |-- cmd/api/        Punto de entrada de la API REST (/api/v1)
+|   |-- cmd/worker/     Punto de entrada de los workers asíncronos
+|   |-- internal/domain/    Entidades y reglas de negocio (sin dependencias de framework)
+|   |-- internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola (asynq)
+|   `-- migrations/     Migraciones SQL de PostgreSQL
+|-- frontend/           Next.js + TypeScript
+|-- docs/               Especificación OpenAPI y documentación técnica
+`-- docker-compose.yml  Orquestación local: Postgres, Redis, MinIO, Mailpit, API, workers, frontend
 ```
 
 ## Arquitectura
@@ -44,7 +53,7 @@ docker compose up --build
 
 - API: http://localhost:8080/api/v1/health
 - Frontend: http://localhost:3000
-- MinIO (S3): http://localhost:9100 · consola: http://localhost:9101
+- MinIO (S3): http://localhost:9100, consola: http://localhost:9101
 - Mailpit: http://localhost:8025
 
 Los puertos de MinIO son configurables con `MINIO_API_PORT` y
