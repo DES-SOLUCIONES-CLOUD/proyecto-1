@@ -14,9 +14,6 @@ Administradores, profesores y estudiantes; jerarquía Curso -> Módulo -> Unidad
 Recurso; multimedia con procesamiento asíncrono a HLS; quizzes calificados en
 servidor; progreso validado e insignias digitales verificables.
 
-Ver [`2026-20 proyecto-plataforma-mooc.pdf`](./2026-20%20proyecto-plataforma-mooc.pdf)
-para el enunciado completo.
-
 ## Estructura del repositorio
 
 ```
