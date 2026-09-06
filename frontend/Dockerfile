@@ -13,8 +13,13 @@ COPY . .
 # Las variables NEXT_PUBLIC_* se resuelven aqui, en tiempo de build.
 ARG NEXT_PUBLIC_API_BASE_URL=/api/v1
 ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+# API_INTERNAL_URL tambien se necesita en build: Next serializa el destino
+# de los rewrites en routes-manifest.json, asi que fijarla solo en tiempo de
+# ejecucion no tiene efecto y el proxy acabaria apuntando a localhost.
+ARG API_INTERNAL_URL=http://localhost:8080/api/v1
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    API_INTERNAL_URL=$API_INTERNAL_URL \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

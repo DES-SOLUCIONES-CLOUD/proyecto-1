@@ -28,29 +28,16 @@ declaran qué debe implementarse y a qué criterio de evaluación aportan.
 
 ```
 .
-<<<<<<< HEAD
 |-- backend/            Monolito modular en Go (API) + workers independientes
-|   |-- cmd/api/        Punto de entrada de la API REST (/api/v1)
-|   |-- cmd/worker/     Punto de entrada de los workers asíncronos
-|   |-- internal/domain/    Entidades y reglas de negocio (sin dependencias de framework)
-|   |-- internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola (asynq)
-|   `-- migrations/     Migraciones SQL de PostgreSQL
-|-- frontend/           Next.js (App Router) + TypeScript + Tailwind
-|   `-- src/app/        Rutas y componentes del App Router
-|-- docs/               Especificación OpenAPI y documentación técnica
-`-- docker-compose.yml  Orquestación local: Postgres, Redis, MinIO, Mailpit, API, workers, frontend
-=======
-├── backend/            Monolito modular en Go (API) + workers independientes
-│   ├── cmd/api/            Punto de entrada de la API REST (/api/v1)
-│   ├── cmd/worker/         Punto de entrada de los workers asíncronos
-│   ├── internal/config/    Lectura de variables de entorno
-│   ├── internal/domain/    Entidades y reglas de negocio (sin framework ni cloud)
-│   ├── internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola
-│   └── migrations/         Migraciones SQL de PostgreSQL
-├── frontend/           Next.js 16 (App Router), React 19, TypeScript, Tailwind 4
-├── docs/               Especificación OpenAPI y notas de arquitectura
-└── docker-compose.yml  Postgres, Redis, MinIO, Mailpit, API, workers y frontend
->>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
+|   |-- cmd/api/            Punto de entrada de la API REST (/api/v1)
+|   |-- cmd/worker/         Punto de entrada de los workers asíncronos
+|   |-- internal/config/    Lectura de variables de entorno
+|   |-- internal/domain/    Entidades y reglas de negocio (sin framework ni cloud)
+|   |-- internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola
+|   `-- migrations/         Migraciones SQL de PostgreSQL
+|-- frontend/           Next.js 16 (App Router), React 19, TypeScript, Tailwind 4
+|-- docs/               Especificación OpenAPI y notas de arquitectura
+`-- docker-compose.yml  Postgres, Redis, MinIO, Mailpit, API, workers y frontend
 ```
 
 Cada subproyecto tiene su propio README con el detalle.
@@ -62,20 +49,12 @@ Cada subproyecto tiene su propio README con el detalle.
 - **Persistencia**: PostgreSQL como fuente de verdad transaccional; Redis para
   sesiones, caché, rate limiting y la cola (asynq).
 - **Almacenamiento de objetos**: S3/MinIO para originales, derivados HLS, PDFs
-<<<<<<< HEAD
-  e imágenes de insignias (nunca en la base relacional).
-- **Frontend**: Next.js 16 con App Router, React 19, TypeScript y Tailwind 4;
-  consume la API vía REST/JSON sobre HTTPS. El código vive en `src/app/`.
-- **Despliegue**: Docker y Docker Compose, con la API y los workers preparados
-  para escalar a múltiples instancias.
-=======
   e imágenes de insignias; ningún binario vive en la base relacional.
 - **Frontend**: Next.js con TypeScript. El navegador llama a `/api/v1` del
   mismo origen y Next reescribe hacia la API en Go, así no hay CORS y las
   cookies de sesión permanecen `SameSite`.
 - **Despliegue**: Docker y Docker Compose, con API y workers preparados para
   escalar a múltiples instancias.
->>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
 
 ## Cómo levantar el entorno local
 
