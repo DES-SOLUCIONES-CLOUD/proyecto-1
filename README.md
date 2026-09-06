@@ -24,7 +24,8 @@ servidor; progreso validado e insignias digitales verificables.
 |   |-- internal/domain/    Entidades y reglas de negocio (sin dependencias de framework)
 |   |-- internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola (asynq)
 |   `-- migrations/     Migraciones SQL de PostgreSQL
-|-- frontend/           Next.js + TypeScript
+|-- frontend/           Next.js (App Router) + TypeScript + Tailwind
+|   `-- src/app/        Rutas y componentes del App Router
 |-- docs/               Especificación OpenAPI y documentación técnica
 `-- docker-compose.yml  Orquestación local: Postgres, Redis, MinIO, Mailpit, API, workers, frontend
 ```
@@ -37,7 +38,8 @@ servidor; progreso validado e insignias digitales verificables.
   sesiones, caché, rate limiting y la cola (asynq).
 - **Almacenamiento de objetos**: S3/MinIO para originales, derivados HLS, PDFs
   e imágenes de insignias (nunca en la base relacional).
-- **Frontend**: Next.js + TypeScript, consume la API vía REST/JSON sobre HTTPS.
+- **Frontend**: Next.js 16 con App Router, React 19, TypeScript y Tailwind 4;
+  consume la API vía REST/JSON sobre HTTPS. El código vive en `src/app/`.
 - **Despliegue**: Docker y Docker Compose, con la API y los workers preparados
   para escalar a múltiples instancias.
 
