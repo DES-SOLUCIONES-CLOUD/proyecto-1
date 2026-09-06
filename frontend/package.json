@@ -1,12 +1,21 @@
 {
+<<<<<<< HEAD
   "name": "frontend",
+=======
+  "name": "plataforma-mooc-frontend",
+>>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+<<<<<<< HEAD
     "lint": "eslint"
+=======
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
+>>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
   },
   "dependencies": {
     "next": "16.3.4",
@@ -22,5 +31,10 @@
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
     "typescript": "^5"
+<<<<<<< HEAD
   }
+=======
+  },
+  "description": "Frontend de la plataforma web de cursos masivos abiertos en linea"
+>>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
 }

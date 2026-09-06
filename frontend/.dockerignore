@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 node_modules
 .next
 out
@@ -7,3 +8,19 @@ npm-debug.log*
 .gitignore
 README.md
 .env*
+=======
+.git
+.github
+node_modules
+.next
+out
+coverage
+npm-debug.log*
+.env
+.env.*
+!.env.example
+Dockerfile
+.dockerignore
+docs
+README.md
+>>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
