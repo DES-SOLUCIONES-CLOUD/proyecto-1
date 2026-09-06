@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-FROM node:22-alpine AS deps
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
-
-=======
 # Imagen del frontend. Construccion multietapa con salida standalone de Next.js.
 # syntax=docker/dockerfile:1
 
@@ -13,7 +6,6 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
->>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules

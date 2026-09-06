@@ -1,17 +1,5 @@
 @import "tailwindcss";
 
-<<<<<<< HEAD
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-=======
 /*
  * Tokens de la plataforma. Contraste verificado para WCAG 2.2 AA sobre los
  * pares texto/fondo definidos aqui; toda variacion de color deberia añadirse
@@ -31,22 +19,10 @@
   --error-suave: #fef3f2;
   --exito: #05603a;
   --exito-suave: #ecfdf3;
->>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-<<<<<<< HEAD
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-=======
     --fondo: #0d0d10;
     --superficie: #17171c;
     --borde: #2c2c34;
@@ -101,5 +77,4 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
->>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
 }

@@ -1,28 +1,3 @@
-<<<<<<< HEAD
-# Frontend
-
-Next.js 16 (App Router) con React 19, TypeScript y Tailwind 4. El código de la
-aplicación vive en `src/app/`.
-
-La forma normal de ejecutarlo es junto al resto del stack, desde la raíz del
-repositorio:
-
-```bash
-docker compose up --build
-```
-
-Queda disponible en http://localhost:3000.
-
-Para desarrollo con recarga en caliente, con Node 20.9 o superior instalado:
-
-```bash
-npm install
-npm run dev
-```
-
-Ver el [README de la raíz](../README.md) para la arquitectura completa del
-proyecto y el resto de los servicios.
-=======
 # Plataforma MOOC — Frontend
 
 Interfaz de la plataforma web de cursos masivos abiertos en línea. Contiene la
@@ -139,4 +114,3 @@ por audiencia y darle a cada área su propio layout.
 3. Carga multipart directa a almacenamiento de objetos con URLs prefirmadas.
 4. Reproductor HLS y visor PDF accesible con reporte de progreso por heartbeat.
 5. Pruebas E2E de los nueve flujos críticos y auditoría automática de accesibilidad.
->>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3

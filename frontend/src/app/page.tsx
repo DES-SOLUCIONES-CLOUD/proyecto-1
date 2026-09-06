@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-export default function HomePage() {
-  return (
-    <main className="flex flex-1 flex-col justify-center gap-4 p-8 font-sans">
-      <h1 className="text-3xl font-semibold">Plataforma MOOC</h1>
-      <p className="text-base opacity-80">
-        Cursos masivos abiertos en linea. Frontend en construccion.
-      </p>
-    </main>
-=======
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card, CardText, CardTitle } from "@/components/ui/card";
@@ -66,6 +56,5 @@ export default function PaginaInicio() {
         </div>
       </section>
     </Container>
->>>>>>> e92b21c23e2cbfebb4f616a5ad789ab8d34f19d3
   );
 }
