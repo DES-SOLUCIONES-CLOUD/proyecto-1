@@ -1,3 +1,9 @@
+# Entorno local completo: persistencia, objetos, correo, API, workers y frontend.
+#
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Los workers escalan con: docker compose up -d --scale worker=3
 services:
   postgres:
     image: postgres:16-alpine
@@ -25,6 +31,8 @@ services:
       timeout: 5s
       retries: 5
 
+  # Almacenamiento de objetos: originales, derivados HLS, PDFs e imagenes de
+  # insignias. Ningun binario vive en la base relacional.
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -37,6 +45,7 @@ services:
     volumes:
       - minio_data:/data
 
+  # Servidor SMTP de desarrollo: verificacion de correo y recuperacion de clave.
   mailpit:
     image: axllent/mailpit:latest
     ports:
@@ -54,6 +63,15 @@ services:
       REDIS_ADDR: redis:6379
       S3_ENDPOINT: minio:9000
       S3_BUCKET: ${S3_BUCKET:-mooc}
+      # Base publica del frontend: con ella se arman los enlaces de
+      # verificacion de correo y de recuperacion de clave.
+      FRONTEND_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      SMTP_ADDR: mailpit:1025
+      SMTP_FROM: ${SMTP_FROM:-no-responder@mooc.local}
+      # Sin TLS en local, la cookie de sesion no puede exigir Secure.
+      COOKIE_SECURE: "false"
+    # Puerto fijo en el host: impide `--scale api=N` hasta que exista el
+    # reverse proxy. Ver "Pendientes" en el README.
     ports:
       - "8080:8080"
     depends_on:
@@ -61,6 +79,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
+    restart: unless-stopped
 
   worker:
     build:
@@ -72,21 +93,29 @@ services:
       REDIS_ADDR: redis:6379
       S3_ENDPOINT: minio:9000
       S3_BUCKET: ${S3_BUCKET:-mooc}
+    # Sin puertos publicados: escala a N instancias sin colisiones.
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: /api/v1
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      # El navegador llama a /api/v1 del mismo origen y Next lo reenvia aqui:
+      # sin CORS y con las cookies de sesion en SameSite.
+      API_INTERNAL_URL: http://api:8080/api/v1
     ports:
       - "3000:3000"
     depends_on:
       - api
+    restart: unless-stopped
 
 volumes:
   postgres_data:
