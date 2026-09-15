@@ -139,9 +139,8 @@ jobs:
           npm audit --audit-level=high --omit=dev
 
       - name: gitleaks (secretos en el historial)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # El binario, no gitleaks/gitleaks-action.
 
   # ---------------------------------------------------------------------
   # Migraciones y pruebas con Postgres real. Los dobles no acreditan que una
