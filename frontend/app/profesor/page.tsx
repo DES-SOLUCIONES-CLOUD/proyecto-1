@@ -98,9 +98,24 @@ export default function TeacherDashboardPage() {
             <strong>{c.Slug}</strong>
             <p className="badge">{c.CurrentPublishedVersionID ? t("profesor.publicado") : t("profesor.sinPublicar")}</p>
             {c.CurrentPublishedVersionID && (
-              <p>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                 <Link href={`/profesor/versiones/${c.CurrentPublishedVersionID}`}>{t("profesor.verPublicada")}</Link>
-              </p>
+                <button
+                  type="button"
+                  className="secondary"
+                  style={{ padding: "4px 8px", fontSize: "0.85rem" }}
+                  onClick={async () => {
+                    try {
+                      await api.unpublishCourse(c.ID);
+                      await load();
+                    } catch (e) {
+                      setError(e instanceof ApiError ? e.message : "Error al despublicar");
+                    }
+                  }}
+                >
+                  Despublicar
+                </button>
+              </div>
             )}
           </li>
         ))}
