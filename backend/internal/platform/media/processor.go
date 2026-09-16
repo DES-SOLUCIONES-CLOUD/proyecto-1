@@ -83,6 +83,20 @@ func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error
 		return nil
 	}
 
+	// El recurso pudo borrarse mientras el trabajo esperaba en la cola.
+	// Transcodificar ahora sería CPU quemada para un resultado que ningún
+	// endpoint va a leer nunca, así que se abandona antes del trabajo
+	// pesado en lugar de después.
+	existe, err := p.Courses.ResourceExists(ctx, payload.ResourceID)
+	if err != nil {
+		return err
+	}
+	if !existe {
+		p.log().Info("media: recurso eliminado, se descarta el trabajo",
+			"activo", asset.ID, "recurso", payload.ResourceID)
+		return nil
+	}
+
 	hlsKey, err := p.transcode(ctx, payload)
 	if err != nil {
 		_ = p.Assets.MarkFailed(ctx, asset.ID, err.Error())

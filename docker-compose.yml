@@ -180,7 +180,12 @@ services:
     depends_on:
       - api
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz-proxy"]
+      # 127.0.0.1 explícito, no "localhost": /etc/hosts también resuelve
+      # localhost a ::1, y nginx aquí solo escucha en IPv4 (0.0.0.0:8080).
+      # wget probando el lado IPv6 se encuentra con nadie escuchando y
+      # responde "Connection refused", así que el healthcheck fallaba pese
+      # a que el proxy servía tráfico real sin problema.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz-proxy"]
       interval: 10s
       timeout: 3s
       retries: 3

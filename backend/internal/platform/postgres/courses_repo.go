@@ -343,6 +343,16 @@ func (r *CourseRepo) GetRecursoPublicadoConMedia(ctx context.Context, resourceID
 	return &out, nil
 }
 
+// ResourceExists informa si el recurso sigue existiendo. El worker la
+// consulta antes de invertir tiempo de CPU en transcodificar: un recurso
+// pudo borrarse mientras el trabajo esperaba en la cola, y en ese caso
+// terminar el trabajo no beneficia a nadie.
+func (r *CourseRepo) ResourceExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	var existe bool
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM resources WHERE id=$1)`, id).Scan(&existe)
+	return existe, err
+}
+
 func (r *CourseRepo) SetResourceProcessingStatusInternal(ctx context.Context, id uuid.UUID, status course.ProcessingStatus) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE resources SET processing_status=$2, updated_at=now() WHERE id=$1`, id, status)
