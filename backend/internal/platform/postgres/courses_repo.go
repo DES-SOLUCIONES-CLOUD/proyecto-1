@@ -36,6 +36,22 @@ func (r *CourseRepo) GetCourse(ctx context.Context, id uuid.UUID) (*course.Cours
 	return &c, err
 }
 
+// LatestDraftVersionID es el borrador editable más reciente del curso, si
+// existe. Se consulta aparte de GetCourse porque la mayoría de sus llamadas
+// (autorización, publicación) no lo necesitan, y encadenar la subconsulta ahí
+// añadiría trabajo innecesario a rutas donde ya se ejecuta muy seguido.
+func (r *CourseRepo) LatestDraftVersionID(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error) {
+	var id *uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		SELECT id FROM course_versions
+		 WHERE course_id=$1 AND status='draft'
+		 ORDER BY version_number DESC LIMIT 1`, courseID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return id, err
+}
+
 func (r *CourseRepo) GetCourseBySlug(ctx context.Context, slug string) (*course.Course, error) {
 	var c course.Course
 	err := r.pool.QueryRow(ctx, `
@@ -50,8 +66,11 @@ func (r *CourseRepo) GetCourseBySlug(ctx context.Context, slug string) (*course.
 
 func (r *CourseRepo) ListByTeacher(ctx context.Context, teacherID uuid.UUID) ([]*course.Course, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, teacher_id, slug, current_published_version_id, created_at, updated_at
-		FROM courses WHERE teacher_id=$1 ORDER BY created_at DESC`, teacherID)
+		SELECT c.id, c.teacher_id, c.slug, c.current_published_version_id, c.created_at, c.updated_at,
+		       (SELECT v.id FROM course_versions v
+		         WHERE v.course_id = c.id AND v.status = 'draft'
+		         ORDER BY v.version_number DESC LIMIT 1) AS latest_draft_version_id
+		FROM courses c WHERE c.teacher_id=$1 ORDER BY c.created_at DESC`, teacherID)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +78,8 @@ func (r *CourseRepo) ListByTeacher(ctx context.Context, teacherID uuid.UUID) ([]
 	var out []*course.Course
 	for rows.Next() {
 		var c course.Course
-		if err := rows.Scan(&c.ID, &c.TeacherID, &c.Slug, &c.CurrentPublishedVersionID, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.TeacherID, &c.Slug, &c.CurrentPublishedVersionID,
+			&c.CreatedAt, &c.UpdatedAt, &c.LatestDraftVersionID); err != nil {
 			return nil, err
 		}
 		out = append(out, &c)

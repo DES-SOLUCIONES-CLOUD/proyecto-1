@@ -515,6 +515,7 @@ func (s *Service) ListMine(ctx context.Context, teacher *user.User) ([]*domain.C
 			// lista entera.
 			continue
 		}
+		c.LatestDraftVersionID, _ = s.repo.LatestDraftVersionID(ctx, id)
 		propios = append(propios, c)
 	}
 	return propios, nil

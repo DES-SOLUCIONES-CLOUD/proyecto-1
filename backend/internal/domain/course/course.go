@@ -81,8 +81,14 @@ type Course struct {
 	TeacherID                 uuid.UUID
 	Slug                      string
 	CurrentPublishedVersionID *uuid.UUID
-	CreatedAt                 time.Time
-	UpdatedAt                 time.Time
+	// LatestDraftVersionID es el borrador editable más reciente, si existe.
+	// Un curso recién creado tiene uno desde el principio; uno recién
+	// despublicado no tiene ninguno hasta que se cree un borrador de
+	// actualización, porque la versión despublicada en sí no es editable
+	// directamente: conserva el historial de lo que estuvo visible.
+	LatestDraftVersionID *uuid.UUID
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 // Version es una versión numerada del curso; solo una puede estar publicada

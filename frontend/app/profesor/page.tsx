@@ -94,32 +94,74 @@ export default function TeacherDashboardPage() {
       {courses?.length === 0 && <p>{t("profesor.sinCursos")}</p>}
       <ul className="stack" style={{ listStyle: "none", padding: 0 }}>
         {courses?.map((c) => (
-          <li key={c.ID} className="card">
-            <strong>{c.Slug}</strong>
-            <p className="badge">{c.CurrentPublishedVersionID ? t("profesor.publicado") : t("profesor.sinPublicar")}</p>
-            {c.CurrentPublishedVersionID && (
-              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                <Link href={`/profesor/versiones/${c.CurrentPublishedVersionID}`}>{t("profesor.verPublicada")}</Link>
-                <button
-                  type="button"
-                  className="secondary"
-                  style={{ padding: "4px 8px", fontSize: "0.85rem" }}
-                  onClick={async () => {
-                    try {
-                      await api.unpublishCourse(c.ID);
-                      await load();
-                    } catch (e) {
-                      setError(e instanceof ApiError ? e.message : "Error al despublicar");
-                    }
-                  }}
-                >
-                  Despublicar
-                </button>
-              </div>
-            )}
-          </li>
+          <CourseRow key={c.ID} course={c} onError={setError} onChange={load} />
         ))}
       </ul>
     </div>
+  );
+}
+
+function CourseRow({
+  course: c,
+  onError,
+  onChange,
+}: {
+  course: Course;
+  onError: (msg: string) => void;
+  onChange: () => Promise<void>;
+}) {
+  const router = useRouter();
+  const { t } = useI18n();
+  const [creatingDraft, setCreatingDraft] = useState(false);
+
+  // Un curso siempre debe poder editarse: si ya tiene un borrador (el inicial
+  // de un curso nunca publicado, o uno de actualización ya iniciado), se
+  // entra directo; si no lo tiene, hay que crear uno antes de poder navegar.
+  async function handleEditar() {
+    if (c.LatestDraftVersionID) {
+      router.push(`/profesor/versiones/${c.LatestDraftVersionID}`);
+      return;
+    }
+    setCreatingDraft(true);
+    try {
+      const v = await api.createUpdateDraft(c.ID);
+      router.push(`/profesor/versiones/${v.ID}`);
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : "No se pudo crear el borrador");
+    } finally {
+      setCreatingDraft(false);
+    }
+  }
+
+  return (
+    <li className="card">
+      <strong>{c.Slug}</strong>
+      <p className="badge">{c.CurrentPublishedVersionID ? t("profesor.publicado") : t("profesor.sinPublicar")}</p>
+      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <button type="button" onClick={handleEditar} disabled={creatingDraft}>
+          {creatingDraft ? t("profesor.creando") : c.LatestDraftVersionID ? "Editar borrador" : "Crear nueva versión"}
+        </button>
+        {c.CurrentPublishedVersionID && (
+          <>
+            <Link href={`/profesor/versiones/${c.CurrentPublishedVersionID}`}>{t("profesor.verPublicada")}</Link>
+            <button
+              type="button"
+              className="secondary"
+              style={{ padding: "4px 8px", fontSize: "0.85rem" }}
+              onClick={async () => {
+                try {
+                  await api.unpublishCourse(c.ID);
+                  await onChange();
+                } catch (e) {
+                  onError(e instanceof ApiError ? e.message : "Error al despublicar");
+                }
+              }}
+            >
+              Despublicar
+            </button>
+          </>
+        )}
+      </div>
+    </li>
   );
 }
