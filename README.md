@@ -90,6 +90,8 @@ el escáner. Si algo no cuadra, el objeto se borra del almacén y la respuesta e
 | `checksum_mismatch` | El hash que calculó el navegador no coincide con el objeto almacenado |
 | `mime_mismatch` | El contenido real no corresponde al tipo del recurso (un HTML subido como PDF) |
 | `malware_detected` | El escaneo reconoció el archivo |
+| `presentation_format_unsupported` | El ZIP no es un PPTX ni un ODP reconocible |
+| `media_container_unrecognized` | El archivo no empieza por una firma de audio o vídeo conocida |
 | `upload_missing` | No hay objeto en la clave, o está vacío |
 | `scanner_unavailable` (503) | No se pudo escanear. La carga se rechaza: dar por limpio lo que no se escaneó convertiría apagar el antivirus en una vía de entrada |
 

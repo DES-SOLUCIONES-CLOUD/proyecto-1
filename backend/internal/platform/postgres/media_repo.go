@@ -36,6 +36,35 @@ func (r *MediaRepo) Create(ctx context.Context, a *MediaAsset) error {
 	return err
 }
 
+// Asegurar deja un único activo por recurso y rellena a.ID y a.Status con
+// lo persistido.
+//
+// Si el recurso no tenía activo, lo inserta. Si ya tenía uno del mismo
+// original (misma clave y mismo checksum), lo reutiliza: confirmar dos veces
+// no debe crear dos transcodificaciones. Si el original cambió, reabre el
+// activo existente para que el worker vuelva a procesarlo.
+func (r *MediaRepo) Asegurar(ctx context.Context, a *MediaAsset) error {
+	const mismoOriginal = `media_assets.checksum_sha256 IS NOT DISTINCT FROM EXCLUDED.checksum_sha256
+		AND media_assets.original_object_key = EXCLUDED.original_object_key`
+	return r.pool.QueryRow(ctx, `
+		INSERT INTO media_assets (id, resource_id, original_object_key, mime_type, size_bytes, checksum_sha256, status)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+		ON CONFLICT (resource_id) DO UPDATE SET
+			original_object_key = EXCLUDED.original_object_key,
+			mime_type = EXCLUDED.mime_type,
+			size_bytes = EXCLUDED.size_bytes,
+			checksum_sha256 = EXCLUDED.checksum_sha256,
+			status = CASE WHEN `+mismoOriginal+` THEN media_assets.status ELSE 'uploaded' END,
+			hls_master_key = CASE WHEN `+mismoOriginal+` THEN media_assets.hls_master_key ELSE NULL END,
+			derived_pdf_key = CASE WHEN `+mismoOriginal+` THEN media_assets.derived_pdf_key ELSE NULL END,
+			failure_reason = CASE WHEN `+mismoOriginal+` THEN media_assets.failure_reason ELSE NULL END,
+			processing_started_at = CASE WHEN `+mismoOriginal+` THEN media_assets.processing_started_at ELSE NULL END,
+			updated_at = now()
+		RETURNING id, status`,
+		a.ID, a.ResourceID, a.OriginalObjectKey, a.MimeType, a.SizeBytes, a.ChecksumSHA256, a.Status,
+	).Scan(&a.ID, &a.Status)
+}
+
 func (r *MediaRepo) GetByID(ctx context.Context, id uuid.UUID) (*MediaAsset, error) {
 	var a MediaAsset
 	err := r.pool.QueryRow(ctx, `

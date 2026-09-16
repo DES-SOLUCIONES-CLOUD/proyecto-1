@@ -7,6 +7,7 @@ package media
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -112,6 +113,10 @@ func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error
 	if err != nil {
 		_ = p.Assets.MarkFailed(ctx, asset.ID, err.Error())
 		_ = p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingFailed)
+		if errors.Is(err, ErrEntradaInvalida) {
+			// Reintentar el mismo original ilegible no lo vuelve reproducible.
+			return fmt.Errorf("%w: %w", err, asynq.SkipRetry)
+		}
 		return err // asynq reintentará con backoff hasta queue.MaxRetry, luego DLQ.
 	}
 
@@ -155,7 +160,7 @@ func (p *Processor) transcode(ctx context.Context, log *slog.Logger, payload que
 func (p *Processor) transcodeVideo(ctx context.Context, log *slog.Logger, payload queue.MediaProcessPayload, workDir, srcPath string) (string, error) {
 	ancho, alto, err := probeDimensiones(ctx, srcPath)
 	if err != nil {
-		return "", fmt.Errorf("ffprobe: %w", err)
+		return "", err
 	}
 
 	calidades := seleccionarCalidades(alto)
@@ -180,7 +185,7 @@ func (p *Processor) transcodeVideo(ctx context.Context, log *slog.Logger, payloa
 			"-hls_time", "6", "-hls_playlist_type", "vod",
 			"-hls_segment_filename", segmentPattern, playlist)
 		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("ffmpeg (%s): %w: %s", name, err, truncate(string(out), 500))
+			return "", errorDeFFmpeg(name, err, out)
 		}
 		log.Info("media: calidad transcodificada",
 			"calidad", name, "bitrate", r.Bitrate,
@@ -253,6 +258,10 @@ func masterDeVideo(calidades []rendition, anchoOriginal, alturaOriginal int) str
 }
 
 func (p *Processor) transcodeAudio(ctx context.Context, log *slog.Logger, payload queue.MediaProcessPayload, workDir, srcPath string) (string, error) {
+	if err := probePista(ctx, srcPath, "a:0"); err != nil {
+		return "", err
+	}
+
 	empezo := time.Now()
 	playlist := filepath.Join(workDir, "audio.m3u8")
 	segmentPattern := filepath.Join(workDir, "audio_%03d.ts")
@@ -262,7 +271,7 @@ func (p *Processor) transcodeAudio(ctx context.Context, log *slog.Logger, payloa
 		"-hls_time", "6", "-hls_playlist_type", "vod",
 		"-hls_segment_filename", segmentPattern, playlist)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("ffmpeg (audio): %w: %s", err, truncate(string(out), 500))
+		return "", errorDeFFmpeg("audio", err, out)
 	}
 	log.Info("media: pista de audio transcodificada",
 		"bitrate", "128k", "duracion_ms", time.Since(empezo).Milliseconds())
@@ -323,13 +332,41 @@ func masterDeAudio() string {
 	return "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-STREAM-INF:BANDWIDTH=128000,CODECS=\"mp4a.40.2\"\naudio.m3u8\n"
 }
 
+// ErrEntradaInvalida indica un original que FFmpeg no puede abrir. No es un
+// fallo transitorio: reintentarlo con backoff solo reproduce el mismo error.
+var ErrEntradaInvalida = errors.New("el original no contiene una pista reproducible")
+
+// probePista comprueba que ffprobe vea al menos un flujo del tipo pedido.
+func probePista(ctx context.Context, path, selector string) error {
+	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", selector,
+		"-show_entries", "stream=codec_type", "-of", "csv=p=0", path)
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	pista := strings.TrimSpace(string(out))
+	if err != nil || pista == "" {
+		if entradaIrrecuperable(err, out) || pista == "" {
+			return fmt.Errorf("%w: %s", ErrEntradaInvalida, colaDe(string(out), 400))
+		}
+		return fmt.Errorf("ffprobe: %w: %s", err, colaDe(string(out), 400))
+	}
+	return nil
+}
+
 // probeDimensiones lee ancho y alto del primer flujo de video.
 func probeDimensiones(ctx context.Context, path string) (ancho, alto int, err error) {
 	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v:0",
 		"-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", path)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return 0, 0, ctx.Err()
+	}
 	if err != nil {
-		return 0, 0, err
+		if entradaIrrecuperable(err, out) {
+			return 0, 0, fmt.Errorf("%w: %s", ErrEntradaInvalida, colaDe(string(out), 400))
+		}
+		return 0, 0, fmt.Errorf("ffprobe: %w: %s", err, colaDe(string(out), 400))
 	}
 	return parsearDimensiones(string(out))
 }
@@ -349,6 +386,25 @@ func parsearDimensiones(salida string) (ancho, alto int, err error) {
 	return ancho, alto, nil
 }
 
+func errorDeFFmpeg(nombre string, err error, out []byte) error {
+	wrapped := fmt.Errorf("ffmpeg (%s): %w: %s", nombre, err, colaDe(string(out), 500))
+	if entradaIrrecuperable(err, out) {
+		return fmt.Errorf("%w: %v", ErrEntradaInvalida, wrapped)
+	}
+	return wrapped
+}
+
+func entradaIrrecuperable(err error, out []byte) bool {
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && exit.ExitCode() == 183 {
+		return true
+	}
+	s := string(out)
+	return strings.Contains(s, "Invalid data found") ||
+		strings.Contains(s, "Error opening input") ||
+		strings.Contains(s, "does not contain any stream")
+}
+
 func bitrateToBps(b string) string {
 	b = strings.TrimSuffix(b, "k")
 	n, err := strconv.Atoi(b)
@@ -358,9 +414,12 @@ func bitrateToBps(b string) string {
 	return strconv.Itoa(n * 1000)
 }
 
-func truncate(s string, n int) string {
+// colaDe conserva el final de una salida larga. FFmpeg escribe el banner al
+// principio y el motivo del fallo al final: recortar por el inicio dejaba
+// solo la versión y escondía "Invalid data found when processing input".
+func colaDe(s string, n int) string {
 	if len(s) <= n {
 		return s
 	}
-	return s[:n] + "..."
+	return "..." + s[len(s)-n:]
 }

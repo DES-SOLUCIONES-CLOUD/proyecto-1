@@ -475,17 +475,17 @@ func (h *handlers) aceptarCargaVerificada(
 		return
 	}
 
-	assetID := uuid.New()
-	if err := h.deps.Media.Create(r.Context(), &postgres.MediaAsset{
-		ID: assetID, ResourceID: resourceID, OriginalObjectKey: res.ObjectKey,
+	asset := &postgres.MediaAsset{
+		ID: uuid.New(), ResourceID: resourceID, OriginalObjectKey: res.ObjectKey,
 		MimeType: obj.MIME, SizeBytes: obj.Tamano, ChecksumSHA256: obj.SHA256,
 		Status: "uploaded",
-	}); err != nil {
+	}
+	if err := h.deps.Media.Asegurar(r.Context(), asset); err != nil {
 		writeError(w, err)
 		return
 	}
 
-	if err := h.deps.Queue.Encolar(r.Context(), h.trabajoDeProcesamiento(assetID, resourceID, res, obj)); err != nil {
+	if err := h.deps.Queue.Encolar(r.Context(), h.trabajoDeProcesamiento(asset.ID, resourceID, res, obj)); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -495,7 +495,7 @@ func (h *handlers) aceptarCargaVerificada(
 		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]any{
-		"status": "queued", "media_asset_id": assetID.String(),
+		"status": "queued", "media_asset_id": asset.ID.String(),
 		"mime_type": obj.MIME, "size_bytes": obj.Tamano, "checksum_sha256": obj.SHA256,
 	})
 }

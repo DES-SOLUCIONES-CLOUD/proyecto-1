@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/documento"
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/multimedia"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/antimalware"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/storage"
 
@@ -131,6 +132,14 @@ func (h *handlers) verificarCarga(ctx context.Context, objectKey, checksumDeclar
 	if tipo == domain.ResourcePresentation && res.Formato == documento.Desconocido {
 		_ = h.deps.Storage.RemoveObject(ctx, objectKey)
 		return objetoVerificado{}, documento.ErrFormatoNoSoportado
+	}
+	// Audio y vídeo ilegibles se cortan aquí y no en el worker: encolar un
+	// bloque de bytes que FFmpeg no puede abrir solo produce tres reintentos
+	// con el mismo error y deja el recurso en "failed" sin decirle a quien
+	// lo subió qué pasó.
+	if (tipo == domain.ResourceAudio || tipo == domain.ResourceVideo) && !multimedia.Reconocible(cabecera.datos) {
+		_ = h.deps.Storage.RemoveObject(ctx, objectKey)
+		return objetoVerificado{}, multimedia.ErrContenedorNoReconocible
 	}
 	return res, nil
 }

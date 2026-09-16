@@ -27,6 +27,13 @@ func (c *colaFalsa) Encolar(_ context.Context, t queue.Trabajo) error {
 	if c.fallarCon != nil {
 		return c.fallarCon
 	}
+	if t.ClaveDeIdempotencia != "" {
+		for _, existente := range c.trabajos {
+			if existente.ClaveDeIdempotencia == t.ClaveDeIdempotencia {
+				return nil
+			}
+		}
+	}
 	c.trabajos = append(c.trabajos, t)
 	return nil
 }

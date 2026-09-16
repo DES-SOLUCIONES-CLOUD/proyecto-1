@@ -728,8 +728,12 @@ paths:
       description: >
         Aplica los mismos controles que el cierre de una carga multipart:
         integridad (checksum SHA-256 sobre el objeto almacenado), tipo MIME
-        real deducido de los bytes y escaneo antimalware. Un objeto rechazado
-        se borra del almacén.
+        real deducido de los bytes y escaneo antimalware. Un audio o vídeo
+        cuya cabecera no corresponde a ningún contenedor reconocible se
+        rechaza aquí, sin encolar una transcodificación que FFmpeg no podría
+        abrir. Un objeto rechazado se borra del almacén. Confirmar dos veces
+        la misma carga reutiliza el activo multimedia y no publica un segundo
+        trabajo.
       operationId: confirmResourceUpload
       parameters:
         - { name: versionId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1900,8 +1904,9 @@ components:
         `checksum_mismatch` (integridad), `mime_mismatch` (el contenido real no
         corresponde al tipo del recurso), `malware_detected` (lo rechazó el
         escaneo), `presentation_format_unsupported` (no es un PPTX ni un ODP
-        reconocible) o `upload_missing` (no hay objeto). Salvo en el último,
-        el objeto ya fue borrado del almacén.
+        reconocible), `media_container_unrecognized` (el archivo no es un
+        contenedor de audio o vídeo reconocible) o `upload_missing` (no hay
+        objeto). Salvo en el último, el objeto ya fue borrado del almacén.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

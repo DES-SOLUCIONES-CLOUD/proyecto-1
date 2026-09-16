@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/hibiken/asynq"
@@ -53,6 +54,10 @@ func (e *ClienteAsynq) Encolar(ctx context.Context, t Trabajo) error {
 		opciones = append(opciones, asynq.TaskID(t.ClaveDeIdempotencia))
 	}
 	if _, err := e.c.EnqueueContext(ctx, asynq.NewTask(t.Tipo, cuerpo), opciones...); err != nil {
+		if errors.Is(err, asynq.ErrTaskIDConflict) || errors.Is(err, asynq.ErrDuplicateTask) {
+			// La misma confirmación llegó dos veces: el trabajo ya está.
+			return nil
+		}
 		return fmt.Errorf("queue: no se pudo encolar %s: %w", t.Tipo, err)
 	}
 	return nil

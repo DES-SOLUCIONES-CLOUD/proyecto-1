@@ -112,3 +112,26 @@ func TestParsearDimensiones(t *testing.T) {
 		}
 	}
 }
+
+func TestColaDeConservaElFinal(t *testing.T) {
+	s := strings.Repeat("A", 40) + "Invalid data found"
+	got := colaDe(s, 18)
+	if got != "...Invalid data found" {
+		t.Errorf("colaDe = %q", got)
+	}
+	if colaDe("corto", 100) != "corto" {
+		t.Error("una salida corta no debería recortarse")
+	}
+}
+
+func TestEntradaIrrecuperable(t *testing.T) {
+	if !entradaIrrecuperable(nil, []byte("Invalid data found when processing input")) {
+		t.Error("datos inválidos deberían ser permanentes")
+	}
+	if !entradaIrrecuperable(nil, []byte("Output file does not contain any stream")) {
+		t.Error("un contenedor sin pistas debería ser permanente")
+	}
+	if entradaIrrecuperable(nil, []byte("frame=  12 fps=0.0 q=0.0 size=    0kB")) {
+		t.Error("una transcodificación a medias no es un error permanente")
+	}
+}

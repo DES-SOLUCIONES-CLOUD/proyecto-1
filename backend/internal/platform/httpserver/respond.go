@@ -15,6 +15,7 @@ import (
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/documento"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/enrollment"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/iframe"
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/multimedia"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/quiz"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/subtitulo"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/user"
@@ -159,6 +160,8 @@ func classifyError(err error) (status int, code string, details []string) {
 		return http.StatusUnprocessableEntity, "teacher_not_found", nil
 	case errors.Is(err, documento.ErrFormatoNoSoportado):
 		return http.StatusUnprocessableEntity, "presentation_format_unsupported", nil
+	case errors.Is(err, multimedia.ErrContenedorNoReconocible):
+		return http.StatusUnprocessableEntity, "media_container_unrecognized", nil
 	case errors.Is(err, iframe.ErrHostNoAutorizado):
 		return http.StatusUnprocessableEntity, "iframe_host_not_allowed", nil
 	case errors.Is(err, iframe.ErrEsquemaNoPermitido):

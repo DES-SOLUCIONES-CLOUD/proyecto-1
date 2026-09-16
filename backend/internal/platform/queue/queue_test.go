@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -74,5 +75,21 @@ func TestElManejadorSeMontaSobreAsynqSinPanic(t *testing.T) {
 func TestReintentosMaximosSegunLaEspecificacion(t *testing.T) {
 	if MaxRetry != 3 {
 		t.Errorf("el enunciado fija tres reintentos antes de la DLQ, hay %d", MaxRetry)
+	}
+}
+
+func TestUnErrorPermanenteSeDescartaSinReintento(t *testing.T) {
+	var reg registroEnMemoria
+	RegistrarIntentoFallido(context.Background(), reg.logger(), IntentoFallido{
+		Tarea: TaskProcessMedia, ID: "tarea-1", Cola: "default",
+		Intento: 0, Maximo: 3,
+		Err: fmt.Errorf("%w: %w", errors.New("el original no contiene una pista reproducible"), asynq.SkipRetry),
+	})
+	salida := reg.b.String()
+	if !strings.Contains(salida, AccionAgotado) {
+		t.Errorf("un error permanente debería alertar, no reintentar:\n%s", salida)
+	}
+	if strings.Contains(salida, "se reintentará con backoff") {
+		t.Errorf("no debería anunciarse un reintento:\n%s", salida)
 	}
 }

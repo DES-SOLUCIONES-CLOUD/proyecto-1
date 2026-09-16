@@ -203,3 +203,84 @@ func TestElOriginalNuncaSeToca(t *testing.T) {
 		t.Error("el HLS no debería sobrescribir el original")
 	}
 }
+
+func TestAsegurarReutilizaElActivoDelMismoRecurso(t *testing.T) {
+	pool := baseDePruebas(t)
+	repo := postgres.NewMediaRepo(pool)
+	activoID := activoDePrueba(t, pool, "uploaded")
+	ctx := context.Background()
+
+	existente, err := repo.GetByID(ctx, activoID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+
+	primero := &postgres.MediaAsset{
+		ID: uuid.New(), ResourceID: existente.ResourceID,
+		OriginalObjectKey: existente.OriginalObjectKey,
+		ChecksumSHA256:    "abc", Status: "uploaded",
+	}
+	if err := repo.Asegurar(ctx, primero); err != nil {
+		t.Fatalf("Asegurar: %v", err)
+	}
+	if primero.ID != activoID {
+		t.Errorf("debería reutilizar %s, llegó %s", activoID, primero.ID)
+	}
+	if err := repo.MarkReady(ctx, primero.ID, "hls/x/master.m3u8"); err != nil {
+		t.Fatalf("MarkReady: %v", err)
+	}
+
+	// La misma carga otra vez: el activo listo no se reinicia ni se duplica.
+	segundo := &postgres.MediaAsset{
+		ID: uuid.New(), ResourceID: existente.ResourceID,
+		OriginalObjectKey: existente.OriginalObjectKey,
+		ChecksumSHA256:    "abc", Status: "uploaded",
+	}
+	if err := repo.Asegurar(ctx, segundo); err != nil {
+		t.Fatalf("segunda Asegurar: %v", err)
+	}
+	if segundo.ID != activoID {
+		t.Errorf("la segunda confirmación creó otro activo: %s", segundo.ID)
+	}
+	if segundo.Status != "ready" {
+		t.Errorf("el activo listo no debería reiniciarse, quedó %q", segundo.Status)
+	}
+
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM media_assets WHERE resource_id=$1`, existente.ResourceID).Scan(&n); err != nil {
+		t.Fatalf("contar: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("el recurso debería tener un solo activo, tiene %d", n)
+	}
+}
+
+func TestAsegurarReabreSiElOriginalCambio(t *testing.T) {
+	pool := baseDePruebas(t)
+	repo := postgres.NewMediaRepo(pool)
+	activoID := activoDePrueba(t, pool, "uploaded")
+	ctx := context.Background()
+
+	existente, err := repo.GetByID(ctx, activoID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if err := repo.MarkReady(ctx, activoID, "hls/viejo/master.m3u8"); err != nil {
+		t.Fatalf("MarkReady: %v", err)
+	}
+
+	nuevo := &postgres.MediaAsset{
+		ID: uuid.New(), ResourceID: existente.ResourceID,
+		OriginalObjectKey: existente.OriginalObjectKey,
+		ChecksumSHA256:    "archivo-nuevo", Status: "uploaded",
+	}
+	if err := repo.Asegurar(ctx, nuevo); err != nil {
+		t.Fatalf("Asegurar: %v", err)
+	}
+	if nuevo.ID != activoID {
+		t.Errorf("un recambio debería reabrir el mismo activo, no crear otro: %s", nuevo.ID)
+	}
+	if nuevo.Status != "uploaded" {
+		t.Errorf("el activo debería volver a uploaded, quedó %q", nuevo.Status)
+	}
+}

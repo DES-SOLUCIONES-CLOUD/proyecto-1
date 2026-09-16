@@ -5,6 +5,7 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/hibiken/asynq"
@@ -103,7 +104,9 @@ type IntentoFallido struct {
 
 // Agotado informa si este era el último intento y, por tanto, el trabajo pasa
 // a la dead-letter queue.
-func (f IntentoFallido) Agotado() bool { return f.Intento >= f.Maximo }
+func (f IntentoFallido) Agotado() bool {
+	return f.Intento >= f.Maximo || errors.Is(f.Err, asynq.SkipRetry)
+}
 
 // RegistrarIntentoFallido emite la señal que corresponda.
 //
@@ -115,6 +118,11 @@ func RegistrarIntentoFallido(ctx context.Context, log *slog.Logger, f IntentoFal
 	atributos := []any{
 		"tarea", f.Tarea, "id", f.ID, "cola", f.Cola,
 		"intento", f.Intento, "maximo", f.Maximo, "error", f.Err,
+	}
+	if errors.Is(f.Err, asynq.SkipRetry) {
+		log.ErrorContext(ctx, "trabajo descartado: no se reintentará",
+			append([]any{"accion", AccionAgotado}, atributos...)...)
+		return
 	}
 	if f.Agotado() {
 		log.ErrorContext(ctx, "trabajo agotado: pasa a la dead-letter queue",
