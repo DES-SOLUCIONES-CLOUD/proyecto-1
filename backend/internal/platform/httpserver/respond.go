@@ -94,6 +94,10 @@ func classifyError(err error) (status int, code string, details []string) {
 		return http.StatusForbidden, "forbidden", nil
 	case errors.Is(err, courses.ErrVersionNotDraft):
 		return http.StatusConflict, "version_not_draft", nil
+	case errors.Is(err, courses.ErrCursoPublicado):
+		return http.StatusConflict, "course_published", nil
+	case errors.Is(err, courses.ErrCursoNoPublicado):
+		return http.StatusConflict, "course_not_published_yet", nil
 	case errors.Is(err, enrollment.ErrAlreadyEnrolled):
 		return http.StatusConflict, "already_enrolled", nil
 	case errors.Is(err, enrollment.ErrNotEnrolled):

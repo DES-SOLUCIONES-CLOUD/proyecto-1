@@ -58,6 +58,8 @@ func (p *Processor) log() *slog.Logger {
 // "ready", una entrega duplicada del mismo trabajo no reprocesa ni produce
 // salidas repetidas.
 func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error {
+	inicio := time.Now()
+
 	var payload queue.MediaProcessPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 		return fmt.Errorf("media: payload inválido: %w", err)
@@ -97,7 +99,16 @@ func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error
 		return nil
 	}
 
-	hlsKey, err := p.transcode(ctx, payload)
+	// A partir de aquí el trabajo es de este worker y empieza lo caro. Los
+	// registros del camino feliz cuelgan de este logger para que todas las
+	// líneas de un mismo trabajo compartan activo, recurso e intento.
+	log := p.log().With(append(
+		[]any{"activo", asset.ID, "recurso", payload.ResourceID, "tipo", payload.Kind},
+		queue.AtributosDeLaTarea(ctx)...,
+	)...)
+	log.Info("media: trabajo aceptado, empieza la transcodificación", "origen", payload.SourceObjectKey)
+
+	hlsKey, err := p.transcode(ctx, log, payload)
 	if err != nil {
 		_ = p.Assets.MarkFailed(ctx, asset.ID, err.Error())
 		_ = p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingFailed)
@@ -107,39 +118,62 @@ func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error
 	if err := p.Assets.MarkReady(ctx, asset.ID, hlsKey); err != nil {
 		return err
 	}
-	return p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingReady)
+	if err := p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingReady); err != nil {
+		return err
+	}
+
+	// El cierre va después de escribir el estado, no antes: lo que acredita
+	// que el recurso quedó listo es la transición en la base, y anunciarla
+	// mientras todavía puede fallar daría un registro que miente.
+	log.Info("media: activo listo",
+		"hls", hlsKey, "estado", coursedomain.ProcessingReady,
+		"duracion_ms", time.Since(inicio).Milliseconds())
+	return nil
 }
 
-func (p *Processor) transcode(ctx context.Context, payload queue.MediaProcessPayload) (hlsMasterKey string, err error) {
+func (p *Processor) transcode(ctx context.Context, log *slog.Logger, payload queue.MediaProcessPayload) (hlsMasterKey string, err error) {
 	workDir, err := os.MkdirTemp("", "mooc-media-*")
 	if err != nil {
 		return "", err
 	}
 	defer os.RemoveAll(workDir)
 
+	descarga := time.Now()
 	srcPath := filepath.Join(workDir, "source")
 	if err := p.Storage.DownloadToFile(ctx, payload.SourceObjectKey, srcPath); err != nil {
 		return "", err
 	}
+	log.Info("media: original descargado", "bytes", tamano(srcPath),
+		"duracion_ms", time.Since(descarga).Milliseconds())
 
 	if payload.Kind == "audio" {
-		return p.transcodeAudio(ctx, payload, workDir, srcPath)
+		return p.transcodeAudio(ctx, log, payload, workDir, srcPath)
 	}
-	return p.transcodeVideo(ctx, payload, workDir, srcPath)
+	return p.transcodeVideo(ctx, log, payload, workDir, srcPath)
 }
 
-func (p *Processor) transcodeVideo(ctx context.Context, payload queue.MediaProcessPayload, workDir, srcPath string) (string, error) {
+func (p *Processor) transcodeVideo(ctx context.Context, log *slog.Logger, payload queue.MediaProcessPayload, workDir, srcPath string) (string, error) {
 	ancho, alto, err := probeDimensiones(ctx, srcPath)
 	if err != nil {
 		return "", fmt.Errorf("ffprobe: %w", err)
 	}
 
 	calidades := seleccionarCalidades(alto)
+	// Que no haya upscaling es una decisión que no deja rastro en la salida:
+	// un HLS de tres calidades no dice si se descartaron dos o si nunca se
+	// consideraron. Registrar la escalera junto a la resolución del original
+	// lo hace comprobable sin abrir la base ni el almacén.
+	log.Info("media: escalera elegida sin upscaling",
+		"original", fmt.Sprintf("%dx%d", ancho, alto),
+		"calidades", nombresDeCalidades(calidades),
+		"descartadas", len(ladder)-len(calidades))
+
 	for _, r := range calidades {
 		name := nombreCalidad(r)
 		playlist := filepath.Join(workDir, name+".m3u8")
 		segmentPattern := filepath.Join(workDir, name+"_%03d.ts")
 
+		empezo := time.Now()
 		cmd := exec.CommandContext(ctx, "ffmpeg", "-y", "-i", srcPath,
 			"-vf", fmt.Sprintf("scale=-2:%d", r.Height),
 			"-c:v", "h264", "-b:v", r.Bitrate, "-c:a", "aac",
@@ -148,6 +182,9 @@ func (p *Processor) transcodeVideo(ctx context.Context, payload queue.MediaProce
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return "", fmt.Errorf("ffmpeg (%s): %w: %s", name, err, truncate(string(out), 500))
 		}
+		log.Info("media: calidad transcodificada",
+			"calidad", name, "bitrate", r.Bitrate,
+			"duracion_ms", time.Since(empezo).Milliseconds())
 	}
 
 	masterPath := filepath.Join(workDir, "master.m3u8")
@@ -155,7 +192,7 @@ func (p *Processor) transcodeVideo(ctx context.Context, payload queue.MediaProce
 		return "", err
 	}
 
-	return p.uploadDir(ctx, payload.ResourceID.String(), workDir)
+	return p.uploadDir(ctx, log, payload.ResourceID.String(), workDir)
 }
 
 // seleccionarCalidades descarta las calidades por encima del original: subir
@@ -176,6 +213,14 @@ func seleccionarCalidades(alturaOriginal int) []rendition {
 }
 
 func nombreCalidad(r rendition) string { return fmt.Sprintf("h%d", r.Height) }
+
+func nombresDeCalidades(calidades []rendition) []string {
+	nombres := make([]string, 0, len(calidades))
+	for _, r := range calidades {
+		nombres = append(nombres, nombreCalidad(r))
+	}
+	return nombres
+}
 
 // anchoEscalado reproduce lo que hace scale=-2:alto en FFmpeg: conserva la
 // relación de aspecto y redondea a un número par, que es lo que exige el
@@ -207,7 +252,8 @@ func masterDeVideo(calidades []rendition, anchoOriginal, alturaOriginal int) str
 	return b.String()
 }
 
-func (p *Processor) transcodeAudio(ctx context.Context, payload queue.MediaProcessPayload, workDir, srcPath string) (string, error) {
+func (p *Processor) transcodeAudio(ctx context.Context, log *slog.Logger, payload queue.MediaProcessPayload, workDir, srcPath string) (string, error) {
+	empezo := time.Now()
 	playlist := filepath.Join(workDir, "audio.m3u8")
 	segmentPattern := filepath.Join(workDir, "audio_%03d.ts")
 
@@ -218,20 +264,25 @@ func (p *Processor) transcodeAudio(ctx context.Context, payload queue.MediaProce
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("ffmpeg (audio): %w: %s", err, truncate(string(out), 500))
 	}
+	log.Info("media: pista de audio transcodificada",
+		"bitrate", "128k", "duracion_ms", time.Since(empezo).Milliseconds())
 
 	masterPath := filepath.Join(workDir, "master.m3u8")
 	if err := os.WriteFile(masterPath, []byte(masterDeAudio()), 0o600); err != nil {
 		return "", err
 	}
 
-	return p.uploadDir(ctx, payload.ResourceID.String(), workDir)
+	return p.uploadDir(ctx, log, payload.ResourceID.String(), workDir)
 }
 
-func (p *Processor) uploadDir(ctx context.Context, resourceID, dir string) (masterKey string, err error) {
+func (p *Processor) uploadDir(ctx context.Context, log *slog.Logger, resourceID, dir string) (masterKey string, err error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return "", err
 	}
+	empezo := time.Now()
+	var archivos int
+	var bytes int64
 	for _, e := range entries {
 		if e.IsDir() || e.Name() == "source" {
 			continue
@@ -247,8 +298,24 @@ func (p *Processor) uploadDir(ctx context.Context, resourceID, dir string) (mast
 		if err := p.Storage.UploadFile(ctx, objectKey, localPath, contentType); err != nil {
 			return "", err
 		}
+		archivos++
+		bytes += tamano(localPath)
 	}
+	log.Info("media: HLS publicado en el almacén",
+		"archivos", archivos, "bytes", bytes,
+		"prefijo", fmt.Sprintf("hls/%s/", resourceID),
+		"duracion_ms", time.Since(empezo).Milliseconds())
 	return fmt.Sprintf("hls/%s/master.m3u8", resourceID), nil
+}
+
+// tamano es el peso de un archivo, o 0 si no se puede leer. Solo alimenta
+// registros, así que un fallo aquí no debe tumbar un trabajo que va bien.
+func tamano(path string) int64 {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0
+	}
+	return info.Size()
 }
 
 // masterDeAudio arma la lista maestra de una pista sin video.

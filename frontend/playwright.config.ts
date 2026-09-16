@@ -1,4 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 /**
  * Pruebas E2E de los nueve flujos críticos (sección 10.2 del enunciado).
@@ -13,6 +15,50 @@ import { defineConfig, devices } from "@playwright/test";
  * hace lentas y sensibles al entorno, y es a propósito: una prueba E2E que
  * simula el backend no demuestra nada que no demuestre ya una de integración.
  */
+
+/**
+ * Vuelca el .env de la raíz en process.env sin pisar lo que ya venga puesto.
+ *
+ * Playwright no lee .env por su cuenta. En CI las variables se inyectan a mano
+ * (ver el paso "Los nueve flujos críticos" de .github/workflows/ci.yml), pero
+ * en local nadie las exporta, y el mismo archivo que configura el compose ya
+ * tiene las credenciales del administrador que la API siembra al arrancar.
+ * Sin esto la suite entera falla con "faltan E2E_ADMIN_*" teniendo la
+ * plataforma perfectamente levantada, que es un fallo del arnés leído como
+ * fallo del producto.
+ */
+function cargarEnvDeLaRaiz() {
+  // __dirname y no import.meta: Playwright transpila este archivo a CommonJS
+  // antes de cargarlo, así que import.meta.url revienta al arrancar.
+  const ruta = resolve(__dirname, "..", ".env");
+  if (!existsSync(ruta)) return;
+  for (const linea of readFileSync(ruta, "utf8").split("\n")) {
+    const limpia = linea.trim();
+    if (!limpia || limpia.startsWith("#")) continue;
+    const corte = limpia.indexOf("=");
+    if (corte <= 0) continue;
+    const clave = limpia.slice(0, corte).trim();
+    // Lo que ya esté en el entorno manda: exportar una variable en la línea
+    // de órdenes tiene que seguir sirviendo para una ejecución puntual.
+    if (process.env[clave] !== undefined) continue;
+    // Las comillas pertenecen al formato del archivo, no al valor.
+    process.env[clave] = limpia
+      .slice(corte + 1)
+      .trim()
+      .replace(/^(['"])(.*)\1$/, "$2");
+  }
+}
+cargarEnvDeLaRaiz();
+
+// El administrador de las pruebas es el que la API siembra con ADMIN_EMAIL y
+// ADMIN_PASSWORD. Se mantienen los nombres E2E_* porque CI usa credenciales
+// propias y allí no hay .env que leer.
+process.env.E2E_ADMIN_EMAIL ??= process.env.ADMIN_EMAIL;
+process.env.E2E_ADMIN_PASSWORD ??= process.env.ADMIN_PASSWORD;
+// El límite que la suite da por bueno tiene que ser el que aplica la API. Si
+// se desincronizan, 99-limite-de-tasa da por agotado un presupuesto que sigue
+// abierto —o al revés— y el fallo no apunta a ningún sitio.
+process.env.E2E_AUTH_RATE_LIMIT ??= process.env.AUTH_RATE_LIMIT_PER_MINUTE;
 
 // El host importa y no es intercambiable: "localhost" y "127.0.0.1" son
 // orígenes distintos para el navegador, así que una cookie emitida por uno no

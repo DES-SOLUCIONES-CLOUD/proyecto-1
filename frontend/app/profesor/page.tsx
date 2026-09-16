@@ -112,54 +112,65 @@ function CourseRow({
 }) {
   const router = useRouter();
   const { t } = useI18n();
-  const [creatingDraft, setCreatingDraft] = useState(false);
+  const [trabajando, setTrabajando] = useState(false);
 
-  // Un curso siempre debe poder editarse: si ya tiene un borrador (el inicial
-  // de un curso nunca publicado, o uno de actualización ya iniciado), se
-  // entra directo; si no lo tiene, hay que crear uno antes de poder navegar.
+  const publicado = Boolean(c.CurrentPublishedVersionID);
+
+  // Editar siempre ocurre sobre un borrador: si ya hay uno abierto se entra
+  // directo, y si no, se abre copiando la última versión. A un curso publicado
+  // no se le ofrece, porque el servidor lo rechaza: primero se despublica.
   async function handleEditar() {
     if (c.LatestDraftVersionID) {
       router.push(`/profesor/versiones/${c.LatestDraftVersionID}`);
       return;
     }
-    setCreatingDraft(true);
+    setTrabajando(true);
     try {
       const v = await api.createUpdateDraft(c.ID);
       router.push(`/profesor/versiones/${v.ID}`);
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : "No se pudo crear el borrador");
+      onError(e instanceof ApiError ? e.message : t("profesor.errorBorrador"));
     } finally {
-      setCreatingDraft(false);
+      setTrabajando(false);
+    }
+  }
+
+  // Se confirma porque despublicar se nota fuera: el curso desaparece del
+  // catálogo y nadie más puede inscribirse hasta que vuelva a publicarse.
+  async function handleDespublicar() {
+    if (!confirm(t("profesor.confirmarDespublicar", { slug: c.Slug }))) return;
+    setTrabajando(true);
+    try {
+      await api.unpublishCourse(c.ID);
+      await onChange();
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : t("profesor.errorDespublicar"));
+    } finally {
+      setTrabajando(false);
     }
   }
 
   return (
     <li className="card">
       <strong>{c.Slug}</strong>
-      <p className="badge">{c.CurrentPublishedVersionID ? t("profesor.publicado") : t("profesor.sinPublicar")}</p>
+      <p className="badge">{publicado ? t("profesor.publicado") : t("profesor.sinPublicar")}</p>
+      {publicado && <p className="muted">{t("profesor.publicadoAyuda")}</p>}
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        <button type="button" onClick={handleEditar} disabled={creatingDraft}>
-          {creatingDraft ? t("profesor.creando") : c.LatestDraftVersionID ? "Editar borrador" : "Crear nueva versión"}
-        </button>
-        {c.CurrentPublishedVersionID && (
+        {publicado ? (
           <>
-            <Link href={`/profesor/versiones/${c.CurrentPublishedVersionID}`}>{t("profesor.verPublicada")}</Link>
-            <button
-              type="button"
-              className="secondary"
-              style={{ padding: "4px 8px", fontSize: "0.85rem" }}
-              onClick={async () => {
-                try {
-                  await api.unpublishCourse(c.ID);
-                  await onChange();
-                } catch (e) {
-                  onError(e instanceof ApiError ? e.message : "Error al despublicar");
-                }
-              }}
-            >
-              Despublicar
+            <button type="button" onClick={handleDespublicar} disabled={trabajando}>
+              {trabajando ? t("profesor.despublicando") : t("profesor.despublicarParaEditar")}
             </button>
+            <Link href={`/profesor/versiones/${c.CurrentPublishedVersionID}`}>{t("profesor.verPublicada")}</Link>
           </>
+        ) : (
+          <button type="button" onClick={handleEditar} disabled={trabajando}>
+            {trabajando
+              ? t("profesor.creando")
+              : c.LatestDraftVersionID
+                ? t("profesor.editarBorrador")
+                : t("profesor.crearVersion")}
+          </button>
         )}
       </div>
     </li>

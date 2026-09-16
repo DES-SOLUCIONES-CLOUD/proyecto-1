@@ -121,6 +121,8 @@ func (p *Procesador) conversor() Conversor {
 // es un UPDATE condicional, así que una entrega duplicada se descarta en
 // silencio en lugar de convertir dos veces.
 func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) error {
+	inicio := time.Now()
+
 	var payload queue.DocumentConvertPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 		return fmt.Errorf("documentos: payload inválido: %w", err)
@@ -141,7 +143,13 @@ func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) e
 		return nil
 	}
 
-	clavePDF, err := p.convertir(ctx, payload)
+	log := p.log().With(append(
+		[]any{"activo", activo.ID, "recurso", payload.ResourceID, "formato", payload.Formato},
+		queue.AtributosDeLaTarea(ctx)...,
+	)...)
+	log.Info("documentos: trabajo aceptado, empieza la conversión", "origen", payload.SourceObjectKey)
+
+	clavePDF, err := p.convertir(ctx, log, payload)
 	if err != nil {
 		_ = p.Assets.MarkFailed(ctx, activo.ID, err.Error())
 		_ = p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingFailed)
@@ -153,10 +161,17 @@ func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) e
 	if err := p.Assets.MarcarPDFListo(ctx, activo.ID, clavePDF); err != nil {
 		return err
 	}
-	return p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingReady)
+	if err := p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingReady); err != nil {
+		return err
+	}
+
+	log.Info("documentos: presentación lista",
+		"pdf", clavePDF, "estado", coursedomain.ProcessingReady,
+		"duracion_ms", time.Since(inicio).Milliseconds())
+	return nil
 }
 
-func (p *Procesador) convertir(ctx context.Context, payload queue.DocumentConvertPayload) (string, error) {
+func (p *Procesador) convertir(ctx context.Context, log *slog.Logger, payload queue.DocumentConvertPayload) (string, error) {
 	dir, err := os.MkdirTemp("", "mooc-doc-*")
 	if err != nil {
 		return "", err
@@ -175,16 +190,29 @@ func (p *Procesador) convertir(ctx context.Context, payload queue.DocumentConver
 		return "", err
 	}
 
+	empezo := time.Now()
 	rutaPDF, err := p.conversor().APDF(ctx, origen, dir)
 	if err != nil {
 		return "", err
 	}
+	log.Info("documentos: PDF generado",
+		"bytes", tamano(rutaPDF), "duracion_ms", time.Since(empezo).Milliseconds())
 
 	clave := ClaveDelPDF(payload.ResourceID.String())
 	if err := p.Storage.UploadFile(ctx, clave, rutaPDF, "application/pdf"); err != nil {
 		return "", err
 	}
 	return clave, nil
+}
+
+// tamano es el peso de un archivo, o 0 si no se puede leer. Solo alimenta
+// registros, así que un fallo aquí no debe tumbar una conversión que va bien.
+func tamano(path string) int64 {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0
+	}
+	return info.Size()
 }
 
 // ClaveDelPDF es dónde vive la vista previa de una presentación.

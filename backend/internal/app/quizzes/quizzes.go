@@ -117,10 +117,6 @@ type DefinicionOpcion struct {
 	IsCorrect bool
 }
 
-// Definir crea o reemplaza el quiz de un recurso.
-//
-// Solo el profesor dueno y sobre una version en borrador: una version
-// publicada es inmutable, asi que cambiar una evaluacion exige despublicar.
 // DefinicionParaInforme resuelve un quiz junto con los textos de sus
 // preguntas y opciones, comprobando que quien pregunta es su autor o la
 // administracion.
@@ -162,8 +158,12 @@ func (s *Service) DefinicionParaInforme(ctx context.Context, actor *user.User, v
 	return &DefinicionDeInforme{Quiz: q, Textos: textos}, nil
 }
 
+// Definir crea o reemplaza el quiz de un recurso.
+//
+// Solo el profesor dueno y sobre una version en borrador: una version
+// publicada es inmutable, asi que cambiar una evaluacion exige despublicar.
 func (s *Service) Definir(ctx context.Context, actor *user.User, versionID, resourceID uuid.UUID, def DefinicionQuiz) (*quiz.Quiz, error) {
-	if _, _, err := s.courses.GetOwnedVersion(ctx, actor, versionID); err != nil {
+	if err := s.courses.AsegurarVersionEditable(ctx, actor, versionID); err != nil {
 		return nil, err
 	}
 	// La comprobacion de que el recurso pertenece a la version evita colgar un

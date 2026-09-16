@@ -46,6 +46,24 @@ func NewServer(redisAddr string, concurrency int, log *slog.Logger) *asynq.Serve
 	)
 }
 
+// AtributosDeLaTarea son los datos que asynq guarda en el contexto del
+// trabajo en curso: identificador, cola e intento.
+//
+// Van en todas las líneas del worker, no solo en las de error. Sin el
+// identificador no se pueden hilar los registros de un mismo trabajo cuando
+// hay cinco corriendo a la vez, y sin el intento no se distingue un trabajo
+// que salió bien a la primera de uno que salió bien después de dos fallos y su
+// backoff, que es justo lo que hay que poder demostrar.
+//
+// Devuelve la forma variádica que espera slog en lugar de una estructura: el
+// uso es siempre pasarlo a un logger, y envolverlo solo añadiría un paso.
+func AtributosDeLaTarea(ctx context.Context) []any {
+	id, _ := asynq.GetTaskID(ctx)
+	cola, _ := asynq.GetQueueName(ctx)
+	intento, _ := asynq.GetRetryCount(ctx)
+	return []any{"tarea_id", id, "cola", cola, "intento", intento}
+}
+
 // AccionAgotado es la acción que emite la alerta cuando un trabajo agota sus
 // reintentos. Se registra con este nombre exacto para que la regla de alerta
 // de observabilidad pueda engancharse a un valor estable y no a un texto libre.

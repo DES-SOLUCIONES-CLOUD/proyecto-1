@@ -92,7 +92,7 @@ func TestUnaVersionPublicadaEsInmutable(t *testing.T) {
 	}
 }
 
-func TestDespublicarDevuelveLaEdicion(t *testing.T) {
+func TestDespublicarNoAplicaAUnCursoQueNuncaSePublico(t *testing.T) {
 	env := nuevoEntorno(t)
 	c, versionID := env.profesorConCurso("prof@example.com", "curso-despublicable")
 	moduloEnVersion(t, c, versionID, "Módulo 1")
@@ -107,6 +107,38 @@ func TestDespublicarDevuelveLaEdicion(t *testing.T) {
 	if res := c.hacer(http.MethodPost, "/courses/versions/"+versionID+"/modules",
 		map[string]any{"title": "Módulo 2", "position": 2}); res.Estado != http.StatusCreated {
 		t.Errorf("el borrador debería seguir siendo editable, llegó %d: %s", res.Estado, res.Crudo)
+	}
+}
+
+// El ciclo completo de la regla: publicado no se edita, despublicado sí.
+func TestDespublicarDevuelveLaEdicion(t *testing.T) {
+	env := nuevoEntorno(t)
+	c, cursoID, _ := env.cursoPublicadoConLectura("prof@example.com", "curso-ciclo")
+
+	// Con el curso vigente, abrir el borrador se rechaza.
+	if res := c.hacer(http.MethodPost, "/courses/"+cursoID+"/update-draft", nil); res.Estado != http.StatusConflict {
+		t.Fatalf("con el curso publicado no debería abrirse borrador, llegó %d: %s", res.Estado, res.Crudo)
+	}
+
+	if res := c.hacer(http.MethodPost, "/courses/"+cursoID+"/unpublish", nil); res.Estado != http.StatusOK {
+		t.Fatalf("despublicar: %d %s", res.Estado, res.Crudo)
+	}
+
+	// Retirado el curso, el borrador se abre y acepta cambios.
+	res := c.hacer(http.MethodPost, "/courses/"+cursoID+"/update-draft", nil)
+	if res.Estado != http.StatusCreated {
+		t.Fatalf("abrir borrador tras despublicar: %d %s", res.Estado, res.Crudo)
+	}
+	borradorID, _ := res.campo(t, "ID").(string)
+
+	if res := c.hacer(http.MethodPost, "/courses/versions/"+borradorID+"/modules",
+		map[string]any{"title": "Módulo nuevo", "position": 2}); res.Estado != http.StatusCreated {
+		t.Errorf("el borrador debería aceptar cambios, llegó %d: %s", res.Estado, res.Crudo)
+	}
+	if res := c.hacer(http.MethodPatch, "/courses/versions/"+borradorID,
+		map[string]any{"title": "Curso revisado", "summary": "Resumen",
+			"approval_min_score": 60, "approval_required_resources_pct": 100}); res.Estado != http.StatusOK {
+		t.Errorf("los metadatos deberían poder editarse, llegó %d: %s", res.Estado, res.Crudo)
 	}
 }
 

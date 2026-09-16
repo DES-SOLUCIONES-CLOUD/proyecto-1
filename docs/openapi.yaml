@@ -501,15 +501,22 @@ paths:
 
   /courses/{courseId}/update-draft:
     post:
-      summary: Crea la siguiente versión en borrador copiando la estructura publicada
+      summary: Abre la siguiente versión en borrador copiando la última versión
+      description: >
+        Exige que el curso no esté publicado: editar una versión vigente pasa
+        por despublicarla antes. El borrador se copia de la última versión que
+        salió del borrador —normalmente la que se acaba de retirar— y conserva
+        sus identificadores estables, así que el progreso de los ya inscritos
+        sigue contando. Si ya hay un borrador abierto se devuelve ese mismo.
       operationId: createUpdateDraft
       parameters: [{ name: courseId, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
-        "201": { description: Nuevo borrador creado, con los mismos identificadores estables. }
+        "201": { description: Borrador abierto, con los mismos identificadores estables. }
+        "409": { description: "El curso está publicado (code: course_published); hay que despublicarlo primero." }
 
   /courses/{courseId}/unpublish:
     post:
-      summary: Despublica temporalmente la versión vigente para permitir su edición
+      summary: Despublica la versión vigente para permitir su edición
       operationId: unpublishCourse
       parameters: [{ name: courseId, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:

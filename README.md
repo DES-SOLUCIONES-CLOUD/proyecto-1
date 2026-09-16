@@ -22,7 +22,7 @@ Cobertura del alcance mínimo (sección 5.1 del enunciado):
 |---|---|---|
 | 1 | Registro, verificación de correo, sesiones revocables y recuperación | Completo, con pruebas de integración |
 | 2 | Gestión administrativa de usuarios | Completo: usuarios, roles, estados, sesiones (ver y cerrar), consulta de la bitácora inmutable y protección del último administrador activo |
-| 3 | Autoría, jerarquía y versiones | Completo: jerarquía de cuatro niveles con `stable_id`, ordenamiento, previsualización, validación exhaustiva de publicación y versiones publicadas inmutables |
+| 3 | Autoría, jerarquía y versiones | Completo: jerarquía de cuatro niveles con `stable_id`, ordenamiento, previsualización, validación exhaustiva de publicación y versiones publicadas inmutables. Un curso publicado no se edita: hay que despublicarlo, y el borrador que se abre entonces parte de la versión retirada |
 | 4 | Editor de bloques con autosave y Markdown canónico | Completo en lo que el MVP delimita: bloques de encabezado, párrafo, lista, código y aviso, con autoguardado y recuperación del borrador local. La ida y vuelta AST ↔ Markdown cubre ese subconjunto, no el Markdown extendido entero |
 | 5 | Carga multimedia | Completo: multipart directa reanudable durante 24 h, checksum SHA-256 extremo a extremo, MIME real deducido de los bytes y escaneo antimalware. Los mismos controles se aplican a la subida simple |
 | 6 | Procesamiento asíncrono a HLS | Completo: worker asynq con FFmpeg sin upscaling, original conservado, toma exclusiva del trabajo, reintentos con backoff, dead-letter queue con alerta y entrega autorizada por CDN |
@@ -33,7 +33,8 @@ Cobertura del alcance mínimo (sección 5.1 del enunciado):
 
 De las restricciones técnicas (sección 7) están resueltas `/api/v1`, OpenAPI
 3.1 al día con la implementación, errores uniformes, `Idempotency-Key` y
-protección CSRF. Siguen pendientes cursores, ETag y OpenTelemetry.
+protección CSRF. Siguen pendientes cursores, ETag, OpenTelemetry, el cifrado
+en reposo y la gestión externa de secretos.
 
 ### Alcance opcional (sección 5.2)
 
@@ -155,10 +156,15 @@ devuelve la URL del manifiesto en el CDN; sin ella, devuelve una URL firmada de
 
 Dos condiciones del despliegue que conviene no descubrir en la demostración:
 
-- **Los segmentos los pide el reproductor con rutas relativas al manifiesto**,
-  así que su autorización la resuelve el CDN. Sin CDN delante, el prefijo
-  `hls/` del bucket debe ser legible por el reproductor: firmar solo el
-  manifiesto no alcanza para los segmentos.
+- **Los segmentos y las listas de variante los pide el reproductor con rutas
+  relativas al manifiesto**, y una URL relativa no hereda la firma de aquella
+  contra la que se resuelve, así que su autorización la resuelve el CDN. Sin
+  CDN delante, el prefijo `hls/` del bucket debe ser legible por el
+  reproductor: firmar solo el manifiesto deja el vídeo en un `403` en cuanto
+  hls.js pasa de la primera línea, con el recurso marcado `ready` y la
+  pantalla en negro. En el compose lo resuelve el servicio `minio-init`, que
+  abre a lectura anónima únicamente ese prefijo; los originales, los PDF y las
+  descargas se siguen firmando uno a uno.
 - **El origen del frontend debe estar permitido por CORS en el almacenamiento
   o el CDN.** Safari reproduce HLS de forma nativa y no lo necesita, pero el
   resto de navegadores usan hls.js, que lee el manifiesto y los segmentos por
@@ -184,8 +190,10 @@ publicación de una versión nueva.
 |   |-- internal/domain/    Entidades y reglas de negocio (sin framework ni cloud)
 |   |-- internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola
 |   `-- migrations/         Migraciones SQL de PostgreSQL
-|-- frontend/           Next.js 14 (App Router), React 18, TypeScript y CSS propio
-|-- docs/               Especificación OpenAPI y notas de arquitectura
+|-- frontend/           Next.js 16 (App Router), React 18, TypeScript y CSS propio
+|-- docs/               Especificación OpenAPI, arquitectura y guion de la demostración
+|-- postman/            Colección que recorre los nueve segmentos de la demostración
+|-- load/               Prueba de carga de Etapa 1 (k6) y sus umbrales
 `-- docker-compose.yml  Postgres, Redis, MinIO, Mailpit, API, workers y frontend
 ```
 
@@ -196,7 +204,16 @@ Cada subproyecto tiene su propio README con el detalle.
 - **Backend**: Go, monolito modular con el dominio desacoplado del framework
   HTTP y del proveedor cloud; workers independientes sin estado local.
 - **Persistencia**: PostgreSQL como fuente de verdad transaccional; Redis para
-  sesiones, caché, rate limiting y la cola (asynq).
+  el límite de tasa y la cola (asynq).
+
+  El enunciado (sección 4) pide además que Redis lleve las sesiones y la
+  caché, y aquí no las lleva. Las sesiones viven en PostgreSQL, en una tabla
+  con su hash de token, su vencimiento y su propietario: es lo que hace que
+  revocarlas sea transaccional y que sobrevivan a un reinicio de Redis, que
+  para «revocación inmediata» pesa más que el ahorro de latencia. Caché no hay
+  ninguna, sin más: con los p95 medidos —de 2 a 7 ms— no habría añadido nada
+  que no fuera una fuente de datos rancios. Las dos son desviaciones
+  conscientes de la regla, no olvidos, pero desviaciones al fin.
 - **Almacenamiento de objetos**: S3/MinIO para originales, derivados HLS, PDFs
   e imágenes de insignias; ningún binario vive en la base relacional.
 - **Frontend**: Next.js con TypeScript. El navegador llama directamente a la
@@ -300,7 +317,16 @@ siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
 
 El guion de los nueve segmentos que fija la sección 10.2 del enunciado está en
 [`docs/demostracion.md`](docs/demostracion.md), con una nota en cada segmento
-sobre qué se puede demostrar hoy y qué no.
+sobre qué se puede demostrar hoy y qué no. Cómo grabarlo —orden, superficies,
+qué decir y qué no afirmar— está en
+[`docs/video-sustentacion.md`](docs/video-sustentacion.md).
+
+La sección 10.1 pide la respuesta de la API como evidencia, y eso en el panel de
+red se lee mal. Para enseñarla hay una colección de Postman en
+[`postman/`](postman/README.md) que recorre los mismos nueve segmentos y
+comprueba lo que cada uno debe acreditar: 55 peticiones y 113 aserciones. **No
+sustituye a la prueba de carga**, que sigue siendo cosa de k6 por la razón que
+explica ese README.
 
 **No hay que desplegar en un proveedor cloud.** La sección 10.1 pide que la
 demostración se ejecute «con datos sintéticos sobre el sistema desplegado
@@ -343,17 +369,28 @@ El enunciado exige cuatro cosas para aceptar. Estado real, medido:
 | Condición | Estado |
 |---|---|
 | Los nueve flujos críticos superan pruebas **E2E** | **Cubierto.** 34 pruebas en `frontend/e2e/`, una carpeta por segmento, contra la plataforma levantada |
-| **Prueba de carga** de Etapa 1 sin incumplimientos críticos | **Ejecutada y superada.** 42.175 peticiones, 0 % de error, p95 entre 3 y 7 ms. Ver [`load/README.md`](load/README.md) |
+| **Prueba de carga** de Etapa 1 sin incumplimientos críticos | **Ejecutada y superada.** 42.075 peticiones en 4 min, 0 % de error, p95 de 2 ms (catálogo), 5 ms (consumo), 5 ms (quiz) y 277 ms (login). Ver [`load/README.md`](load/README.md) |
 | **Auditoría de accesibilidad** sin incumplimientos críticos | **Cubierta.** axe-core sobre WCAG 2.2 A y AA en 13 pantallas, en español y en inglés: cero violaciones |
 | **CI** completo antes de la demostración | **Cubierto.** [`.github/workflows/ci.yml`](.github/workflows/ci.yml): build, lint, análisis de seguridad, migraciones, pruebas, E2E, accesibilidad y carga |
 
 ```bash
-cd frontend && npm run e2e          # los nueve flujos y la accesibilidad
+cd frontend && npx playwright install chromium   # solo la primera vez
+cd frontend && npm run e2e                       # los nueve flujos y la accesibilidad
 ```
 
-Las E2E necesitan la plataforma en marcha y el administrador sembrado
-(`E2E_ADMIN_EMAIL` y `E2E_ADMIN_PASSWORD`). Levantan un navegador de verdad:
-no simulan la API.
+Las E2E necesitan la plataforma en marcha y levantan un navegador de verdad: no
+simulan la API. Las credenciales del administrador salen del `.env` de la raíz
+(`ADMIN_EMAIL` y `ADMIN_PASSWORD`, las mismas con las que la API lo siembra al
+arrancar); `E2E_ADMIN_EMAIL` y `E2E_ADMIN_PASSWORD` solo hacen falta para
+apuntar a otra cuenta, y es lo que hace CI.
+
+Antes de correr la suite entera hay que descomentar
+`AUTH_RATE_LIMIT_PER_MINUTE=300` en el `.env` y reiniciar la API
+(`docker compose up -d api`). Toda la suite sale de una misma IP y con el valor
+de producción (10) las pruebas se ahogan entre ellas: el síntoma son veintitantos
+429 que parecen un fallo del producto. Por lo mismo, dos ejecuciones seguidas
+necesitan un minuto de pausa, porque `99-limite-de-tasa` agota el presupuesto a
+propósito.
 
 ### Por qué Next va en 16 y no en 14
 

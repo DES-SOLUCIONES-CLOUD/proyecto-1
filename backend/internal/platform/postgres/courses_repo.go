@@ -52,6 +52,24 @@ func (r *CourseRepo) LatestDraftVersionID(ctx context.Context, courseID uuid.UUI
 	return id, err
 }
 
+// UltimaVersionNoBorradorID es la versión más reciente que ya salió del
+// borrador, esté vigente o retirada.
+//
+// Es la base de un borrador de actualización. No sirve mirar
+// current_published_version_id: despublicar lo deja en NULL, y justo entonces
+// es cuando se abre el borrador, así que leerlo de ahí daría un curso vacío.
+func (r *CourseRepo) UltimaVersionNoBorradorID(ctx context.Context, courseID uuid.UUID) (*uuid.UUID, error) {
+	var id *uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		SELECT id FROM course_versions
+		 WHERE course_id=$1 AND status <> 'draft'
+		 ORDER BY version_number DESC LIMIT 1`, courseID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return id, err
+}
+
 func (r *CourseRepo) GetCourseBySlug(ctx context.Context, slug string) (*course.Course, error) {
 	var c course.Course
 	err := r.pool.QueryRow(ctx, `

@@ -35,15 +35,85 @@ func (e *entorno) cursoPublicadoConLectura(correo, slug string) (c *cliente, cur
 	return c, cursoID, recursoID
 }
 
-// borradorDeActualizacion abre la siguiente versión y devuelve su id.
+// borradorDeActualizacion despublica el curso y abre la siguiente versión.
+//
+// El orden no es incidental: editar un curso vigente exige retirarlo antes,
+// así que toda actualización empieza por despublicar.
 func (e *entorno) borradorDeActualizacion(c *cliente, cursoID string) string {
 	e.t.Helper()
+	if res := c.hacer(http.MethodPost, "/courses/"+cursoID+"/unpublish", nil); res.Estado != http.StatusOK {
+		e.t.Fatalf("despublicar: %d %s", res.Estado, res.Crudo)
+	}
 	res := c.hacer(http.MethodPost, "/courses/"+cursoID+"/update-draft", nil)
 	if res.Estado != http.StatusCreated {
 		e.t.Fatalf("abrir borrador de actualización: %d %s", res.Estado, res.Crudo)
 	}
 	id, _ := res.campo(e.t, "ID").(string)
 	return id
+}
+
+// Abrir un borrador es el primer paso de editar, así que la regla se aplica
+// también ahí: un curso vigente no se edita, se despublica primero.
+func TestNoSePuedeAbrirUnBorradorDeUnCursoPublicado(t *testing.T) {
+	env := nuevoEntorno(t)
+	c, cursoID, _ := env.cursoPublicadoConLectura("prof@example.com", "curso-vivo")
+
+	res := c.hacer(http.MethodPost, "/courses/"+cursoID+"/update-draft", nil)
+	if res.Estado != http.StatusConflict {
+		t.Fatalf("se esperaba 409 sobre un curso publicado, llegó %d: %s", res.Estado, res.Crudo)
+	}
+	if codigo, _ := res.campo(t, "error", "code").(string); codigo != "course_published" {
+		t.Errorf("el código no explica que hay que despublicar: %s", res.Crudo)
+	}
+	if n := env.contar(`SELECT count(*) FROM course_versions WHERE status='draft'`); n != 0 {
+		t.Errorf("no debería haberse creado ningún borrador, hay %d", n)
+	}
+}
+
+// Despublicar deja el curso sin versión vigente, y el borrador que se abre
+// entonces tiene que partir de la que acaba de retirarse. Leerlo del puntero
+// del curso —que despublicar deja en NULL— daba un borrador vacío: el profesor
+// perdía el curso entero por el simple hecho de ir a corregirle una palabra.
+func TestElBorradorTrasDespublicarCopiaLaVersionRetirada(t *testing.T) {
+	env := nuevoEntorno(t)
+	c, cursoID, _ := env.cursoPublicadoConLectura("prof@example.com", "curso-copia")
+	borradorID := env.borradorDeActualizacion(c, cursoID)
+
+	res := c.hacer(http.MethodGet, "/courses/versions/"+borradorID, nil)
+	if res.Estado != http.StatusOK {
+		t.Fatalf("previsualizar el borrador: %d %s", res.Estado, res.Crudo)
+	}
+	if titulo, _ := res.campo(t, "Title").(string); titulo != "Curso" {
+		t.Errorf("el borrador no heredó los metadatos: %s", res.Crudo)
+	}
+	modulos, _ := res.campo(t, "Modules").([]any)
+	if len(modulos) != 1 {
+		t.Fatalf("el borrador debería copiar la estructura retirada: %s", res.Crudo)
+	}
+	if n := env.contar(`
+		SELECT count(*) FROM resources res
+		  JOIN units u ON u.id = res.unit_id
+		  JOIN modules m ON m.id = u.module_id
+		 WHERE m.course_version_id = $1`, borradorID); n != 1 {
+		t.Errorf("la lectura no se copió al borrador, hay %d recursos", n)
+	}
+}
+
+// Pedir el borrador dos veces devuelve el mismo: dos versiones editables del
+// mismo curso competirían por publicarse, y la que perdiera se llevaría por
+// delante lo escrito en la otra.
+func TestAbrirDosVecesElBorradorDevuelveElMismo(t *testing.T) {
+	env := nuevoEntorno(t)
+	c, cursoID, _ := env.cursoPublicadoConLectura("prof@example.com", "curso-unico")
+	primero := env.borradorDeActualizacion(c, cursoID)
+
+	res := c.hacer(http.MethodPost, "/courses/"+cursoID+"/update-draft", nil)
+	if segundo, _ := res.campo(t, "ID").(string); segundo != primero {
+		t.Errorf("se abrió un segundo borrador %s frente a %s: %s", segundo, primero, res.Crudo)
+	}
+	if n := env.contar(`SELECT count(*) FROM course_versions WHERE course_id=$1 AND status='draft'`, cursoID); n != 1 {
+		t.Errorf("debería haber un único borrador abierto, hay %d", n)
+	}
 }
 
 func TestUnBorradorReciennAbiertoNoTieneCambios(t *testing.T) {
