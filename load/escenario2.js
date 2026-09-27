@@ -3,8 +3,8 @@
 //
 // Profesores: firman URL, suben el original al bucket, confirman y esperan
 // hasta processing_status=ready (en el producto es "ready", no "available").
-// Tres perfiles de archivo (corto / medio / largo), generados con
-// load/perfiles/generar.sh.
+// Tres perfiles de vídeo (corto / medio / largo) y un WAV suelto, generados
+// con load/perfiles/generar.sh. El enunciado pide video y audio.
 //
 // Estudiantes: inscriben, piden el manifiesto y consumen HLS al ritmo de
 // EXTINF (no a ráfaga). Miden la entrega, no el worker.
@@ -38,10 +38,12 @@ const ESTUDIANTES = Number(__ENV.ESTUDIANTES || 20);
 const POLL_S = Number(__ENV.POLL_S || 2);
 const TIMEOUT_READY_S = Number(__ENV.TIMEOUT_READY_S || 600);
 
+const DIR_PERFILES = __ENV.PERFILES_DIR || "perfiles";
 const PERFILES = {
-  corto: { archivo: __ENV.VIDEO_CORTO || "/scripts/perfiles/corto.mp4", mime: "video/mp4" },
-  medio: { archivo: __ENV.VIDEO_MEDIO || "/scripts/perfiles/medio.mp4", mime: "video/mp4" },
-  largo: { archivo: __ENV.VIDEO_LARGO || "/scripts/perfiles/largo.mp4", mime: "video/mp4" },
+  corto: { archivo: __ENV.VIDEO_CORTO || `${DIR_PERFILES}/corto.mp4`, mime: "video/mp4", tipo: "video" },
+  medio: { archivo: __ENV.VIDEO_MEDIO || `${DIR_PERFILES}/medio.mp4`, mime: "video/mp4", tipo: "video" },
+  largo: { archivo: __ENV.VIDEO_LARGO || `${DIR_PERFILES}/largo.mp4`, mime: "video/mp4", tipo: "video" },
+  audio: { archivo: __ENV.AUDIO_WAV || `${DIR_PERFILES}/audio.wav`, mime: "audio/wav", tipo: "audio" },
 };
 
 const nombres = Object.keys(PERFILES);
@@ -104,7 +106,7 @@ export function setup() {
     if (!binarios[nombre] || binarios[nombre].byteLength < 32) {
       throw new Error(
         `falta el perfil ${nombre} (${PERFILES[nombre].archivo}). ` +
-          `Genera los tres: load/perfiles/generar.sh`,
+          `Genera los perfiles: load/perfiles/generar.sh`,
       );
     }
   }
@@ -184,7 +186,7 @@ function prepararCursoPublicado(profesor) {
     const creado = http.post(
       `${BASE}/api/v1/courses/versions/${versionId}/units/${unidadId}/resources`,
       JSON.stringify({
-        type: "video",
+        type: PERFILES[nombre].tipo,
         title: `Perfil ${nombre}`,
         position: i + 1,
         visible: true,
@@ -333,7 +335,7 @@ export function subirVideo() {
   const creado = http.post(
     `${BASE}/api/v1/courses/versions/${versionId}/units/${unidadId}/resources`,
     JSON.stringify({
-      type: "video",
+      type: PERFILES[perfil].tipo,
       title: perfil,
       position: 1,
       visible: true,

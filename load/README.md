@@ -12,7 +12,8 @@ y el que corre en CI. Los otros dos son la caracterización en GCP.
 `metricas.sh` vuelve de Cloud Monitoring (CPU, memoria, red, disco de las
 VM; CPU y conexiones de Cloud SQL) y un snapshot de la cola asynq.
 `correr.sh` espera 10 minutos (créditos de e2-small), lanza k6 y recoge
-métricas. `perfiles/generar.sh` fabrica los tres MP4.
+métricas. `perfiles/generar.sh` fabrica los tres MP4 y un WAV. `generador-vm.sh`
+crea/borra la e2-standard-2. Orden: [`docs/entrega2/capacidad-corridas.md`](../docs/entrega2/capacidad-corridas.md).
 
 **Login en el Escenario 1:** se mide, a 8/min, fuera del mix de VU. No
 forma parte del recorrido de cada estudiante.

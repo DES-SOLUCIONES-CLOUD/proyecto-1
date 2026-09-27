@@ -56,6 +56,11 @@ sleep "$REPOSO_S"
 inicio="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 export BASE_URL ESCENARIO="${ESCENARIO:-$SALIDA/escenario.json}" SALIDA
 export NIVELES MESETA PROFESORES ESTUDIANTES
+export PERFILES_DIR="${PERFILES_DIR:-$DIR/perfiles}"
+export VIDEO_CORTO="${VIDEO_CORTO:-$PERFILES_DIR/corto.mp4}"
+export VIDEO_MEDIO="${VIDEO_MEDIO:-$PERFILES_DIR/medio.mp4}"
+export VIDEO_LARGO="${VIDEO_LARGO:-$PERFILES_DIR/largo.mp4}"
+export AUDIO_WAV="${AUDIO_WAV:-$PERFILES_DIR/audio.wav}"
 
 k6 run "$DIR/${escenario}.js"
 fin="$(date -u +%Y-%m-%dT%H:%M:%SZ)"

@@ -29,5 +29,9 @@ ffmpeg -y -f lavfi -i testsrc=size=1280x720:rate=24:duration=45 \
   -f lavfi -i sine=frequency=440:duration=45 \
   -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest largo.mp4
 
+# Audio suelto (el enunciado pide vídeo y audio). WAV ~30 s, ~2,6 MiB.
+ffmpeg -y -f lavfi -i sine=frequency=440:duration=30 \
+  -c:a pcm_s16le -ac 1 -ar 44100 audio.wav
+
 echo "perfiles:"
-ls -lh corto.mp4 medio.mp4 largo.mp4
+ls -lh corto.mp4 medio.mp4 largo.mp4 audio.wav

@@ -385,9 +385,9 @@ jobs:
       - name: Sembrar los datos sintéticos
         if: env.ACCION == 'sembrar'
         env:
-          SEED_STUDENTS: ${{ vars.SEED_STUDENTS || '500' }}
+          SEED_STUDENTS: ${{ vars.SEED_STUDENTS || '400' }}
           SEED_TEACHERS: ${{ vars.SEED_TEACHERS || '3' }}
-          SEED_ENROLL: ${{ vars.SEED_ENROLL || '1' }}
+          SEED_ENROLL: ${{ vars.SEED_ENROLL || '0' }}
         run: |
           bash deploy/gcp/remoto.sh web "sudo SEED_STUDENTS='$SEED_STUDENTS' SEED_TEACHERS='$SEED_TEACHERS' SEED_ENROLL='$SEED_ENROLL' bash /opt/mooc/actual/deploy/gcp/en-vm.sh sembrar"
           # El escenario lleva sesiones válidas de los usuarios sintéticos: no

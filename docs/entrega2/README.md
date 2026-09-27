@@ -21,4 +21,5 @@ preguntar. La justificación está en [decisiones](decisiones.md#bucket-hls-púb
 | [Evidencias](evidencias.md) | Comandos de los ítems 14–19 |
 
 Informe de las corridas: [`capacity-planning/pruebas_de_carga_entrega2.md`](../../capacity-planning/pruebas_de_carga_entrega2.md).
+Orden de ejecución (VM generadora, semilla, k6): [`capacidad-corridas.md`](capacidad-corridas.md).
 Bitácora de horas: [`capacity-planning/bitacora-costos.md`](../../capacity-planning/bitacora-costos.md).

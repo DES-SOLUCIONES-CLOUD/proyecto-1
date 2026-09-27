@@ -9,13 +9,13 @@ con otra):
 
 | Parámetro | Valor |
 |---|---|
-| Commit | *hash* |
-| `WORKER_CONCURRENCY` | *2 (salvo que se declare otra)* |
-| `DB_MAX_CONNS` (API / worker) | *20 / 5* |
-| Cloud NAT | *activa / apagada* |
+| Commit | *hash del commit desplegado en las VM* |
+| `WORKER_CONCURRENCY` | 2 |
+| `DB_MAX_CONNS` (API / worker) | 20 / 5 |
+| Cloud NAT | activa (subred worker) |
 | Tipo de las 2 VM | e2-small, pd-balanced 30 GB |
-| Cloud SQL | `db-custom-1-3840`, Enterprise, zonal |
-| Generador de carga | *e2-standard-2, zona, vCPU, RAM — no es una de las 2 VM* |
+| Cloud SQL | `db-custom-1-3840`, Enterprise, zonal (`mooc-bd-aeab`) |
+| Generador de carga | e2-standard-2, `us-central1-a`, 2 vCPU / 8 GB (`mooc-k6`) — no es una de las 2 VM |
 | Reposo antes de cada corrida | 10 min |
 
 ## Datos sintéticos
@@ -30,7 +30,7 @@ Declaración (copiar de `escenario.json` → `cantidades`):
 | Recursos | *—* texto + quiz; vídeos los crea k6 |
 | Inscripciones | *0 al sembrar; las hace el recorrido* |
 | Intentos | *0 al sembrar; los hace el quiz* |
-| Perfiles multimedia | corto (5 s 240p), medio (20 s 480p), largo (45 s 720p) |
+| Perfiles multimedia | corto (5 s 240p), medio (20 s 480p), largo (45 s 720p), audio WAV 30 s |
 | Estudiantes / profesores | *—* / *—* |
 
 ## Escenario 1 — recorrido de estudiante
