@@ -127,7 +127,11 @@ case "$accion" in
     cargar_secretos
     fijar_imagenes
     mkdir -p /opt/mooc/salida
-    compose run --rm seed
+    compose run --rm \
+      -e SEED_STUDENTS="${SEED_STUDENTS:-500}" \
+      -e SEED_TEACHERS="${SEED_TEACHERS:-3}" \
+      -e SEED_ENROLL="${SEED_ENROLL:-1}" \
+      seed
     ;;
   estado)
     compose ps

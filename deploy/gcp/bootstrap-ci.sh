@@ -3,8 +3,8 @@
 # dueño del proyecto (Cloud Shell o su máquina, con `gcloud auth login`);
 # repetirlo es seguro y deja todo como lo describe este archivo.
 #
-#   deploy/gcp/bootstrap-ci.sh --proyecto desarrollo-soluciones-cloud \
-#     [--repo maarojasga/dvc_proyecto1] [--region us-central1] [--zona us-central1-a] \
+#   deploy/gcp/bootstrap-ci.sh --proyecto totemic-gravity-509902-u2 \
+#     [--repo DES-SOLUCIONES-CLOUD/proyecto-1] [--region us-central1] [--zona us-central1-a] \
 #     [--cuenta-facturacion XXXXXX-XXXXXX-XXXXXX] [--bucket <nombre>] \
 #     [--rama main | --cualquier-rama] [--conservar-sa-compute]
 #

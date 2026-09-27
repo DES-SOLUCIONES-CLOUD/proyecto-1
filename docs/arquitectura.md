@@ -2,6 +2,7 @@
 
 Notas de diseño de la base. Complementan los README y se actualizan a medida
 que se implementa cada módulo. El contrato de la API vive en `openapi.yaml`.
+El despliegue en GCP (Entrega 2) está en [`entrega2/`](entrega2/README.md).
 
 ## Frontera entre frontend y backend
 

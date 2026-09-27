@@ -196,10 +196,11 @@ publicación de una versión nueva.
 |   |-- internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola
 |   `-- migrations/         Migraciones SQL de PostgreSQL
 |-- frontend/           Next.js 16 (App Router), React 18, TypeScript y CSS propio
-|-- docs/               Especificación OpenAPI, arquitectura y guion de la demostración
+|-- docs/               OpenAPI, arquitectura local, demostración y Entrega 2 (`docs/entrega2/`)
 |-- postman/            Colección que recorre los nueve segmentos de la demostración
-|-- load/               Prueba de carga de Etapa 1 (k6) y sus umbrales
-|-- deploy/             Despliegue en GCP (Entrega 2): Terraform, scripts y un compose por VM
+|-- load/               k6: Etapa 1, Escenarios 1 y 2 de capacidad, métricas
+|-- deploy/             Despliegue en GCP: Terraform, scripts y un compose por VM
+|-- capacity-planning/  Informe de carga, bitácora de costos y evidencias
 `-- docker-compose.yml  Postgres, Redis, MinIO, Mailpit, API, workers y frontend
 ```
 
@@ -226,10 +227,12 @@ Cada subproyecto tiene su propio README con el detalle.
   API en Go (`NEXT_PUBLIC_API_URL`), sin proxy de por medio; el backend tiene
   CORS habilitado para el origen del frontend y las cookies de sesión viajan
   con `credentials: "include"`.
-- **Despliegue**: Docker y Docker Compose, con API y workers preparados para
-  escalar a múltiples instancias. En la nube (Entrega 2), dos VM de Compute
-  Engine con Cloud SQL, Cloud Storage y Artifact Registry, descritas con
-  Terraform: [deploy/gcp/README.md](deploy/gcp/README.md).
+- **Despliegue**: Docker Compose en local. En GCP (Entrega 2), dos VM
+  `e2-small`, Cloud SQL, Cloud Storage y Artifact Registry, descritas con
+  Terraform: [deploy/gcp/README.md](deploy/gcp/README.md). Modelo de
+  componentes, decisiones y operación: [docs/entrega2/](docs/entrega2/README.md).
+  **El HLS se sirve desde un bucket público de solo lectura**; el
+  enunciado lo admite y hay que decirlo en la sustentación.
 
 ## Cómo levantar el entorno local
 
@@ -325,9 +328,9 @@ siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
 
 El guion de los nueve segmentos que fija la sección 10.2 del enunciado está en
 [`docs/demostracion.md`](docs/demostracion.md), con una nota en cada segmento
-sobre qué se puede demostrar hoy y qué no. Cómo grabarlo —orden, superficies,
-qué decir y qué no afirmar— está en
-[`docs/video-sustentacion.md`](docs/video-sustentacion.md).
+sobre qué se puede demostrar hoy y qué no. El video de la Entrega 2 (máximo
+20 min, arquitectura en GCP, recorrido, asíncrono y capacidad) está en
+[`docs/entrega2/video.md`](docs/entrega2/video.md).
 
 La sección 10.1 pide la respuesta de la API como evidencia, y eso en el panel de
 red se lee mal. Para enseñarla hay una colección de Postman en
@@ -336,15 +339,33 @@ comprueba lo que cada uno debe acreditar: 55 peticiones y 113 aserciones. **No
 sustituye a la prueba de carga**, que sigue siendo cosa de k6 por la razón que
 explica ese README.
 
-**No hay que desplegar en un proveedor cloud.** La sección 10.1 pide que la
-demostración se ejecute «con datos sintéticos sobre el sistema desplegado
-mediante Docker Compose», que es exactamente lo que hay:
+La Entrega 1 se demostró en Docker Compose. La Entrega 2 se demuestra en
+GCP. URL pública (tras `certificado`): *pendiente del primer
+despliegue* — sale de `terraform output url_publica` y queda en
+[`deploy/gcp/resumen.sh`](deploy/gcp/resumen.sh). Arquitectura:
+[docs/entrega2/](docs/entrega2/README.md). Capacidad:
+[capacity-planning/pruebas_de_carga_entrega2.md](capacity-planning/pruebas_de_carga_entrega2.md).
+Evidencias de corridas: [capacity-planning/evidencias/](capacity-planning/evidencias/).
+Video: [docs/entrega2/video.md](docs/entrega2/video.md).
+
+En local, Compose sigue siendo el entorno de desarrollo y de la Etapa 1:
 
 ```bash
 cp .env.example .env
 docker compose up -d --build
 docker compose --profile carga run --rm seed   # 500 cuentas, un curso, sesiones
 docker compose --profile carga run --rm k6     # prueba de carga de Etapa 1
+```
+
+En GCP, sembrar e inscribir dentro del recorrido (Escenario 1):
+
+```bash
+# en el Web Server, o vía Actions → sembrar
+SEED_ENROLL=0 SEED_STUDENTS=400 SEED_TEACHERS=3 sudo /opt/mooc/actual/deploy/gcp/en-vm.sh sembrar
+# en la máquina del generador (no en las e2-small)
+deploy/gcp/remoto.sh web 'sudo cat /opt/mooc/salida/escenario.json' > load/salida/escenario.json
+load/perfiles/generar.sh
+BASE_URL=https://<ip>.sslip.io WORKER_CONCURRENCY=2 load/correr.sh escenario1
 ```
 
 **MinIO se descarga de quay.io, no de Docker Hub.** MinIO dejó de publicar su
@@ -464,19 +485,19 @@ vuelve.
 ## Pendientes para las siguientes iteraciones
 
 El alcance mínimo (sección 5.1), el opcional (5.2) y la condición de
-aceptación (sección 10) están cubiertos. Lo que queda pertenece a las
-restricciones técnicas de la sección 7 y a la caracterización del sistema:
+aceptación de la Entrega 1 (sección 10) están cubiertos. Lo que sigue es
+operación en GCP y caracterización bajo la configuración fija de la
+Entrega 2 —arrancar el proyecto, desplegar, correr carga y llenar el
+informe— no trabajo de código. La lista está en
+[docs/entrega2/arranque.md](docs/entrega2/arranque.md).
 
-- **OpenTelemetry**: hoy hay logs estructurados y correlación por
-  `X-Request-Id`; faltan métricas y trazas. Con los márgenes actuales de la
-  prueba de carga no han hecho falta; para encontrar el límite real, sí.
-- **Cursores y ETag** en las colecciones, que exige la sección 7.
-- **Backup y restauración** con RPO ≤ 15 min y RTO ≤ 4 h, y la prueba de
-  recuperación que los acredita.
-- **El escalón de 2.000 concurrentes** del enunciado. La prueba de carga pasa
-  Etapa 1 con dos órdenes de magnitud de margen, así que todavía no se sabe
-  dónde está el techo: hace falta sembrar esas cuentas y una máquina que no
-  sea la de desarrollo.
+Siguen abiertas, y no se presentan como hechas, las de la sección 7 que
+esta etapa no pide acreditar:
+
+- **OpenTelemetry**: logs estructurados y `X-Request-Id`; no hay trazas.
+- **Cursores y ETag** en las colecciones.
+- **RPO ≤ 15 min y RTO ≤ 4 h** con una prueba cronometrada. `bd.sh` exporta
+  y recrea; no sustituye esa medición.
 
 Queda un borde consciente, no bloqueante: el escáner antimalware integrado no
 lleva firmas. Para la demostración conviene levantar el perfil `antivirus` y

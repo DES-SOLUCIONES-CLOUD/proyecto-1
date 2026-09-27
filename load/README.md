@@ -1,3 +1,22 @@
+# Pruebas de carga
+
+Hay tres guiones. `etapa1.js` es la condición de aceptación de la Entrega 1
+y el que corre en CI. Los otros dos son la caracterización en GCP.
+
+| Script | Qué mide | Cuándo |
+|---|---|---|
+| `etapa1.js` | Catálogo, consumo, quiz, login a 200 VU | Local / CI |
+| `escenario1.js` | Lo mismo, con línea base + 3 niveles, inscripción en el recorrido, una cuenta por VU, envío duplicado sin doble nota | GCP, Entrega 2 |
+| `escenario2.js` | Profesores suben 3 perfiles y esperan `ready`; estudiantes consumen HLS al ritmo de EXTINF | GCP, Entrega 2 |
+
+`metricas.sh` vuelve de Cloud Monitoring (CPU, memoria, red, disco de las
+VM; CPU y conexiones de Cloud SQL) y un snapshot de la cola asynq.
+`correr.sh` espera 10 minutos (créditos de e2-small), lanza k6 y recoge
+métricas. `perfiles/generar.sh` fabrica los tres MP4.
+
+**Login en el Escenario 1:** se mide, a 8/min, fuera del mix de VU. No
+forma parte del recorrido de cada estudiante.
+
 # Prueba de carga — Etapa 1
 
 El enunciado pone esta prueba como condición de aceptación: «la prueba de carga
@@ -202,10 +221,33 @@ de la plataforma. Lo que se sabe es que a 200 VU sobra capacidad por dos
 sembrar 2.000 cuentas y subir hasta que el p95 se mueva o aparezca un 5xx.
 Hasta entonces, «Etapa 1 pasa» significa exactamente eso y nada más.
 
-## Lo que esta prueba todavía no acredita
+## Entrega 2 en GCP
 
-El segmento 9 pide más de lo que hay aquí. Queda pendiente, y no se puede
-presentar como cubierto:
+El informe, los criterios y las tablas a rellenar:
+[`capacity-planning/pruebas_de_carga_entrega2.md`](../capacity-planning/pruebas_de_carga_entrega2.md).
+
+```bash
+# En el Web (Cloud SQL no se ve desde fuera). Inscripción la hace k6.
+SEED_ENROLL=0 SEED_STUDENTS=400 SEED_TEACHERS=3 \
+  sudo /opt/mooc/actual/deploy/gcp/en-vm.sh sembrar
+# En la máquina del generador (e2-standard-2 u otra, no las 2 VM del sistema):
+deploy/gcp/remoto.sh web 'sudo cat /opt/mooc/salida/escenario.json' > load/salida/escenario.json
+load/perfiles/generar.sh
+export BASE_URL=https://<ip>.sslip.io
+export WORKER_CONCURRENCY=2 DB_MAX_CONNS=20 HABILITAR_NAT=true
+export GENERADOR='e2-standard-2 us-central1-a'
+load/correr.sh escenario1
+load/correr.sh escenario2
+```
+
+`SEED_STUDENTS` nunca por debajo del mayor valor de `NIVELES` (por defecto
+300). Las cantidades sembradas quedan en `escenario.json` → `cantidades`.
+
+## Lo que la Etapa 1 todavía no acredita
+
+El segmento 9 pide más de lo que cubre `etapa1.js`. El Escenario 2 cubre
+la multimedia; observabilidad profunda, fallos inyectados y RTO cronometrado
+siguen fuera:
 
 - **Observabilidad**: hoy hay logs estructurados y correlación por
   `X-Request-Id`; faltan métricas y trazas (OpenTelemetry) que permitan ver
@@ -215,5 +257,5 @@ presentar como cubierto:
   de la meseta y demostrar que el p95 se recupera.
 - **Backup y restauración** con RPO ≤ 15 min y RTO ≤ 4 h, y la prueba de
   recuperación que los acredita.
-- **El escalón de 2.000 concurrentes** del enunciado, que exige sembrar al
-  menos esas cuentas y una máquina que no sea la de desarrollo.
+- **El escalón de 2.000 concurrentes** del enunciado. El Escenario 1 sube
+  por niveles sobre las e2-small; 2.000 VU es otra configuración.

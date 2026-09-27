@@ -255,6 +255,10 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-mooc}:${POSTGRES_PASSWORD:-mooc}@postgres:5432/${POSTGRES_DB:-mooc}?sslmode=disable
       REDIS_ADDR: redis:6379
       SEED_STUDENTS: ${SEED_STUDENTS:-500}
+      SEED_TEACHERS: ${SEED_TEACHERS:-3}
+      # 1 (por defecto): inscribe al sembrar, como en Etapa 1. 0: deja la
+      # inscripción al recorrido de k6 (Escenario 1 de la Entrega 2).
+      SEED_ENROLL: ${SEED_ENROLL:-1}
       SEED_OUT: /salida/escenario.json
     volumes:
       - ./load/salida:/salida
@@ -275,10 +279,13 @@ services:
       ESCENARIO: /salida/escenario.json
       VUS_OBJETIVO: ${VUS_OBJETIVO:-200}
       MESETA: ${MESETA:-3m}
+      NIVELES: ${NIVELES:-}
+      K6_SCRIPT: ${K6_SCRIPT:-etapa1.js}
     volumes:
       - ./load:/scripts:ro
       - ./load/salida:/salida
-    entrypoint: ["k6", "run", "/scripts/etapa1.js"]
+    entrypoint: ["k6", "run"]
+    command: ["/scripts/${K6_SCRIPT:-etapa1.js}"]
     depends_on:
       - proxy
 

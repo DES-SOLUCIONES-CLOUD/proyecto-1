@@ -72,7 +72,24 @@ type Salida struct {
 	RecursosTexto  []string   `json:"recursos_texto"`
 	RecursosQuiz   []string   `json:"recursos_quiz"`
 	Estudiantes    []Cuenta   `json:"estudiantes"`
+	Profesores     []Cuenta   `json:"profesores"`
 	CuentaDePrueba Credencial `json:"cuenta_de_prueba"`
+	// EstudiantesInscritos es false cuando SEED_ENROLL=0: el Escenario 1
+	// inscribe dentro del recorrido, que es lo que pide la Entrega 2.
+	EstudiantesInscritos bool       `json:"estudiantes_inscritos"`
+	Cantidades           Cantidades `json:"cantidades"`
+}
+
+// Cantidades declara lo sembrado para el informe de capacidad.
+type Cantidades struct {
+	Usuarios            int      `json:"usuarios"`
+	Cursos              int      `json:"cursos"`
+	Recursos            int      `json:"recursos"`
+	Inscripciones       int      `json:"inscripciones"`
+	Intentos            int      `json:"intentos"`
+	PerfilesMultimedia  []string `json:"perfiles_multimedia"`
+	Estudiantes         int      `json:"estudiantes"`
+	Profesores          int      `json:"profesores"`
 }
 
 // Cuenta es un estudiante inscrito con su sesión ya abierta.
@@ -138,6 +155,8 @@ func ejecutar() error {
 	ctx := context.Background()
 
 	estudiantes := enteroDelEntorno("SEED_STUDENTS", 500)
+	nProfesores := enteroDelEntorno("SEED_TEACHERS", 3)
+	inscribir := os.Getenv("SEED_ENROLL") != "0"
 	destino := os.Getenv("SEED_OUT")
 	if destino == "" {
 		destino = "/salida/escenario.json"
@@ -172,12 +191,31 @@ func ejecutar() error {
 	}
 
 	salida := Salida{
-		GeneradoEn:     time.Now().UTC(),
-		CuentaDePrueba: Credencial{Email: "sonda@" + dominio, Password: claveSintetica},
+		GeneradoEn:           time.Now().UTC(),
+		CuentaDePrueba:       Credencial{Email: "sonda@" + dominio, Password: claveSintetica},
+		EstudiantesInscritos: inscribir,
 	}
 
 	if err := construirCurso(ctx, coursesSvc, quizzesSvc, courseRepo, profesor, &salida); err != nil {
 		return err
+	}
+
+	for i := 0; i < nProfesores; i++ {
+		email := "profesor@" + dominio
+		nombre := "Profesora de carga"
+		if i > 0 {
+			email = fmt.Sprintf("profesor-%04d@%s", i, dominio)
+			nombre = fmt.Sprintf("Profesor %04d", i)
+		}
+		u, err := cuenta(ctx, users, email, nombre, user.RoleTeacher)
+		if err != nil {
+			return fmt.Errorf("profesor %d: %w", i, err)
+		}
+		token, err := abrirSesion(ctx, users, u, cfg.SessionTTL)
+		if err != nil {
+			return fmt.Errorf("sesión de %s: %w", email, err)
+		}
+		salida.Profesores = append(salida.Profesores, Cuenta{Email: email, Token: token})
 	}
 
 	// La cuenta sonda existe para el escenario que mide el login real. Va
@@ -187,14 +225,18 @@ func ejecutar() error {
 	}
 
 	cursoID := uuid.MustParse(salida.CourseID)
+	inscripciones := 0
 	for i := 0; i < estudiantes; i++ {
 		email := fmt.Sprintf("estudiante-%04d@%s", i, dominio)
 		u, err := cuenta(ctx, users, email, fmt.Sprintf("Estudiante %04d", i), user.RoleStudent)
 		if err != nil {
 			return fmt.Errorf("estudiante %d: %w", i, err)
 		}
-		if _, err := enrollmentsSvc.Enroll(ctx, u, cursoID); err != nil && !yaInscrito(err) {
-			return fmt.Errorf("inscripción de %s: %w", email, err)
+		if inscribir {
+			if _, err := enrollmentsSvc.Enroll(ctx, u, cursoID); err != nil && !yaInscrito(err) {
+				return fmt.Errorf("inscripción de %s: %w", email, err)
+			}
+			inscripciones++
 		}
 		token, err := abrirSesion(ctx, users, u, cfg.SessionTTL)
 		if err != nil {
@@ -207,11 +249,26 @@ func ejecutar() error {
 		}
 	}
 
+	salida.Cantidades = Cantidades{
+		Usuarios:           nProfesores + 1 + estudiantes, // profesores (incl. dueño), sonda, estudiantes
+		Cursos:             1,
+		Recursos:           len(salida.RecursosTexto) + len(salida.RecursosQuiz),
+		Inscripciones:      inscripciones,
+		Intentos:           0,
+		PerfilesMultimedia: []string{"corto", "medio", "largo"},
+		Estudiantes:        len(salida.Estudiantes),
+		Profesores:         len(salida.Profesores),
+	}
+
 	if err := escribir(destino, salida); err != nil {
 		return err
 	}
-	log.Printf("seed: %d estudiantes inscritos en %s; escenario en %s",
-		len(salida.Estudiantes), salida.CourseID, destino)
+	estado := "sin inscribir (SEED_ENROLL=0: la inscripción va en el recorrido)"
+	if inscribir {
+		estado = "inscritos"
+	}
+	log.Printf("seed: %d estudiantes %s en %s; %d profesores; escenario en %s",
+		len(salida.Estudiantes), estado, salida.CourseID, len(salida.Profesores), destino)
 	return nil
 }
 

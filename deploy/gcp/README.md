@@ -5,6 +5,11 @@ desplegar la plataforma en dos VM de Compute Engine, con Cloud SQL for
 PostgreSQL 16 por IP privada, Cloud Storage por su API XML compatible con S3
 y las imágenes en Artifact Registry.
 
+El modelo para la sustentación (componentes, diagrama, decisiones,
+operación, HLS público) está en
+[`docs/entrega2/`](../../docs/entrega2/README.md). El arranque que solo
+puede hacer el equipo: [`docs/entrega2/arranque.md`](../../docs/entrega2/arranque.md).
+
 ```
 deploy/
 |-- gcp/
@@ -217,8 +222,9 @@ credenciales de 1 hora de mooc-deployer --> Terraform (estado en gs://<proyecto>
 1. **Arranque en GCP.** El dueño del proyecto, desde Cloud Shell (ya trae
    `gcloud`, `git` y `openssl`) o su máquina con `gcloud auth login`:
    ```bash
-   git clone https://github.com/maarojasga/dvc_proyecto1 && cd dvc_proyecto1
-   deploy/gcp/bootstrap-ci.sh --proyecto desarrollo-soluciones-cloud \
+   git clone https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1 && cd proyecto-1
+   deploy/gcp/bootstrap-ci.sh --proyecto totemic-gravity-509902-u2 \
+     --repo DES-SOLUCIONES-CLOUD/proyecto-1 \
      --cuenta-facturacion XXXXXX-XXXXXX-XXXXXX   # opcional, para el presupuesto
    ```
    Confirmar antes el ID real del proyecto (`gcloud projects list`); el
@@ -241,7 +247,7 @@ credenciales de 1 hora de mooc-deployer --> Terraform (estado en gs://<proyecto>
 
    | Variable | Obligatoria | Ejemplo | Para qué |
    |---|---|---|---|
-   | `GCP_PROJECT_ID` | sí | `desarrollo-soluciones-cloud` | `project_id` |
+   | `GCP_PROJECT_ID` | sí | `totemic-gravity-509902-u2` | `project_id` (el nombre visible no sirve) |
    | `GCP_WIF_PROVIDER` | sí | `projects/123.../providers/github` | autenticación |
    | `GCP_DEPLOYER_SA` | sí | `mooc-deployer@<proyecto>.iam.gserviceaccount.com` | autenticación |
    | `TF_STATE_BUCKET` | sí | `<proyecto>-tfstate` | backend de Terraform |

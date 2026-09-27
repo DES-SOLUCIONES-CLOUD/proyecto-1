@@ -17,6 +17,10 @@
 // Lo que NO mide: la carga multimedia y la transcodificación. Esas viven en
 // el worker y en FFmpeg, tienen su propio segmento en la demostración, y
 // mezclarlas aquí convertiría el p95 de la API en el p95 de FFmpeg.
+//
+// Entrega 2: load/escenario1.js (niveles, inscripción en el recorrido) y
+// load/escenario2.js (profesores + HLS). Este archivo se queda para Etapa 1
+// y para el CI.
 
 import http from "k6/http";
 import { check, group, sleep } from "k6";

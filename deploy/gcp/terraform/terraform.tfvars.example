@@ -2,7 +2,10 @@
 # de la base, las claves HMAC y la del administrador las genera Terraform y
 # las guarda en Secret Manager.
 
-project_id = "desarrollo-soluciones-cloud"
+# ID, no el nombre visible. Este proyecto se llama
+# "desarrollo-soluciones-cloud" en la consola; el ID es el de la izquierda
+# de `gcloud projects list`.
+project_id = "totemic-gravity-509902-u2"
 region     = "us-central1"
 zona       = "us-central1-a"
 prefijo    = "mooc"
