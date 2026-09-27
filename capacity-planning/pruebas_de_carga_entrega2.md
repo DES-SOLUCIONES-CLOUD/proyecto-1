@@ -1,8 +1,13 @@
 # Pruebas de carga — Entrega 2
 
-Plantilla del informe. Las celdas en *cursiva* se rellenan tras las
-corridas en GCP. Los criterios de éxito, saturación y parada sí están
-fijados: no se inventan después de ver los números.
+Corridas del 2026-09-27 sobre
+https://34.28.87.172.sslip.io. Scripts: `load/escenario1.js`,
+`load/escenario2.js`, `load/correr.sh`. Originales en
+[`evidencias/`](evidencias/).
+
+**Herramienta:** Grafana k6 **1.8.1** (la misma imagen que Etapa 1).
+Modela VU, etapas, checks y exporta JSON reproducible. HTTP/S y PUT a
+GCS caben; no es un reproductor (no se afirma primer cuadro).
 
 Configuración fija de todas las corridas de este informe (no mezclar
 con otra):
@@ -112,6 +117,34 @@ p95 de 279 s es **espera en cola + FFmpeg**. El umbral `http_req_failed
 100 %. Saturación de procesamiento: sí. Parada por &gt; 20 % sin
 `ready`: **no**.
 
+### Respuestas que pide el enunciado (Escenario 1)
+
+- **¿Qué volumen cabe dentro de umbral y dónde empieza la
+  degradación?** El agregado 50–300 (más la repetición de 300) ya está
+  **fuera** de éxito (error 9,92 %, p95 consumo 2460 ms). No hay un JSON
+  por meseta: no se afirma “rompió en 200 y no en 100”. El máximo
+  inyectado es 301 VU; esa cifra **no** es capacidad sostenible.
+- **¿Qué operaciones concentran latencia?** Consumo (p95 2460 ms) y
+  quiz (1626 ms) por encima del catálogo (1280 ms). Es el camino de
+  escritura API → PostgreSQL (inscripción, heartbeats, intento). Redis
+  no está en este mix (no hay FFmpeg). Connecting p95 = 0 ms: no es el
+  generador. Falta la gráfica Web vs SQL para partir el pool de 20
+  conexiones de la CPU de la e2-small.
+- **¿Integridad?** Sí: 2367 envíos duplicados con la misma nota; 23 948
+  progresos aceptados; 0 checks fallidos. Los 14 131 HTTP fallidos son
+  el `http_req_failed` de k6 (timeouts/5xx/red), no 429 de login (0).
+- **¿Qué cambio?** Ver propuesta: primero Worker (Escenario 2); para
+  este mix, Web a e2-standard-2 si Monitoring muestra el Web al techo.
+
+### Respuestas (Escenario 2)
+
+Firma, PUT a GCS y confirmación quedan en **ms**. Cola + total p95 =
+**279 s**. HLS p95 **72 ms**, cadencia `EXTINF` (no ráfaga). 13 `ready`,
+0 `failed`. El control (API) y la transferencia (GCS) no limitan; limita
+FFmpeg en el Worker. No se midió primer cuadro. No hay serie de
+profundidad de cola (asynq); el proxy es `mooc_espera_cola`. CDN no
+está: un CDN bajaría HLS (ya holgado) y no el p95 de 279 s.
+
 ## Degradación y cuello de botella
 
 En el Escenario 1 el p95 de catálogo (1280 ms), consumo (2460 ms) y quiz
@@ -149,6 +182,17 @@ Para el Escenario 1, el experimento análogo es **solo el Web** a
 `e2-standard-2`, misma SQL y mismos 20 `DB_MAX_CONNS`. No se corre en
 esta entrega; es la medición que permitiría esperar bajar el p95 de
 consumo/quiz si Monitoring muestra el Web al techo y la SQL holgada.
+
+## Limitaciones del experimento
+
+- Una corrida continua por escenario, no cinco k6 aparte: no hay
+  variación por nivel.
+- k6 no exportó **p99** (`summaryTrendStats` sin `p(99)`).
+- No corrimos `metricas.sh` (en `mooc-k6` no había `gcloud`). CPU,
+  memoria, disco, conexiones SQL y profundidad de cola **no están en
+  el repo** hasta pegar capturas de Monitoring (17:03–17:40 UTC).
+- No se redimensionó nada (el enunciado no lo pide).
+- No se afirma RTO, HA ni OpenTelemetry.
 
 ## Gráficas y originales
 
