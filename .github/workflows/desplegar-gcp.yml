@@ -21,6 +21,10 @@
 #   estado       configuración efectiva, sin cambiar nada
 
 name: Desplegar en GCP
+# El aviso de GitHub «This workflow has a workflow_dispatch event trigger»
+# es normal: el botón Run workflow sigue existiendo. Un push a main también
+# dispara (publicar + desplegar). El nombre de la ejecución lo deja claro.
+run-name: ${{ github.event_name == 'push' && 'Push a main — publicar y desplegar' || format('A mano — {0}', inputs.accion) }}
 
 on:
   # Código nuevo en main: publica imágenes y redespliega las VM. No toca

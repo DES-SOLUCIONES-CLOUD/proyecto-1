@@ -1,15 +1,28 @@
 # Comandos de evidencia (ítems 14–19)
 
 Correrlos después del primer despliegue. Pegar salidas y capturas en
-`capacity-planning/evidencias/` y en el video.
+`capacity-planning/evidencias/` y en el video. **No pegar secretos**
+(contraseña de admin, HMAC).
 
 Sustituir `<proyecto>`, `<bucket_objetos>`, `<bucket_hls>`, `<bd>`,
-`<ip>`. Salen de `terraform -chdir=deploy/gcp/terraform output`.
+`<ip>`. Salen de `terraform -chdir=deploy/gcp/terraform output` **desde
+un clone del repo**, no desde `~` de Cloud Shell.
 
 ## 14. Configuración
 
+En Cloud Shell, primero el repo (si no está):
+
 ```bash
-deploy/gcp/resumen.sh
+cd ~
+[[ -d proyecto-1 ]] || git clone https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1
+cd proyecto-1
+```
+
+`resumen.sh` necesita Terraform y el estado remoto; si no está instalado,
+los `gcloud` de abajo bastan para la evidencia.
+
+```bash
+bash deploy/gcp/resumen.sh
 gcloud compute instances describe mooc-web --zone ZONE
 gcloud compute instances describe mooc-worker --zone ZONE
 gcloud sql instances describe BD
