@@ -26,7 +26,7 @@ ENV_LOCAL="$RAIZ/deploy/$rol/.env"
 # esta comprobación el fallo llega después, como un `compose pull` roto en
 # la VM a medio desplegar.
 case "$rol" in
-  web) imagenes=(mooc-api mooc-migrate) ;;
+  web) imagenes=(mooc-api mooc-migrate mooc-frontend) ;;
   worker) imagenes=(mooc-worker redis) ;;
 esac
 for img in "${imagenes[@]}"; do

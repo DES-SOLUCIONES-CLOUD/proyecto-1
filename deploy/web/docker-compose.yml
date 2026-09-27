@@ -1,5 +1,5 @@
-# Web Server (GCE e2-small, subred web con IP estática): proxy TLS, API y
-# Mailpit.
+# Web Server (GCE e2-small, subred web con IP estática): proxy TLS, API,
+# frontend y Mailpit.
 #
 #   sudo /opt/mooc/actual/deploy/gcp/en-vm.sh web
 #
@@ -13,7 +13,7 @@
 # inservible en lugar de :?: en-vm.sh fija las del commit desplegado.
 #
 # Presupuesto de memoria (2 GB, ~1,6 disponibles tras el sistema, Docker y
-# el Ops Agent): api 768 MiB, nginx 128, mailpit 96, frontend opcional 384.
+# el Ops Agent): api 768 MiB, nginx 128, mailpit 96, frontend 384.
 # Los límites existen para que un pico de uno termine en un reinicio de ese
 # contenedor y no en el OOM killer eligiendo víctima entre todos.
 
@@ -172,16 +172,20 @@ services:
       - certificados:/etc/letsencrypt
       - acme:/var/www/certbot
 
-  # Frontend existente, opcional: `COMPOSE_PROFILES=frontend` en el .env y
-  # `deploy/gcp/publicar.sh --frontend`, que compila con NEXT_PUBLIC_API_URL
-  # (Next la incrusta al compilar, no al arrancar). Se sirve por el mismo
-  # origen que la API, así que no necesita CORS contra ella.
+  # Next.js en el mismo origen que la API (no hace falta CORS). publicar.sh
+  # incrusta NEXT_PUBLIC_API_URL al compilar. HOSTNAME=0.0.0.0: el server
+  # standalone, si no, escucha solo en localhost y nginx no lo alcanza.
+  # El perfil permite apagarlo en una prueba de carga (quita
+  # COMPOSE_PROFILES del .env); por defecto va encendido.
   frontend:
     <<: *registro
     image: ${IMAGEN_FRONTEND:-sin-publicar/mooc-frontend}
     profiles: ["frontend"]
     restart: unless-stopped
     mem_limit: 384m
+    environment:
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
     expose: ["3000"]
 
 volumes:

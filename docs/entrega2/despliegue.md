@@ -10,7 +10,7 @@ flowchart TB
   end
   subgraph VPC["VPC mooc-vpc"]
     subgraph SW["subred web 10.10.1.0/24"]
-      WEB["Web Server e2-small<br/>nginx TLS · API · Mailpit"]
+      WEB["Web Server e2-small<br/>nginx TLS · API · frontend · Mailpit"]
     end
     subgraph SK["subred worker 10.10.2.0/24 + PGA"]
       WRK["Worker Server e2-small<br/>Redis · worker FFmpeg"]

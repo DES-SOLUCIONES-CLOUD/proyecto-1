@@ -2,8 +2,8 @@
 # Construye las imágenes FUERA de las e2-small y las publica en Artifact
 # Registry con el commit como etiqueta.
 #
-#   deploy/gcp/publicar.sh              # api, migrate, seed, worker y réplica de redis
-#   deploy/gcp/publicar.sh --frontend   # además el frontend existente
+#   deploy/gcp/publicar.sh              # api, migrate, seed, worker, frontend y réplica de redis
+#   deploy/gcp/publicar.sh --frontend   # aceptada; el frontend ya va siempre
 #
 # Por qué no compilar en las VM: el builder de Go y la imagen del worker
 # (LibreOffice + JRE + FFmpeg) pasan con facilidad de 1,5 GB al construirse,
@@ -14,10 +14,9 @@ requiere git docker terraform
 comprobar_gcloud
 requiere_infra
 
-frontend=false
 for a in "$@"; do
   case "$a" in
-    --frontend) frontend=true ;;
+    --frontend) aviso "el frontend se publica siempre; --frontend ya no hace falta" ;;
     *) morir "opción desconocida '$a'" ;;
   esac
 done
@@ -64,15 +63,13 @@ construir migrate
 construir seed
 construir worker
 
-if [[ "$frontend" == true ]]; then
-  # Next incrusta NEXT_PUBLIC_API_URL al compilar: la imagen queda atada al
-  # origen del Web Server (si cambia la IP o el dominio, se vuelve a publicar).
-  aviso "construyendo frontend para $(salida url_publica)"
-  fijar_cache frontend
-  docker buildx build --platform linux/amd64 ${CACHE[@]+"${CACHE[@]}"} \
-    --build-arg "NEXT_PUBLIC_API_URL=$(salida url_publica)" \
-    -t "$REGISTRO/mooc-frontend:$TAG" --push frontend
-fi
+# Next incrusta NEXT_PUBLIC_API_URL al compilar: la imagen queda atada al
+# origen del Web Server (si cambia la IP o el dominio, se vuelve a publicar).
+aviso "construyendo frontend para $(salida url_publica)"
+fijar_cache frontend
+docker buildx build --platform linux/amd64 ${CACHE[@]+"${CACHE[@]}"} \
+  --build-arg "NEXT_PUBLIC_API_URL=$(salida url_publica)" \
+  -t "$REGISTRO/mooc-frontend:$TAG" --push frontend
 
 # Redis se replica en el registro para que el Worker no dependa de Docker Hub
 # ni de Cloud NAT: Artifact Registry le llega por Private Google Access.

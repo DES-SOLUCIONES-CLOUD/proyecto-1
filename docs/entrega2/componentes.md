@@ -29,7 +29,7 @@ Worker Go (Worker Server)
 
 | Componente del enunciado | Proceso | Máquina | Identidad |
 |---|---|---|---|
-| Web Server | nginx + `cmd/api` + Mailpit | e2-small pública | `mooc-web` |
+| Web Server | nginx + `cmd/api` + frontend + Mailpit | e2-small pública | `mooc-web` |
 | Worker Server | Redis 7.4 + `cmd/worker` | e2-small privada | `mooc-worker` |
 | Base de datos | Cloud SQL PostgreSQL 16 Enterprise | peering PSA | usuario `mooc` |
 | Objetos | Cloud Storage (API XML, HMAC) | regional | HMAC por cuenta |
@@ -38,9 +38,8 @@ Worker Go (Worker Server)
 | Imágenes | Artifact Registry | — | pull con la SA de la VM |
 
 No hay balanceador, no hay CDN, no hay Memorystore. El enunciado los
-excluye o no los pide. El frontend, si se publica, se sirve en el mismo
-origen que la API (`COMPOSE_PROFILES=frontend`); si no, el navegador
-apunta a `NEXT_PUBLIC_API_URL` en el origen de nginx.
+excluye o no los pide. El frontend se sirve en el mismo origen que la
+API (`COMPOSE_PROFILES=frontend`, encendido por defecto).
 
 ## Fronteras que importan
 

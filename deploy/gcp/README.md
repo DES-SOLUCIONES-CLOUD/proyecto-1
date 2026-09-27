@@ -27,7 +27,7 @@ deploy/
 |   |-- resumen.sh          configuración efectiva en Markdown (evidencia del informe)
 |   |-- bd.sh               exportar, eliminar y recrear Cloud SQL
 |   `-- destruir.sh         respaldar y eliminar todo
-|-- web/                    compose del Web Server (nginx TLS, API, Mailpit, certbot)
+|-- web/                    compose del Web Server (nginx TLS, API, frontend, Mailpit, certbot)
 |-- worker/                 compose del Worker Server (Redis, worker)
 `-- nginx/web-tls.conf      proxy con TLS, 80 -> 443, X-Forwarded-* fijos
 
@@ -117,7 +117,7 @@ Requisitos locales: `gcloud`, `terraform` >= 1.7, `docker` con buildx, `git`,
    ```
 5. **Imágenes** (desde el portátil o CI, nunca en las e2-small):
    ```bash
-   deploy/gcp/publicar.sh            # --frontend para incluir el frontend
+   deploy/gcp/publicar.sh            # api, worker, seed y frontend
    ```
 6. **Configuración de cada VM:**
    ```bash

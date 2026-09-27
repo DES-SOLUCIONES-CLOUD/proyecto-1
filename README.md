@@ -339,10 +339,10 @@ comprueba lo que cada uno debe acreditar: 55 peticiones y 113 aserciones. **No
 sustituye a la prueba de carga**, que sigue siendo cosa de k6 por la razón que
 explica ese README.
 
-La Entrega 1 se demostró en Docker Compose. La Entrega 2 se demuestra en
-GCP. URL pública (tras `certificado`): *pendiente del primer
-despliegue* — sale de `terraform output url_publica` y queda en
-[`deploy/gcp/resumen.sh`](deploy/gcp/resumen.sh). Arquitectura:
+La Entrega 1 se demostró en Docker Compose. La Entrega 2 está en GCP.
+**URL:** [https://34.28.87.172.sslip.io/](https://34.28.87.172.sslip.io/)
+— frontend y API (`/api/v1/`) en el mismo origen
+(`GET /api/v1/health` responde `{"status":"ok"}`). Arquitectura:
 [docs/entrega2/](docs/entrega2/README.md). Capacidad:
 [capacity-planning/pruebas_de_carga_entrega2.md](capacity-planning/pruebas_de_carga_entrega2.md).
 Evidencias de corridas: [capacity-planning/evidencias/](capacity-planning/evidencias/).
@@ -365,7 +365,7 @@ SEED_ENROLL=0 SEED_STUDENTS=400 SEED_TEACHERS=3 sudo /opt/mooc/actual/deploy/gcp
 # en la máquina del generador (no en las e2-small)
 deploy/gcp/remoto.sh web 'sudo cat /opt/mooc/salida/escenario.json' > load/salida/escenario.json
 load/perfiles/generar.sh
-BASE_URL=https://<ip>.sslip.io WORKER_CONCURRENCY=2 load/correr.sh escenario1
+BASE_URL=https://34.28.87.172.sslip.io WORKER_CONCURRENCY=2 load/correr.sh escenario1
 ```
 
 **MinIO se descarga de quay.io, no de Docker Hub.** MinIO dejó de publicar su

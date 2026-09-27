@@ -60,7 +60,8 @@ Cloud SQL tarda 10–15 min. Si `desplegar` llega antes de que el
 arranque de la VM termine, repetirlo.
 
 Luego: contraseña del admin en Secret Manager, borrar `ADMIN_EMAIL`,
-volver a `desplegar`. Humo con Postman contra `https://<ip>.sslip.io`.
+volver a `desplegar`. Humo con Postman contra
+   [https://34.28.87.172.sslip.io/](https://34.28.87.172.sslip.io/).
 
 Migrar MinIO → GCS y el dump local → Cloud SQL **antes** de sembrar,
 comprobando checksums y que cada `object_key` existe. Commit de

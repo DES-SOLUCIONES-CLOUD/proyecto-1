@@ -294,7 +294,7 @@ jobs:
           {
             echo "### Imágenes publicadas"
             echo
-            echo "\`$(terraform -chdir=deploy/gcp/terraform output -raw registro)/{mooc-api,mooc-migrate,mooc-seed,mooc-worker}:$MOOC_TAG\`"
+            echo "\`$(terraform -chdir=deploy/gcp/terraform output -raw registro)/{mooc-api,mooc-migrate,mooc-seed,mooc-worker,mooc-frontend}:$MOOC_TAG\`"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
 

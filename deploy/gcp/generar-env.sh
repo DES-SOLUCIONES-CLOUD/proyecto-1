@@ -80,6 +80,7 @@ generar() {
     poner TLS_EMAIL "${TLS_EMAIL:-}" "$destino"
     poner_si ADMIN_EMAIL "${ADMIN_EMAIL:-}" "$destino"
     poner_si AUTH_RATE_LIMIT_PER_MINUTE "${AUTH_RATE_LIMIT_PER_MINUTE:-}" "$destino"
+    poner COMPOSE_PROFILES frontend "$destino"
   else
     poner S3_ACCESS_KEY "$(salida hmac_worker_access_id)" "$destino"
     poner SECRETO_S3_SECRET_KEY "$(salida secreto_hmac_worker)" "$destino"

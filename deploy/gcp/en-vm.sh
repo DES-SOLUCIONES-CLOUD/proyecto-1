@@ -5,7 +5,7 @@
 # compose del rol con las imágenes de Artifact Registry del commit
 # desplegado.
 #
-#   en-vm.sh web       # nginx + api + mailpit (y frontend si su perfil está)
+#   en-vm.sh web       # nginx + api + mailpit + frontend
 #   en-vm.sh worker    # redis + worker
 #   en-vm.sh migrar    # migraciones contra Cloud SQL (en el Web Server)
 #   en-vm.sh sembrar   # datos sintéticos de las pruebas de carga (Web Server)
@@ -37,6 +37,10 @@ CONFIG="${MOOC_CONFIG:-/opt/mooc/config/$rol.env}"
 # shellcheck source=deploy/gcp/env.sh
 source "$DIR/deploy/gcp/env.sh"
 cargar_env "$CONFIG"
+# El frontend va siempre, salvo que el .env lo declare (aunque sea vacío).
+if [[ "$rol" == web && -z "${COMPOSE_PROFILES+x}" ]]; then
+  export COMPOSE_PROFILES=frontend
+fi
 
 compose() { docker compose -f "$DIR/deploy/$rol/docker-compose.yml" --env-file "$CONFIG" "$@"; }
 
