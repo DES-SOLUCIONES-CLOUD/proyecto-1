@@ -129,18 +129,42 @@ gcloud storage buckets update "gs://$BUCKET" --versioning --uniform-bucket-level
   --public-access-prevention --lifecycle-file "$TMP/ciclo.json" \
   --update-labels "proyecto=$PREFIJO,uso=tfstate" >/dev/null
 
+# IAM ve una cuenta nueva en segundos; Storage y Resource Manager tardan
+# más y responden 400 "does not exist" si se les da como miembro al momento.
+esperar_sa() {
+  local sa="$1" i
+  for i in $(seq 1 30); do
+    gcloud iam service-accounts describe "$sa" --project "$PROYECTO" >/dev/null 2>&1 && return 0
+    sleep 3
+  done
+  morir "IAM no vio $sa a tiempo"
+}
+
+con_reintento() {
+  local i
+  for i in $(seq 1 30); do
+    if "$@" 2>"$TMP/reintento.err"; then
+      return 0
+    fi
+    if grep -qiE 'does not exist|NOT_FOUND' "$TMP/reintento.err"; then
+      aviso "GCP aún no ve la cuenta (intento $i/30), esperando 5s…"
+      sleep 5
+      continue
+    fi
+    cat "$TMP/reintento.err" >&2
+    return 1
+  done
+  cat "$TMP/reintento.err" >&2
+  return 1
+}
+
 # --- 3. Cuenta de servicio de despliegue ----------------------------------------
 if ! gcloud iam service-accounts describe "$SA" --project "$PROYECTO" >/dev/null 2>&1; then
   aviso "creando la cuenta de servicio $SA"
   gcloud iam service-accounts create "$SA_ID" --project "$PROYECTO" \
     --display-name "MOOC deployer (GitHub Actions)" \
     --description "Despliegue desde GitHub Actions por Workload Identity Federation. Sin llaves."
-  # IAM tarda unos segundos en ver una cuenta nueva: dar roles antes falla
-  # con "does not exist".
-  for _ in $(seq 1 20); do
-    gcloud iam service-accounts describe "$SA" --project "$PROYECTO" >/dev/null 2>&1 && break
-    sleep 3
-  done
+  esperar_sa "$SA"
 fi
 
 # Política del bucket, entera (set-iam-policy sin etag la reemplaza): dueños
@@ -155,7 +179,8 @@ cat > "$TMP/politica-bucket.json" <<EOF
   ]
 }
 EOF
-gcloud storage buckets set-iam-policy "gs://$BUCKET" "$TMP/politica-bucket.json" >/dev/null
+con_reintento gcloud storage buckets set-iam-policy "gs://$BUCKET" "$TMP/politica-bucket.json" >/dev/null \
+  || morir "no se pudo fijar la política de gs://$BUCKET"
 
 # Roles de proyecto. Cada uno cubre recursos concretos de terraform/*.tf o
 # un paso de los scripts; ninguno es roles/owner ni roles/editor.
@@ -208,8 +233,9 @@ ROLES=(
 # con la cuenta por defecto de Compute, que es Editor). Las cuentas de las
 # VM se crean abajo y el actAs se da solo sobre ellas.
 for rol in "${ROLES[@]}"; do
-  gcloud projects add-iam-policy-binding "$PROYECTO" --member "serviceAccount:$SA" \
-    --role "$rol" --condition None --quiet >/dev/null
+  con_reintento gcloud projects add-iam-policy-binding "$PROYECTO" --member "serviceAccount:$SA" \
+    --role "$rol" --condition None --quiet >/dev/null \
+    || morir "no se pudo conceder $rol"
   aviso "  $rol"
 done
 

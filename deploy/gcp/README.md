@@ -223,7 +223,7 @@ credenciales de 1 hora de mooc-deployer --> Terraform (estado en gs://<proyecto>
    `gcloud`, `git` y `openssl`) o su máquina con `gcloud auth login`:
    ```bash
    git clone https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1 && cd proyecto-1
-   deploy/gcp/bootstrap-ci.sh --proyecto totemic-gravity-509902-u2 \
+   bash deploy/gcp/bootstrap-ci.sh --proyecto totemic-gravity-509902-u2 \
      --repo DES-SOLUCIONES-CLOUD/proyecto-1 \
      --cuenta-facturacion XXXXXX-XXXXXX-XXXXXX   # opcional, para el presupuesto
    ```

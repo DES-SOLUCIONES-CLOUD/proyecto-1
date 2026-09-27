@@ -12,4 +12,4 @@ requiere terraform
 comprobar_gcloud
 requiere_infra
 
-ssh_vm web "sudo /opt/mooc/actual/deploy/gcp/en-vm.sh migrar"
+ssh_vm web "sudo bash /opt/mooc/actual/deploy/gcp/en-vm.sh migrar"

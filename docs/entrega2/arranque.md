@@ -22,14 +22,31 @@ El detalle de cada variable y entorno está en
    (si se omite `--repo`, el script lo lee de `git remote origin`):
    ```bash
    git clone https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1 && cd proyecto-1
-   deploy/gcp/bootstrap-ci.sh --proyecto totemic-gravity-509902-u2 \
+   bash deploy/gcp/bootstrap-ci.sh --proyecto totemic-gravity-509902-u2 \
      --repo DES-SOLUCIONES-CLOUD/proyecto-1
    ```
    El script imprime los `gh variable set`. La federación solo acepta
    tokens de **este** repositorio: un `--repo` de un fork o de un
    remoto viejo dejaría a Actions sin credenciales.
-4. Variables del repositorio (Actions → Variables, no Secrets),
-   **incluida `CREAR_BD=true`**.
+4. Variables del repositorio (Settings → Secrets and variables →
+   Actions → **Variables**, no Secrets), **incluida `CREAR_BD=true`**.
+   Valores del bootstrap (2026-09-27):
+
+   | Variable | Valor |
+   |---|---|
+   | `GCP_PROJECT_ID` | `totemic-gravity-509902-u2` |
+   | `GCP_WIF_PROVIDER` | `projects/645904488560/locations/global/workloadIdentityPools/github/providers/github` |
+   | `GCP_DEPLOYER_SA` | `mooc-deployer@totemic-gravity-509902-u2.iam.gserviceaccount.com` |
+   | `TF_STATE_BUCKET` | `totemic-gravity-509902-u2-tfstate` |
+   | `GCP_REGION` | `us-central1` |
+   | `GCP_ZONE` | `us-central1-a` |
+   | `CREAR_BD` | `true` |
+   | `TLS_EMAIL` | correo del equipo (Let's Encrypt) |
+   | `ADMIN_EMAIL` | correo del admin inicial; **borrarla** tras el primer `desplegar` |
+
+   Condición del proveedor (evidencia 19):  
+   `assertion.repository == 'DES-SOLUCIONES-CLOUD/proyecto-1' && assertion.repository_id == '1358524243' && (assertion.environment == 'gcp' || assertion.environment == 'gcp-rutina') && assertion.ref == 'refs/heads/main'`
+
 5. Entornos `gcp` y `gcp-rutina`, los dos limitados a `main`.
    `gcp` puede exigir revisores; `gcp-rutina` no (si no, el apagado
    nocturno se queda esperando).

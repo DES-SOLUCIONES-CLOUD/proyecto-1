@@ -65,7 +65,7 @@ tar -xzf "/tmp/mooc-$TAG.tgz" -C "$REL"
 install -m 600 "$REL/$ROL.env" "/opt/mooc/config/$ROL.env"
 rm -f "${REL:?}/${ROL:?}.env" "/tmp/mooc-${TAG:?}.tgz"
 ln -sfn "$REL" /opt/mooc/actual
-/opt/mooc/actual/deploy/gcp/en-vm.sh "$ROL"
+bash /opt/mooc/actual/deploy/gcp/en-vm.sh "$ROL"
 # Se conservan las 5 versiones más recientes para poder volver atrás.
 ls -1dt /opt/mooc/releases/*/ | tail -n +6 | xargs -r rm -rf
 REMOTO

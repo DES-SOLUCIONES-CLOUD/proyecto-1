@@ -123,7 +123,7 @@ jobs:
           CUENTA_FACTURACION: ${{ vars.CUENTA_FACTURACION }}
           PRESUPUESTO_MONTO: ${{ vars.PRESUPUESTO_MONTO }}
           PRESUPUESTO_MONEDA: ${{ vars.PRESUPUESTO_MONEDA }}
-        run: deploy/gcp/escribir-tfvars.sh
+        run: bash deploy/gcp/escribir-tfvars.sh
 
       - name: Planificar
         id: plan
@@ -132,7 +132,7 @@ jobs:
         run: |
           plan="$RUNNER_TEMP/infra.tfplan"
           rc=0
-          deploy/gcp/desplegar-infra.sh --plan "$plan" || rc=$?
+          bash deploy/gcp/desplegar-infra.sh --plan "$plan" || rc=$?
           [[ $rc -eq 0 || $rc -eq 2 ]] || exit "$rc"
 
           tf() { terraform -chdir=deploy/gcp/terraform "$@"; }
@@ -214,7 +214,7 @@ jobs:
         run: |
           gcloud storage cp "$OBJETO/infra.tfplan" "$RUNNER_TEMP/infra.tfplan"
           gcloud storage cp "$OBJETO/.terraform.lock.hcl" deploy/gcp/terraform/.terraform.lock.hcl
-          deploy/gcp/desplegar-infra.sh --aplicar "$RUNNER_TEMP/infra.tfplan"
+          bash deploy/gcp/desplegar-infra.sh --aplicar "$RUNNER_TEMP/infra.tfplan"
 
       - name: Borrar el plan guardado
         if: always()
@@ -222,7 +222,7 @@ jobs:
 
       - name: Resumen
         if: success()
-        run: deploy/gcp/resumen.sh >> "$GITHUB_STEP_SUMMARY"
+        run: bash deploy/gcp/resumen.sh >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retirar la llave SSH de OS Login
         if: always()
@@ -290,7 +290,7 @@ jobs:
       - name: Publicar las imágenes
         if: env.ACCION != 'desplegar'
         run: |
-          deploy/gcp/publicar.sh
+          bash deploy/gcp/publicar.sh
           {
             echo "### Imágenes publicadas"
             echo
@@ -307,20 +307,20 @@ jobs:
           ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
           WORKER_CONCURRENCY: ${{ vars.WORKER_CONCURRENCY }}
           AUTH_RATE_LIMIT_PER_MINUTE: ${{ vars.AUTH_RATE_LIMIT_PER_MINUTE }}
-        run: deploy/gcp/generar-env.sh -f
+        run: bash deploy/gcp/generar-env.sh -f
 
       # Primero el Worker: la API conecta con Redis al arrancar.
       - name: Desplegar el Worker Server
         if: env.ACCION != 'publicar'
-        run: deploy/gcp/desplegar-vm.sh worker "$MOOC_TAG"
+        run: bash deploy/gcp/desplegar-vm.sh worker "$MOOC_TAG"
 
       - name: Desplegar el Web Server
         if: env.ACCION != 'publicar'
-        run: deploy/gcp/desplegar-vm.sh web "$MOOC_TAG"
+        run: bash deploy/gcp/desplegar-vm.sh web "$MOOC_TAG"
 
       - name: Migrar la base
         if: env.ACCION != 'publicar'
-        run: deploy/gcp/migrar.sh
+        run: bash deploy/gcp/migrar.sh
 
       - name: Resumen
         id: resumen
@@ -329,7 +329,7 @@ jobs:
           # Enlace del entorno en la página de la ejecución.
           echo "url=$(terraform -chdir=deploy/gcp/terraform output -raw url_publica 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
           if [[ "$ACCION" != publicar ]]; then
-            deploy/gcp/resumen.sh >> "$GITHUB_STEP_SUMMARY"
+            bash deploy/gcp/resumen.sh >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Retirar la llave SSH de OS Login
@@ -365,7 +365,7 @@ jobs:
       # pide una vez, no en cada despliegue. certbot renueva después.
       - name: Certificado de Let's Encrypt
         if: env.ACCION == 'certificado'
-        run: deploy/gcp/remoto.sh web 'sudo /opt/mooc/actual/deploy/web/certificado.sh letsencrypt'
+        run: bash deploy/gcp/remoto.sh web 'sudo bash /opt/mooc/actual/deploy/web/certificado.sh letsencrypt'
 
       - name: Sembrar los datos sintéticos
         if: env.ACCION == 'sembrar'
@@ -374,7 +374,7 @@ jobs:
           SEED_TEACHERS: ${{ vars.SEED_TEACHERS || '3' }}
           SEED_ENROLL: ${{ vars.SEED_ENROLL || '1' }}
         run: |
-          deploy/gcp/remoto.sh web "sudo SEED_STUDENTS='$SEED_STUDENTS' SEED_TEACHERS='$SEED_TEACHERS' SEED_ENROLL='$SEED_ENROLL' /opt/mooc/actual/deploy/gcp/en-vm.sh sembrar"
+          bash deploy/gcp/remoto.sh web "sudo SEED_STUDENTS='$SEED_STUDENTS' SEED_TEACHERS='$SEED_TEACHERS' SEED_ENROLL='$SEED_ENROLL' bash /opt/mooc/actual/deploy/gcp/en-vm.sh sembrar"
           # El escenario lleva sesiones válidas de los usuarios sintéticos: no
           # se sube como artefacto (el repositorio es público).
           {
@@ -392,7 +392,7 @@ jobs:
           opciones=()
           [[ "$CON_BD" != true ]] || opciones=(--con-bd)
           if [[ "$ACCION" == encender ]]; then orden=iniciar; else orden=detener; fi
-          deploy/gcp/energia.sh "$orden" "${opciones[@]}"
+          bash deploy/gcp/energia.sh "$orden" "${opciones[@]}"
           # Para la bitácora de horas de uso que pide la gestión de costos.
           {
             echo "### Bitácora de uso"
@@ -405,7 +405,7 @@ jobs:
 
       - name: Resumen
         if: ${{ !cancelled() }}
-        run: deploy/gcp/resumen.sh >> "$GITHUB_STEP_SUMMARY"
+        run: bash deploy/gcp/resumen.sh >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retirar la llave SSH de OS Login
         if: always()
@@ -432,8 +432,8 @@ jobs:
 
       - name: Resumen
         run: |
-          deploy/gcp/energia.sh estado
-          deploy/gcp/resumen.sh >> "$GITHUB_STEP_SUMMARY"
+          bash deploy/gcp/energia.sh estado
+          bash deploy/gcp/resumen.sh >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retirar la llave SSH de OS Login
         if: always()

@@ -93,7 +93,7 @@ jobs:
             echo "### Apagado nocturno: sin infraestructura desplegada" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          deploy/gcp/energia.sh detener --con-bd
+          bash deploy/gcp/energia.sh detener --con-bd
           {
             echo "### Bitácora de uso"
             echo
@@ -102,4 +102,4 @@ jobs:
             echo "| apagado nocturno | incluida | $(TZ=America/Bogota date '+%Y-%m-%d %H:%M') | $(date -u '+%Y-%m-%d %H:%M') | $GITHUB_EVENT_NAME |"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
-          deploy/gcp/energia.sh estado
+          bash deploy/gcp/energia.sh estado
