@@ -305,11 +305,13 @@ credenciales de 1 hora de mooc-deployer --> Terraform (estado en gs://<proyecto>
    correr en `gcp-rutina`.
 
 4. **Llevar el workflow a `main`.** GitHub solo muestra el botón *Run
-   workflow* si el archivo está en la rama por defecto, y la API y `gh`
+   workflow* si el archivo está en la rama por defecto. Un **push a
+   `main`** (que no sea solo Markdown/docs) publica imágenes y redespliega
+   las VM; `infra`, `certificado` y `sembrar` siguen a mano. La API y `gh`
    solo pueden lanzar en otra rama (`--ref`) un workflow que ya se ejecutó
-   alguna vez. Este solo se dispara a mano, así que la primera vez tiene
-   que estar en `main` (fusionar el PR). Después sí se puede ejecutar la
-   versión de otra rama, si las reglas del entorno la admiten:
+   alguna vez. La primera vez el archivo tiene que estar en `main`
+   (fusionar el PR). Después sí se puede ejecutar la versión de otra rama,
+   si las reglas del entorno la admiten:
    ```bash
    gh workflow run desplegar-gcp.yml --ref <rama> -f accion=plan
    ```
@@ -345,8 +347,10 @@ desplegar.
 
 ### Operación
 
-- **Cambio de código:** `publicar` y `desplegar` (o `todo`, que además
-  planifica la infraestructura y no aplica nada si no hay cambios).
+- **Cambio de código:** un push a `main` publica y redespliega. A mano:
+  `publicar` y `desplegar` (o `todo`, que además planifica la
+  infraestructura y no aplica nada si no hay cambios). Un push que solo
+  toca Markdown o `docs/` no dispara el workflow.
 - **Volver atrás:** `desplegar` con `tag` = un commit o un tag de git ya
   publicado (p. ej. `entrega-2`). Se despliega `deploy/` de ese commit con sus
   imágenes; si no se publicaron, el trabajo falla antes de tocar las VM.

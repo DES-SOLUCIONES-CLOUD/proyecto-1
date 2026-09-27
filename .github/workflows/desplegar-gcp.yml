@@ -23,6 +23,15 @@
 name: Desplegar en GCP
 
 on:
+  # Código nuevo en main: publica imágenes y redespliega las VM. No toca
+  # Terraform, no pide certificado y no siembra (eso sigue a mano).
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "capacity-planning/**"
+      - "postman/**"
   workflow_dispatch:
     inputs:
       accion:
@@ -241,7 +250,7 @@ jobs:
     needs: [plan, infra]
     # Corre también cuando plan o infra se saltaron (acción publicar o
     # desplegar, o plan sin cambios), pero no si alguno falló.
-    if: ${{ !cancelled() && !failure() && contains(fromJSON('["publicar","desplegar","todo"]'), inputs.accion) }}
+    if: ${{ !cancelled() && !failure() && (github.event_name == 'push' || contains(fromJSON('["publicar","desplegar","todo"]'), inputs.accion)) }}
     runs-on: ubuntu-latest
     # La imagen del worker (LibreOffice, JRE, FFmpeg) tarda sin caché.
     timeout-minutes: 90
@@ -249,7 +258,9 @@ jobs:
       name: gcp
       url: ${{ steps.resumen.outputs.url }}
     env:
-      ACCION: ${{ inputs.accion }}
+      # En push a main: publicar + desplegar (como `todo` de aplicación,
+      # sin plan ni apply de Terraform).
+      ACCION: ${{ github.event_name == 'push' && 'todo' || inputs.accion }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
