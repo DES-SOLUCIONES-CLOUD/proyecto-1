@@ -1,4 +1,8 @@
-# Capturas y CSV de Monitoring / Facturación. El README sí se versiona.
+# Capturas y CSV de Monitoring / Facturación. El README y los resúmenes
+# de k6 de la Entrega 2 sí se versionan. No versionar escenario.json
+# (lleva sesiones).
 *
 !.gitignore
 !README.md
+!resumen-escenario*.json
+!corrida-escenario*.md
