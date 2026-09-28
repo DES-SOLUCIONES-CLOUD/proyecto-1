@@ -231,6 +231,7 @@ Cada subproyecto tiene su propio README con el detalle.
   `e2-small`, Cloud SQL, Cloud Storage y Artifact Registry, descritas con
   Terraform: [deploy/gcp/README.md](deploy/gcp/README.md). Modelo de
   componentes, decisiones y operación: [docs/entrega2/](docs/entrega2/README.md).
+  Diagramas editables: [Lucidchart (Componentes y Despliegue)](https://lucid.app/lucidchart/1c00f036-9065-4244-9826-2940e73c8cae/edit?invitationId=inv_9b2b7680-21a7-46b8-990e-630dac55cde2).
   **El HLS se sirve desde un bucket público de solo lectura**; el
   enunciado lo admite y hay que decirlo en la sustentación.
 
@@ -324,29 +325,56 @@ que por diseño no se crean por registro público: un administrador invita
 profesores desde http://localhost:3000/admin, y el primer administrador se
 siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
 
+## Entrega 2 — Despliegue en GCP y Capacidad
+
+* **🌐 URL de la Aplicación en Producción:** [https://34.28.87.172.sslip.io/](https://34.28.87.172.sslip.io/) (`/api/v1/health` responde `{"status":"ok"}`).
+* **🎥 Video de Sustentación:** `[ENLACE_DEL_VIDEO_AQUÍ]` *(Accesible para el equipo docente; duración máxima 20 min)*.
+* **📑 Documento de Arquitectura:** [`docs/entrega2/Documento Arquitectura.docx`](docs/entrega2/Documento%20Arquitectura.docx) *(Informe formal completo con los 9 componentes, modelo de despliegue en GCP, decisiones de diseño y capacidad)*.
+* **📊 Informe de Capacidad y Pruebas de Carga:** [`capacity-planning/pruebas_de_carga_entrega2.md`](capacity-planning/pruebas_de_carga_entrega2.md) (Evidencias: [`capacity-planning/evidencias/`](capacity-planning/evidencias/)).
+* **💰 Estimación Oficial de Costos:** [`docs/entrega2/Costos - Proyecto Entrega 2.pdf`](docs/entrega2/Costos%20-%20Proyecto%20Entrega%202.pdf) *(Cálculo oficial de Google Cloud Pricing Calculator: \$87.32 USD/mes)*.
+* **📐 Diagramas Editables de Arquitectura:**
+  * **Lucidchart Editable:** [Diagrama de Componentes y Despliegue en Lucidchart](https://lucid.app/lucidchart/1c00f036-9065-4244-9826-2940e73c8cae/edit?invitationId=inv_9b2b7680-21a7-46b8-990e-630dac55cde2)
+  * **Archivo Fuente en Repositorio:** [`docs/entrega2/Diagramas.vsdx`](docs/entrega2/Diagramas.vsdx) (Imágenes: [`Diagrama_Componentes.png`](docs/entrega2/Diagrama_Componentes.png), [`Diagrama_Despliegue.png`](docs/entrega2/Diagrama_Despliegue.png))
+  * *Cómo visualizar/editar el archivo `.vsdx`:*
+    1. **Web (Sin instalación):** Abrir en [draw.io](https://app.diagrams.net/) mediante la opción *Abrir diagrama existente*.
+    2. **Lucidchart:** Importar archivo `.vsdx` en el menú *+ Nuevo -> Importar*.
+    3. **Microsoft Visio:** Abrir directamente con la app de escritorio de Visio.
+* **🔐 Procedimiento de Acceso Docente:** Por lineamientos de seguridad, no se publican credenciales en este repositorio. Las credenciales de acceso para el equipo docente han sido provistas mediante el canal privado dispuesto para el curso.
+
+---
+
+## Instrucciones de Despliegue y Ejecución desde Cero en GCP
+
+Para recrear y desplegar toda la infraestructura en Google Cloud Platform sin exponer secretos:
+
+```bash
+# 1. Autenticación y configuración del proyecto en GCP
+gcloud auth application-default login
+gcloud config set project <ID_DEL_PROYECTO_GCP>
+
+# 2. Despliegue de infraestructura con Terraform
+cd deploy/gcp/terraform
+terraform init
+terraform plan -out=tfplan.binary
+terraform apply tfplan.binary
+
+# 3. Consultar endpoints y outputs generados
+terraform output
+
+# 4. Desplegar los servicios y contenedores en las VMs
+cd ../
+./remoto.sh web 'sudo /opt/mooc/actual/deploy/gcp/en-vm.sh arrancar'
+./remoto.sh worker 'sudo /opt/mooc/actual/deploy/gcp/en-vm.sh arrancar'
+
+# 5. Sembrar datos de prueba para navegación y carga
+./remoto.sh web 'SEED_ENROLL=0 SEED_STUDENTS=400 SEED_TEACHERS=3 sudo /opt/mooc/actual/deploy/gcp/en-vm.sh sembrar'
+```
+
+---
+
 ## Demostración de aceptación y prueba de carga
 
-El guion de los nueve segmentos que fija la sección 10.2 del enunciado está en
-[`docs/demostracion.md`](docs/demostracion.md), con una nota en cada segmento
-sobre qué se puede demostrar hoy y qué no. El video de la Entrega 2 (máximo
-20 min, arquitectura en GCP, recorrido, asíncrono y capacidad) está en
-[`docs/entrega2/video.md`](docs/entrega2/video.md).
-
-La sección 10.1 pide la respuesta de la API como evidencia, y eso en el panel de
-red se lee mal. Para enseñarla hay una colección de Postman en
-[`postman/`](postman/README.md) que recorre los mismos nueve segmentos y
-comprueba lo que cada uno debe acreditar: 55 peticiones y 113 aserciones. **No
-sustituye a la prueba de carga**, que sigue siendo cosa de k6 por la razón que
-explica ese README.
-
-La Entrega 1 se demostró en Docker Compose. La Entrega 2 está en GCP.
-**URL:** [https://34.28.87.172.sslip.io/](https://34.28.87.172.sslip.io/)
-— frontend y API (`/api/v1/`) en el mismo origen
-(`GET /api/v1/health` responde `{"status":"ok"}`). Arquitectura:
-[docs/entrega2/](docs/entrega2/README.md). Capacidad:
-[capacity-planning/pruebas_de_carga_entrega2.md](capacity-planning/pruebas_de_carga_entrega2.md).
-Evidencias de corridas: [capacity-planning/evidencias/](capacity-planning/evidencias/).
-Video: [docs/entrega2/video.md](docs/entrega2/video.md).
+Para verificar los nueve segmentos del alcance funcional exigidos por el enunciado, se cuenta con una suite de pruebas E2E en Playwright y una colección de Postman en [`postman/`](postman/README.md) que comprueba lo que cada segmento debe acreditar (55 peticiones y 113 aserciones). **No sustituye a la prueba de carga**, que se ejecuta mediante k6 en [`capacity-planning/pruebas_de_carga_entrega2.md`](capacity-planning/pruebas_de_carga_entrega2.md).
 
 En local, Compose sigue siendo el entorno de desarrollo y de la Etapa 1:
 
