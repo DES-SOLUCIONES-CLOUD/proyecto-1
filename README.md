@@ -522,27 +522,6 @@ cruzaba la frontera entre el navegador y la API:
 Los tres están corregidos, y cada uno tiene ahora una prueba que falla si
 vuelve.
 
-## Pendientes para las siguientes iteraciones
-
-El alcance mínimo (sección 5.1), el opcional (5.2) y la condición de
-aceptación de la Entrega 1 (sección 10) están cubiertos. Lo que sigue es
-operación en GCP y caracterización bajo la configuración fija de la
-Entrega 2 —arrancar el proyecto, desplegar, correr carga y llenar el
-informe— no trabajo de código. La lista está en
-[docs/entrega2/arranque.md](docs/entrega2/arranque.md).
-
-Siguen abiertas, y no se presentan como hechas, las de la sección 7 que
-esta etapa no pide acreditar:
-
-- **OpenTelemetry**: logs estructurados y `X-Request-Id`; no hay trazas.
-- **Cursores y ETag** en las colecciones.
-- **RPO ≤ 15 min y RTO ≤ 4 h** con una prueba cronometrada. `bd.sh` exporta
-  y recrea; no sustituye esa medición.
-
-Queda un borde consciente, no bloqueante: el escáner antimalware integrado no
-lleva firmas. Para la demostración conviene levantar el perfil `antivirus` y
-apuntar `CLAMAV_ADDR` a clamd.
-
 ## Versionado de datos
 
 Queda `data/` con su `.gitignore` heredado del repositorio original, que
