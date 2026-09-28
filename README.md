@@ -229,8 +229,9 @@ Cada subproyecto tiene su propio README con el detalle.
   con `credentials: "include"`.
 - **Despliegue**: Docker Compose en local. En GCP (Entrega 2), dos VM
   `e2-small`, Cloud SQL, Cloud Storage y Artifact Registry, descritas con
-  Terraform: [deploy/gcp/README.md](deploy/gcp/README.md). Modelo de
-  componentes, decisiones y operación: [docs/entrega2/](docs/entrega2/README.md).
+  Terraform: [deploy/gcp/README.md](deploy/gcp/README.md). Informe de
+  arquitectura: [docs/entrega2/Documento Arquitectura.docx](docs/entrega2/Documento%20Arquitectura.docx).
+  Arranque, operación y evidencias: [docs/entrega2/](docs/entrega2/README.md).
   Diagramas editables: [Lucidchart (Componentes y Despliegue)](https://lucid.app/lucidchart/1c00f036-9065-4244-9826-2940e73c8cae/edit?invitationId=inv_9b2b7680-21a7-46b8-990e-630dac55cde2).
   **El HLS se sirve desde un bucket público de solo lectura**; el
   enunciado lo admite y hay que decirlo en la sustentación.
@@ -328,9 +329,11 @@ siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
 ## Entrega 2 — Despliegue en GCP y Capacidad
 
 * **🌐 URL de la Aplicación en Producción:** [https://34.28.87.172.sslip.io/](https://34.28.87.172.sslip.io/) (`/api/v1/health` responde `{"status":"ok"}`).
-* **🎥 Video de Sustentación:** `[ENLACE_DEL_VIDEO_AQUÍ]` *(Accesible para el equipo docente; duración máxima 20 min)*.
+* **🎥 Video de Sustentación:** [https://www.youtube.com/watch?v=M2FF9Pv12gE](https://www.youtube.com/watch?v=M2FF9Pv12gE) *(accesible para el equipo docente; duración máxima 20 min)*.
 * **📑 Documento de Arquitectura:** [`docs/entrega2/Documento Arquitectura.docx`](docs/entrega2/Documento%20Arquitectura.docx) *(Informe formal completo con los 9 componentes, modelo de despliegue en GCP, decisiones de diseño y capacidad)*.
-* **📊 Informe de Capacidad y Pruebas de Carga:** [`capacity-planning/pruebas_de_carga_entrega2.md`](capacity-planning/pruebas_de_carga_entrega2.md) (Evidencias: [`capacity-planning/evidencias/`](capacity-planning/evidencias/)).
+* **📊 Informe de Capacidad y Pruebas de Carga:** [`capacity-planning/pruebas_de_carga_entrega2.md`](capacity-planning/pruebas_de_carga_entrega2.md) (Evidencias: [`capacity-planning/evidencias/`](capacity-planning/evidencias/); orden de ejecución: [`docs/entrega2/capacidad-corridas.md`](docs/entrega2/capacidad-corridas.md)).
+* **🧪 Evidencias de despliegue (ítems 14–19):** [`docs/entrega2/evidencias.md`](docs/entrega2/evidencias.md).
+* **⚙️ Arranque y operación:** [`docs/entrega2/arranque.md`](docs/entrega2/arranque.md), [`docs/entrega2/operacion.md`](docs/entrega2/operacion.md).
 * **💰 Estimación Oficial de Costos:** [`docs/entrega2/Costos - Proyecto Entrega 2.pdf`](docs/entrega2/Costos%20-%20Proyecto%20Entrega%202.pdf) *(Cálculo oficial de Google Cloud Pricing Calculator: \$87.32 USD/mes)*.
 * **📐 Diagramas Editables de Arquitectura:**
   * **Lucidchart Editable:** [Diagrama de Componentes y Despliegue en Lucidchart](https://lucid.app/lucidchart/1c00f036-9065-4244-9826-2940e73c8cae/edit?invitationId=inv_9b2b7680-21a7-46b8-990e-630dac55cde2)
@@ -374,7 +377,14 @@ cd ../
 
 ## Demostración de aceptación y prueba de carga
 
-Para verificar los nueve segmentos del alcance funcional exigidos por el enunciado, se cuenta con una suite de pruebas E2E en Playwright y una colección de Postman en [`postman/`](postman/README.md) que comprueba lo que cada segmento debe acreditar (55 peticiones y 113 aserciones). **No sustituye a la prueba de carga**, que se ejecuta mediante k6 en [`capacity-planning/pruebas_de_carga_entrega2.md`](capacity-planning/pruebas_de_carga_entrega2.md).
+Hay **dos** pruebas de carga, y no se mezclan:
+
+| Dónde | Script | Qué acredita | Resultado |
+|---|---|---|---|
+| Docker Compose / CI (Entrega 1, §10) | `load/etapa1.js` | Condición de aceptación en local | 42.075 peticiones, **0 %** de error, p95 de 2–5 ms. [`load/README.md`](load/README.md) |
+| GCP (Entrega 2) | `load/escenario1.js` y `escenario2.js` | Caracterización bajo e2-small + Cloud SQL | Escenario 1: 142.493 peticiones, **9,92 %** de error, p95 catálogo **1280 ms**. Éxito no; saturación y parada sí. [`capacity-planning/pruebas_de_carga_entrega2.md`](capacity-planning/pruebas_de_carga_entrega2.md) |
+
+Los nueve segmentos funcionales se verifican con Playwright y con la colección de Postman en [`postman/`](postman/README.md) (55 peticiones y 113 aserciones). Eso **no** sustituye a k6.
 
 En local, Compose sigue siendo el entorno de desarrollo y de la Etapa 1:
 
@@ -419,16 +429,18 @@ fija 2.000 usuarios concurrentes pero ningún p95— están en
 [`load/README.md`](load/README.md). k6 sale con código distinto de cero si
 alguno se incumple, así que sirven para colgar de ellos un paso de CI.
 
-## Condición de aceptación (sección 10)
+## Condición de aceptación (sección 10) — Entrega 1, Compose
 
-El enunciado exige cuatro cosas para aceptar. Estado real, medido:
+El enunciado exige cuatro cosas para aceptar la **Etapa 1**. Estado real, medido **en Docker Compose / CI**, no en las VM de GCP:
 
 | Condición | Estado |
 |---|---|
 | Los nueve flujos críticos superan pruebas **E2E** | **Cubierto.** 34 pruebas en `frontend/e2e/`, una carpeta por segmento, contra la plataforma levantada |
-| **Prueba de carga** de Etapa 1 sin incumplimientos críticos | **Ejecutada y superada.** 42.075 peticiones en 4 min, 0 % de error, p95 de 2 ms (catálogo), 5 ms (consumo), 5 ms (quiz) y 277 ms (login). Ver [`load/README.md`](load/README.md) |
+| **Prueba de carga** de Etapa 1 sin incumplimientos críticos | **Ejecutada y superada en local.** 42.075 peticiones en 4 min, 0 % de error, p95 de 2 ms (catálogo), 5 ms (consumo), 5 ms (quiz) y 277 ms (login). Ver [`load/README.md`](load/README.md). **No es la corrida de GCP.** |
 | **Auditoría de accesibilidad** sin incumplimientos críticos | **Cubierta.** axe-core sobre WCAG 2.2 A y AA en 13 pantallas, en español y en inglés: cero violaciones |
 | **CI** completo antes de la demostración | **Cubierto.** [`.github/workflows/ci.yml`](.github/workflows/ci.yml): build, lint, análisis de seguridad, migraciones, pruebas, E2E, accesibilidad y carga |
+
+La caracterización en GCP (Entrega 2) es otra medición: Escenario 1 con **9,92 %** de error HTTP. Informe: [`capacity-planning/pruebas_de_carga_entrega2.md`](capacity-planning/pruebas_de_carga_entrega2.md).
 
 ```bash
 cd frontend && npx playwright install chromium   # solo la primera vez

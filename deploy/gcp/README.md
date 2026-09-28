@@ -5,10 +5,10 @@ desplegar la plataforma en dos VM de Compute Engine, con Cloud SQL for
 PostgreSQL 16 por IP privada, Cloud Storage por su API XML compatible con S3
 y las imágenes en Artifact Registry.
 
-El modelo para la sustentación (componentes, diagrama, decisiones,
-operación, HLS público) está en
-[`docs/entrega2/`](../../docs/entrega2/README.md). El arranque que solo
-puede hacer el equipo: [`docs/entrega2/arranque.md`](../../docs/entrega2/arranque.md).
+El informe de arquitectura (componentes, diagrama, decisiones, HLS público)
+está en [`docs/entrega2/Documento Arquitectura.docx`](../../docs/entrega2/Documento%20Arquitectura.docx).
+Índice operativo: [`docs/entrega2/`](../../docs/entrega2/README.md).
+Arranque que solo puede hacer el equipo: [`docs/entrega2/arranque.md`](../../docs/entrega2/arranque.md).
 
 ```
 deploy/

@@ -1,5 +1,10 @@
 # Pruebas de carga — Entrega 2
 
+**No confundir con la prueba de Etapa 1.** Esa corrida (42.075 peticiones,
+0 % de error, p95 de 2 ms en catálogo) es Docker Compose / CI y acredita el
+§10 de la Entrega 1: [`load/README.md`](../load/README.md). Esta página es
+**solo GCP**.
+
 Corridas del 2026-09-27 sobre
 https://34.28.87.172.sslip.io. Scripts: `load/escenario1.js`,
 `load/escenario2.js`, `load/correr.sh`. Originales en

@@ -149,9 +149,15 @@ todo texto y quizzes justamente por eso.
 
 ## Resultados medidos
 
-Primera corrida real, sobre la pila completa (Postgres 16, Redis 7, MinIO, API
-y worker) en una máquina de desarrollo. El escenario tenía 200 cuentas
-sembradas y un curso de 27 recursos.
+**Entorno: Docker Compose en una máquina de desarrollo (y CI), no las VM de GCP.**
+La caracterización de Entrega 2 —Escenario 1 con 142.493 peticiones y
+**9,92 %** de error— está en
+[`capacity-planning/pruebas_de_carga_entrega2.md`](../capacity-planning/pruebas_de_carga_entrega2.md).
+No son la misma corrida ni el mismo umbral de aceptación.
+
+Primera corrida real de Etapa 1, sobre la pila completa (Postgres 16, Redis 7,
+MinIO, API y worker) en local. El escenario tenía 200 cuentas sembradas y un
+curso de 27 recursos.
 
 | Métrica | Umbral | Medido a 200 VU | Margen |
 |---|---|---|---|
