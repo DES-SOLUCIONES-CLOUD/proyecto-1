@@ -3,6 +3,14 @@
 Cada encendido y apagado, con propósito. Las filas de Actions
 (`encender` / `apagar`) ya salen en el resumen de la ejecución. Hora de Colombia.
 
+`deploy/gcp/energia.sh` (`detener`/`iniciar`) y `deploy/gcp/bd.sh`
+(`eliminar`/`recrear`) añaden la fila solos, con fecha, hora real y quién
+corrió el comando — es lo que arregla que antes quedara en blanco por
+depender de que alguien la escribiera a mano después. Lo único que sigue
+siendo manual es la columna **Propósito**: eso lo sabe quien corrió el
+comando, no el script. Completarla apenas se corre, no al cerrar la
+entrega.
+
 | Fecha | Hora | Acción | Cloud SQL | Quién | Propósito | Notas / USD si se sabe |
 |---|---|---|---|---|---|---|
 | 2026-09-27 | 00:26–01:04 | `infra` / `publicar` / `desplegar` / `certificado` | sí | maarojasga | primer arranque (Actions #1–#7) | VM creadas ~00:35 COT; SQL `mooc-bd-aeab` |

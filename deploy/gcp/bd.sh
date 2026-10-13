@@ -83,6 +83,7 @@ case "$accion" in
     tf apply -input=false -var bd_proteccion_terraform=false -var bd_proteccion_api=false
     aviso "base eliminada. Para recrearla: deploy/gcp/bd.sh recrear $(cat "$ESTADO/ultimo-export")"
     aviso "si despliegan desde GitHub Actions: fijar la variable del repositorio CREAR_BD=false"
+    registrar_bitacora "bd.sh eliminar" true "export + techo de costo"
     ;;
   recrear)
     origen="${1:?uso: bd.sh recrear <gs://...sql.gz | archivo local>}"
@@ -104,6 +105,7 @@ case "$accion" in
     aviso "recreada ($BD, IP $(salida bd_ip_privada)). La IP privada cambió: regenerar los .env y redesplegar:"
     aviso "  deploy/gcp/generar-env.sh -f && deploy/gcp/desplegar-vm.sh worker && deploy/gcp/desplegar-vm.sh web"
     aviso "  (desde GitHub Actions: CREAR_BD=true o borrarla, y la acción 'desplegar')"
+    registrar_bitacora "bd.sh recrear" true "$origen"
     ;;
   detener)
     requiere_bd

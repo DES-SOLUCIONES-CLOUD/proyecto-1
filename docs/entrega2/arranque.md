@@ -63,8 +63,11 @@ Luego: contraseña del admin en Secret Manager, borrar `ADMIN_EMAIL`,
 volver a `desplegar`. Humo con Postman contra
    [https://34.28.87.172.sslip.io/](https://34.28.87.172.sslip.io/).
 
-Migrar MinIO → GCS y el dump local → Cloud SQL **antes** de sembrar,
-comprobando checksums y que cada `object_key` existe. Commit de
+`deploy/gcp/migrar-datos.sh` **antes** de sembrar: migra MinIO -> GCS y el
+dump local -> Cloud SQL, comprueba el checksum de cada objeto y que cada
+`object_key` existe, e importa en Cloud SQL con el registro capturado. Deja
+la evidencia en `capacity-planning/evidencias/migracion-datos-<sello>.md`
+— esa es la que va al checklist 14–19, no una captura manual. Commit de
 `.terraform.lock.hcl` tras el primer `init` real. Ensayar
 `bd.sh eliminar` → `bd.sh recrear` una vez.
 

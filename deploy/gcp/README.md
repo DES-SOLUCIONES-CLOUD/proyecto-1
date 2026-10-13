@@ -26,6 +26,7 @@ deploy/
 |   |-- energia.sh          detener e iniciar VM (y Cloud SQL)
 |   |-- resumen.sh          configuración efectiva en Markdown (evidencia del informe)
 |   |-- bd.sh               exportar, eliminar y recrear Cloud SQL
+|   |-- migrar-datos.sh     MinIO -> GCS y dump local -> Cloud SQL, con checksums y evidencia
 |   `-- destruir.sh         respaldar y eliminar todo
 |-- web/                    compose del Web Server (nginx TLS, API, frontend, Mailpit, certbot)
 |-- worker/                 compose del Worker Server (Redis, worker)
@@ -159,7 +160,9 @@ Requisitos locales: `gcloud`, `terraform` >= 1.7, `docker` con buildx, `git`,
     Mejor fijarlo en `terraform.tfvars` para que el siguiente `apply` no la
     vuelva a crear. Hay que volver a encenderla para recrear el Worker.
 
-Operación diaria:
+Operación diaria. `energia.sh` y `bd.sh eliminar`/`recrear` añaden sola la
+fila en `capacity-planning/bitacora-costos.md`; solo falta completar el
+«Propósito»:
 
 ```bash
 deploy/gcp/energia.sh detener --con-bd      # fin de la sesión de trabajo
@@ -523,32 +526,33 @@ nuevas).
 Las claves de los objetos no cambian; solo `hls/*` va a otro bucket.
 
 ```bash
-# 1. Objetos de MinIO local a disco (con el compose local levantado)
-mc alias set local http://localhost:9100 minioadmin minioadmin
-mc mirror local/mooc ./export-objetos
-
-# 2. A GCS: hls/ al bucket hls, lo demás al privado (se conservan las claves)
-gcloud storage rsync --recursive ./export-objetos/hls gs://<bucket_hls>/hls
-gcloud storage rsync --recursive --exclude '^hls/' ./export-objetos gs://<bucket_objetos>
-
-# 3. Integridad: rsync valida el checksum de cada objeto al subirlo; para
-#    una comprobación puntual, ambos en base64
-gcloud storage hash ./export-objetos/resources/<id>/original
-gcloud storage objects describe gs://<bucket_objetos>/resources/<id>/original --format='value(md5_hash)'
-
-# 4. Base: volcado local, al bucket de respaldos e importación. Después del
-#    paso 4 del despliegue y ANTES del 7: si la API arranca antes, migra la
-#    base vacía y la importación choca con las tablas creadas.
-docker compose exec -T postgres pg_dump -U mooc --no-owner --no-acl mooc | gzip > mooc.sql.gz
-gcloud storage cp mooc.sql.gz gs://<bucket_respaldos>/exports/
-gcloud sql import sql <bd_instancia> gs://<bucket_respaldos>/exports/mooc.sql.gz --database mooc --user mooc
+deploy/gcp/migrar-datos.sh
 ```
 
-La correspondencia entre la base y los objetos se comprueba con las claves
-guardadas (`object_key` de recursos, `image_object_key` de insignias, etc.):
-cada una debe responder a `gcloud storage objects describe`. El checksum
-SHA-256 que la API guardó al verificar cada carga sirve para comparar el
-contenido.
+Automatiza las cuatro fases y deja evidencia, en vez de solo documentarlas:
+
+1. Objetos de MinIO local a disco (`mc mirror`), con el compose local
+   levantado.
+2. A GCS: `hls/` al bucket HLS, lo demás al privado (se conservan las
+   claves), con `gcloud storage rsync`.
+3. Integridad: calcula el MD5 de **cada** objeto migrado (no una muestra) y
+   lo compara contra `gcloud storage objects describe --format='value(md5_hash)'`.
+4. Base: volcado local, subida al bucket de respaldos e importación con
+   `gcloud sql import sql`, con su registro completo capturado. Correrlo
+   ANTES del paso 7 del despliegue: si la API arranca antes, migra la base
+   vacía y la importación choca con las tablas creadas.
+
+El resultado —cuántos objetos había, cuántos verificaron checksum, el
+detalle por objeto y el registro de la importación— queda en
+`capacity-planning/evidencias/migracion-datos-<sello-UTC>.md`. El script
+termina con código distinto de cero si algún checksum no coincide o la
+importación falla: no hay forma de que pase en silencio.
+
+La correspondencia entre la base y los objetos se comprueba además con las
+claves guardadas (`object_key` de recursos, `image_object_key` de
+insignias, etc.): cada una debe responder a `gcloud storage objects
+describe`. El checksum SHA-256 que la API guardó al verificar cada carga
+original sirve para comparar el contenido end-to-end.
 
 ## Decisiones
 

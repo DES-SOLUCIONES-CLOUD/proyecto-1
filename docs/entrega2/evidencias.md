@@ -65,6 +65,21 @@ curl -I "${URL_SIN_FIRMA}"
 curl -I "https://storage.googleapis.com/${BUCKET_HLS}/"
 ```
 
+## 16b. Migración de MinIO a Cloud Storage y de Postgres a Cloud SQL
+
+```bash
+deploy/gcp/migrar-datos.sh
+```
+
+Corre después del paso 4 del despliegue (VM levantadas) y antes del 7
+(API contra la base ya importada). La salida de la terminal y el archivo
+que deja en `capacity-planning/evidencias/migracion-datos-<sello>.md` son
+la evidencia: cuántos objetos había en MinIO, cuántos verificaron checksum
+MD5 contra el objeto en GCS (todos, no una muestra), y el registro completo
+de `gcloud sql import sql`. Pegar ese archivo o al menos el bloque final
+con el resumen y el estado de la importación, en el video y en
+`capacity-planning/evidencias/`.
+
 ## 17. Permisos por componente
 
 Con las HMAC de Secret Manager (`mooc-hmac-web-secret`,

@@ -33,6 +33,7 @@ case "$accion" in
     if [[ "$(salida nat_activa)" == true ]]; then
       aviso "Cloud NAT sigue habilitada y cobrando. Para quitarla: deploy/gcp/desplegar-infra.sh -var habilitar_nat=false"
     fi
+    registrar_bitacora "apagar" "$con_bd"
     ;;
   iniciar)
     if [[ "$con_bd" == true && -n "$BD" ]]; then
@@ -46,6 +47,7 @@ case "$accion" in
     gc compute instances start "$(salida vm_worker)" --zone "$ZONA"
     gc compute instances start "$(salida vm_web)" --zone "$ZONA"
     aviso "VM en marcha. Comprobar: curl -s $(salida url_publica)/api/v1/health"
+    registrar_bitacora "encender" "$con_bd"
     ;;
   estado)
     gc compute instances list --filter "labels.proyecto=$(salida prefijo)" \

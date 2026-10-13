@@ -218,6 +218,25 @@ asegurar_clave_insignias() {
   trap - EXIT
 }
 
+# registrar_bitacora <acción> <true|false con_bd> [nota]: añade una fila a
+# capacity-planning/bitacora-costos.md con fecha y hora reales (Colombia,
+# sin horario de verano), para que la bitácora no dependa de que alguien la
+# escriba a mano después. El "Propósito" queda para completar: eso sí
+# requiere criterio humano.
+registrar_bitacora() {
+  local accion="$1" con_bd="$2" nota="${3:-}" archivo="$RAIZ/capacity-planning/bitacora-costos.md"
+  [[ -f "$archivo" ]] || return 0
+  local fecha hora quien bd_col
+  fecha="$(TZ=America/Bogota date +%Y-%m-%d)"
+  hora="$(TZ=America/Bogota date +%H:%M)"
+  quien="$(git -C "$RAIZ" config user.name 2>/dev/null || whoami 2>/dev/null || echo '?')"
+  bd_col="no"
+  [[ "$con_bd" == true ]] && bd_col="sí"
+  printf '| %s | %s | %s | %s | %s | *(completar)* | %s |\n' \
+    "$fecha" "$hora" "$accion" "$bd_col" "$quien" "$nota" >> "$archivo"
+  aviso "bitácora actualizada: $archivo (completar la columna «Propósito» de la fila nueva)"
+}
+
 vm_de() {
   case "$1" in
     web) salida vm_web ;;
