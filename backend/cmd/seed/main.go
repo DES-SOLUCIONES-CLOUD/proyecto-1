@@ -82,14 +82,14 @@ type Salida struct {
 
 // Cantidades declara lo sembrado para el informe de capacidad.
 type Cantidades struct {
-	Usuarios            int      `json:"usuarios"`
-	Cursos              int      `json:"cursos"`
-	Recursos            int      `json:"recursos"`
-	Inscripciones       int      `json:"inscripciones"`
-	Intentos            int      `json:"intentos"`
-	PerfilesMultimedia  []string `json:"perfiles_multimedia"`
-	Estudiantes         int      `json:"estudiantes"`
-	Profesores          int      `json:"profesores"`
+	Usuarios           int      `json:"usuarios"`
+	Cursos             int      `json:"cursos"`
+	Recursos           int      `json:"recursos"`
+	Inscripciones      int      `json:"inscripciones"`
+	Intentos           int      `json:"intentos"`
+	PerfilesMultimedia []string `json:"perfiles_multimedia"`
+	Estudiantes        int      `json:"estudiantes"`
+	Profesores         int      `json:"profesores"`
 }
 
 // Cuenta es un estudiante inscrito con su sesión ya abierta.
