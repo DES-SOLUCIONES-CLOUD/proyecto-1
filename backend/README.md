@@ -106,7 +106,7 @@ ejecuta en paralelo y la suite falla de forma intermitente.
 |---|---|---|
 | `APP_ENV` | `development` | Entorno; fuera de desarrollo la cookie exige `Secure`. |
 | `API_PORT` | `8080` | Puerto de escucha. |
-| `DATABASE_URL` | `postgres://mooc:mooc@localhost:5432/mooc?sslmode=disable` | Fuente de verdad transaccional. |
+| `DATABASE_URL` | obligatoria, sin valor por defecto | Fuente de verdad transaccional. En local: `postgres://mooc:mooc@localhost:5432/mooc?sslmode=disable`. |
 | `REDIS_ADDR` | `localhost:6379` | Límites de tasa, idempotencia y cola asynq. |
 | `S3_ENDPOINT`, `S3_BUCKET` | `localhost:9000`, `mooc` | Almacenamiento de objetos. |
 | `S3_PUBLIC_URL` | — | Base pública (CDN) desde la que se sirven los objetos. Vacío: se firman uno a uno. |

@@ -97,7 +97,10 @@ func Load() Config {
 	return Config{
 		Env:         getEnv("APP_ENV", "development"),
 		HTTPPort:    getEnv("API_PORT", "8080"),
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://mooc:mooc@localhost:5432/mooc?sslmode=disable"),
+		// sin valor por defecto: tenia la clave de desarrollo escrita en el
+		// codigo (sonarqube secrets:S6698). compose, gcp y el ci ya la definen,
+		// y para go run en local el readme indica el export
+		DatabaseURL: getEnv("DATABASE_URL", ""),
 		DBMaxConns:  getInt("DB_MAX_CONNS", 20),
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 
