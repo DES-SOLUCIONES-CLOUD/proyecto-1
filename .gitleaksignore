@@ -12,12 +12,14 @@ e664670093ae541cdb92512b7ad95bd75b1e9b46:backend/internal/platform/httpserver/id
 bdce3d0a10ee62ced434e76adf6a2a150db8881f:backend/internal/platform/httpserver/identidad_test.go:generic-api-key:163
 97e2ec88d60b010c688e6f0be92b28705248cdc2:backend/internal/platform/httpserver/identidad_test.go:generic-api-key:163
 
-# S3_ACCESS_KEY=GOOG1E_IDENTIFICADOR_DE_EJEMPLO en las plantillas de despliegue:
-# es un marcador de ejemplo, no un identificador real. el valor de verdad sale
-# de terraform (hmac_web_access_id / hmac_worker_access_id) y el secreto va en
-# secret manager.
+# la variable de la clave de acceso s3 en las plantillas .env.example de
+# despliegue: el valor es un marcador de ejemplo, no un identificador real. el
+# valor de verdad sale de terraform (hmac_web_access_id / hmac_worker_access_id)
+# y el secreto va en secret manager. la ultima huella es el comentario de este
+# mismo archivo, que en ese commit copiaba el valor de ejemplo.
 d99013bb1be73ca98a2b6a72c952bebfee5b4bf1:deploy/web/.env.example:generic-api-key:36
 d99013bb1be73ca98a2b6a72c952bebfee5b4bf1:deploy/worker/.env.example:generic-api-key:28
+5c8d613b730e0e42e3b47bbfc2ca8d2a6e05d54a:.gitleaksignore:generic-api-key:15
 
 # curl -u en el script de sonarqube: las credenciales salen de variables
 # ($SONAR_TOKEN, $ADMIN_PASS, $auth_lectura) o son admin:admin, la clave de
