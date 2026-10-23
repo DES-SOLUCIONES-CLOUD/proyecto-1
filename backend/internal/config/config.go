@@ -94,12 +94,12 @@ type Config struct {
 // Load construye la configuración a partir de variables de entorno, con valores
 // por defecto razonables para desarrollo local.
 func Load() Config {
+	// DATABASE_URL no tiene valor por defecto: tenia la clave de desarrollo
+	// escrita en el codigo (sonarqube secrets:S6698). compose, gcp y el ci ya
+	// la definen, y para go run en local el readme indica el export
 	return Config{
 		Env:         getEnv("APP_ENV", "development"),
 		HTTPPort:    getEnv("API_PORT", "8080"),
-		// sin valor por defecto: tenia la clave de desarrollo escrita en el
-		// codigo (sonarqube secrets:S6698). compose, gcp y el ci ya la definen,
-		// y para go run en local el readme indica el export
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 		DBMaxConns:  getInt("DB_MAX_CONNS", 20),
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
