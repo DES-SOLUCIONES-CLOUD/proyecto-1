@@ -69,11 +69,17 @@ pipeline.
 La puerta `Entrega 3` pasa: `sqale_rating` = 1 (A, umbral: peor que 3) y
 `duplicated_lines_density` = 0,4 (umbral: mayor que 20).
 
-La nota E de Seguridad viene de una sola vulnerabilidad, `secrets:S6698`
-(clave de PostgreSQL escrita en `backend/internal/config/config.go`). Se
-corrigió después de esta medición (ver R4); la próxima corrida debe
-confirmarlo. La cobertura es baja porque se calcula sobre todo el código y el
-frontend no reporta cobertura (ver 4.2).
+La nota E de Seguridad venía de una sola vulnerabilidad, `secrets:S6698`
+(clave de PostgreSQL escrita en `backend/internal/config/config.go`). Tras
+corregirla (R4) y sacar las filas de las listas fuera del componente (R5), la
+corrida [SonarQube #5](https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1/actions/runs/39883498505)
+sobre `5ad228a` da: Seguridad **A**, Vulnerabilidades **0**, Bloqueantes
+**0**, Mantenibilidad A, Duplicación 0,4 %, Bugs 0, Code smells 156 (43
+Críticos, 85 Mayores, 5 Menores, 23 Informativos), Security hotspots 6 y
+Cobertura 12,1 %.
+
+La cobertura es baja porque se calcula sobre todo el código y el frontend no
+reporta cobertura (ver 4.2).
 
 Para medir el inicial basta con correr el workflow a mano
 (`workflow_dispatch`) sobre el commit `31d5af0`, o en local:
