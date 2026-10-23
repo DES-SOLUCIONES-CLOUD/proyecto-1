@@ -9,3 +9,21 @@
 # cuentas: es la contraseña INCORRECTA que se manda a propósito para comprobar
 # que la respuesta es idéntica a la de un correo inexistente. No abre nada.
 e664670093ae541cdb92512b7ad95bd75b1e9b46:backend/internal/platform/httpserver/identidad_test.go:generic-api-key:163
+bdce3d0a10ee62ced434e76adf6a2a150db8881f:backend/internal/platform/httpserver/identidad_test.go:generic-api-key:163
+97e2ec88d60b010c688e6f0be92b28705248cdc2:backend/internal/platform/httpserver/identidad_test.go:generic-api-key:163
+
+# S3_ACCESS_KEY=GOOG1E_IDENTIFICADOR_DE_EJEMPLO en las plantillas de despliegue:
+# es un marcador de ejemplo, no un identificador real. el valor de verdad sale
+# de terraform (hmac_web_access_id / hmac_worker_access_id) y el secreto va en
+# secret manager.
+d99013bb1be73ca98a2b6a72c952bebfee5b4bf1:deploy/web/.env.example:generic-api-key:36
+d99013bb1be73ca98a2b6a72c952bebfee5b4bf1:deploy/worker/.env.example:generic-api-key:28
+
+# curl -u en el script de sonarqube: las credenciales salen de variables
+# ($SONAR_TOKEN, $ADMIN_PASS, $auth_lectura) o son admin:admin, la clave de
+# fabrica de un sonarqube recien instalado que el mismo script cambia en la
+# primera corrida. el servidor solo vive dentro del runner o en local.
+98a6bb872c965d12370be02bc4a97604de74dce0:deploy/sonarqube/analizar.sh:curl-auth-user:48
+98a6bb872c965d12370be02bc4a97604de74dce0:deploy/sonarqube/analizar.sh:curl-auth-user:52
+98a6bb872c965d12370be02bc4a97604de74dce0:deploy/sonarqube/analizar.sh:curl-auth-user:91
+f6da712774986f21d3a8e8fdad329dca0573466c:deploy/sonarqube/analizar.sh:curl-auth-user:95
