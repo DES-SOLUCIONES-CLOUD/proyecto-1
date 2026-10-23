@@ -48,7 +48,10 @@ bash deploy/sonarqube/analizar.sh
 
 Tres mediciones:
 
-- **Inicial (`31d5af0`):** el commit anterior a las refactorizaciones.
+- **Inicial (`31d5af0`):** el commit anterior a las refactorizaciones. Se
+  midió en la rama temporal `medicion-inicial`, que solo le agrega los
+  archivos del análisis
+  ([SonarQube #8](https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1/actions/runs/39885940557)).
 - **Primera corrida (`0c63963`):** ya con R1, R2 y R3. Es la que dio el
   inventario de la sección 4.1.
 - **Final (`b023430`):** con R4 y R5, que atacan los hallazgos de esa primera
@@ -56,24 +59,41 @@ Tres mediciones:
 
 | Métrica | Inicial (`31d5af0`) | Primera corrida (`0c63963`) | Final (`b023430`) | Umbral |
 |---|---|---|---|---|
-| Líneas de código | POR MEDIR | 17.422 | 17.429 | |
-| Duplicación (%) | POR MEDIR | 0,4 | 0,4 | <= 20 % |
-| Bloques duplicados | POR MEDIR | 6 | 6 | |
-| Mantenibilidad | POR MEDIR | A | A | C o mejor |
-| Deuda técnica (min) | POR MEDIR | 973 | 963 | |
-| Ratio de deuda (%) | POR MEDIR | 0,2 | 0,2 | |
-| Confiabilidad | POR MEDIR | A | A | |
-| Seguridad | POR MEDIR | E | A | |
-| Bugs | POR MEDIR | 0 | 0 | 0 |
-| Vulnerabilidades | POR MEDIR | 1 | 0 | 0 |
-| Code smells | POR MEDIR | 158 | 156 | |
-| Security hotspots | POR MEDIR | 6 | 6 | |
-| Cobertura (%) | POR MEDIR | 12,0 | 12,1 | |
-| Hallazgos Bloqueantes | POR MEDIR | 1 | 0 | 0 |
+| Líneas de código | 18.344 | 17.422 | 17.429 | |
+| Duplicación (%) | 5,2 | 0,4 | 0,4 | <= 20 % |
+| Bloques duplicados | 295 | 6 | 6 | |
+| Mantenibilidad | A | A | A | C o mejor |
+| Deuda técnica (min) | 963 | 973 | 963 | |
+| Ratio de deuda (%) | 0,2 | 0,2 | 0,2 | |
+| Confiabilidad | A | A | A | |
+| Seguridad | E | E | A | |
+| Bugs | 0 | 0 | 0 | 0 |
+| Vulnerabilidades | 1 | 1 | 0 | 0 |
+| Code smells | 156 | 158 | 156 | |
+| Security hotspots | 6 | 6 | 6 | |
+| Cobertura (%) | 11,8 | 12,0 | 12,1 | |
+| Hallazgos Bloqueantes | 1 | 1 | 0 | 0 |
 
 En la medición final, la puerta `Entrega 3` pasa: `sqale_rating` = 1 (A,
 falla si es peor que 3) y `duplicated_lines_density` = 0,4 (falla si pasa de
 20). Corrida: [SonarQube #6](https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1/actions/runs/39884217156).
+
+**Lectura de la comparación.**
+
+- **Duplicación:** baja de 5,2 % a 0,4 %, y los bloques duplicados de 295 a
+  6. Es el efecto de R1 (catálogos de idioma a JSON) y R2 (esqueleto común de
+  las listas).
+- **Líneas de código:** bajan de 18.344 a 17.429, porque los catálogos ya no
+  cuentan como código.
+- **Seguridad:** pasa de E a A, y los Bloqueantes de 1 a 0, con R4.
+- **Mantenibilidad:** ya era A y se mantiene.
+- **Code smells y deuda técnica:** terminan igual que al inicio (156 y 963
+  min). En la primera corrida subieron a 158 y 973 por los dos casos de
+  `typescript:S6478` que introdujo R2; R5 los quitó.
+
+La línea base ya cumplía los umbrales del enunciado (5,2 % frente al máximo de
+20 %), así que las refactorizaciones no fueron para pasar la puerta, sino para
+bajar la deuda concreta que encontró el análisis.
 
 La nota E de Seguridad de la primera corrida venía de una sola
 vulnerabilidad, `secrets:S6698` (clave de PostgreSQL escrita en
@@ -84,16 +104,10 @@ Críticos, 85 Mayores, 5 Menores, 23 Informativos).
 La cobertura es baja porque se calcula sobre todo el código y el frontend no
 reporta cobertura (ver 4.2).
 
-Para medir el inicial basta con correr el workflow a mano
-(`workflow_dispatch`) sobre el commit `31d5af0`, o en local:
-`git checkout 31d5af0 && bash deploy/sonarqube/analizar.sh`.
-
-**Estimación previa, sin SonarQube.** Antes de tener el servidor se midió la
-duplicación con un detector propio (ventanas de 10 líneas normalizadas, sin
-pruebas ni migraciones). No es la cifra de Sonar, que cuenta tokens, pero
-indica el orden de magnitud y dónde estaba concentrada: **7,6 % -> 2,7 %**.
-Casi toda la duplicación inicial estaba en un solo archivo,
-`frontend/lib/i18n.tsx` (unas 1.000 líneas repetidas).
+Antes de tener SonarQube se buscó dónde estaba concentrada la duplicación con
+un detector propio. Casi toda estaba en un solo archivo,
+`frontend/lib/i18n.tsx` (unas 1.000 líneas repetidas), y por eso R1 fue la
+primera refactorización.
 
 ## 3. Refactorizaciones realizadas
 
