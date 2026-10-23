@@ -5,7 +5,39 @@ import Link from "next/link";
 import { api, type Badge, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { ListaPersonal } from "@/components/ListaPersonal";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type Traducir } from "@/lib/i18n";
+
+// fila de la lista. va fuera del componente para que no se vuelva a crear en
+// cada render (sonarqube typescript:S6478)
+function filaDeInsignia(b: Badge, t: Traducir, locale: string) {
+  const fecha = new Date(b.issued_at).toLocaleDateString(locale);
+  return (
+    <>
+      {b.image_url && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={b.image_url}
+          alt={t("insignias.alt", { fecha })}
+          width={96}
+          height={96}
+          style={{ borderRadius: "8px" }}
+        />
+      )}
+      <div className="fila__datos">
+        <p>
+          <span className="badge">
+            {b.valid ? t("insignias.vigente") : t("insignias.revocada")}
+          </span>{" "}
+          {t("insignias.emitidaEl", { fecha })}
+        </p>
+        <p className="muted">
+          {t("insignias.codigoVerificacion")} <code>{b.code}</code>
+        </p>
+      </div>
+      <Link href={`/insignias/${b.code}`}>{t("curso.verVerificacion")}</Link>
+    </>
+  );
+}
 
 export default function MyBadgesPage() {
   const { user, loading: authLoading } = useAuth();
@@ -35,32 +67,7 @@ export default function MyBadgesPage() {
         </>
       }
       clave={(b) => b.code}
-      fila={(b) => (
-        <>
-          {b.image_url && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={b.image_url}
-              alt={t("insignias.alt", { fecha: new Date(b.issued_at).toLocaleDateString(locale) })}
-              width={96}
-              height={96}
-              style={{ borderRadius: "8px" }}
-            />
-          )}
-          <div className="fila__datos">
-            <p>
-              <span className="badge">
-                {b.valid ? t("insignias.vigente") : t("insignias.revocada")}
-              </span>{" "}
-              {t("insignias.emitidaEl", { fecha: new Date(b.issued_at).toLocaleDateString(locale) })}
-            </p>
-            <p className="muted">
-              {t("insignias.codigoVerificacion")} <code>{b.code}</code>
-            </p>
-          </div>
-          <Link href={`/insignias/${b.code}`}>{t("curso.verVerificacion")}</Link>
-        </>
-      )}
+      fila={(b) => filaDeInsignia(b, t, locale)}
     />
   );
 }
