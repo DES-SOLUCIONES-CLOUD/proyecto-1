@@ -15,8 +15,8 @@ en `POR MEDIR` esperan una corrida que todavía no se ha hecho.
 | Configuración | [sonar-project.properties](../../sonar-project.properties) |
 | Pipeline | [.github/workflows/sonar.yml](../../.github/workflows/sonar.yml), en cada push y pull request |
 | Script (local y CI) | [deploy/sonarqube/analizar.sh](../../deploy/sonarqube/analizar.sh) |
-| Commit evaluado | `0c63963` |
-| Corrida de GitHub Actions | [SonarQube #2](https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1/actions/runs/39881777108) (en verde, puerta de calidad OK) |
+| Commit evaluado | `b023430` |
+| Corrida de GitHub Actions | [SonarQube #6](https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1/actions/runs/39884217156) (en verde, puerta de calidad OK) |
 
 ### Cómo corre
 
@@ -46,37 +46,40 @@ bash deploy/sonarqube/analizar.sh
 
 ## 2. Medición inicial vs final
 
-La medición inicial es la del commit anterior a las refactorizaciones
-(`31d5af0`); la final, la de `0c63963`, primera corrida en verde del
-pipeline.
+Tres mediciones:
 
-| Métrica | Inicial (`31d5af0`) | Final (`0c63963`) | Umbral |
-|---|---|---|---|
-| Líneas de código | POR MEDIR | 17.422 | |
-| Duplicación (%) | POR MEDIR | 0,4 | <= 20 % |
-| Bloques duplicados | POR MEDIR | 6 | |
-| Mantenibilidad | POR MEDIR | A | C o mejor |
-| Deuda técnica (min) | POR MEDIR | 973 | |
-| Ratio de deuda (%) | POR MEDIR | 0,2 | |
-| Confiabilidad | POR MEDIR | A | |
-| Seguridad | POR MEDIR | E | |
-| Bugs | POR MEDIR | 0 | 0 |
-| Vulnerabilidades | POR MEDIR | 1 | 0 |
-| Code smells | POR MEDIR | 158 | |
-| Security hotspots | POR MEDIR | 6 | |
-| Cobertura (%) | POR MEDIR | 12,0 | |
+- **Inicial (`31d5af0`):** el commit anterior a las refactorizaciones.
+- **Primera corrida (`0c63963`):** ya con R1, R2 y R3. Es la que dio el
+  inventario de la sección 4.1.
+- **Final (`b023430`):** con R4 y R5, que atacan los hallazgos de esa primera
+  corrida.
 
-La puerta `Entrega 3` pasa: `sqale_rating` = 1 (A, umbral: peor que 3) y
-`duplicated_lines_density` = 0,4 (umbral: mayor que 20).
+| Métrica | Inicial (`31d5af0`) | Primera corrida (`0c63963`) | Final (`b023430`) | Umbral |
+|---|---|---|---|---|
+| Líneas de código | POR MEDIR | 17.422 | 17.429 | |
+| Duplicación (%) | POR MEDIR | 0,4 | 0,4 | <= 20 % |
+| Bloques duplicados | POR MEDIR | 6 | 6 | |
+| Mantenibilidad | POR MEDIR | A | A | C o mejor |
+| Deuda técnica (min) | POR MEDIR | 973 | 963 | |
+| Ratio de deuda (%) | POR MEDIR | 0,2 | 0,2 | |
+| Confiabilidad | POR MEDIR | A | A | |
+| Seguridad | POR MEDIR | E | A | |
+| Bugs | POR MEDIR | 0 | 0 | 0 |
+| Vulnerabilidades | POR MEDIR | 1 | 0 | 0 |
+| Code smells | POR MEDIR | 158 | 156 | |
+| Security hotspots | POR MEDIR | 6 | 6 | |
+| Cobertura (%) | POR MEDIR | 12,0 | 12,1 | |
+| Hallazgos Bloqueantes | POR MEDIR | 1 | 0 | 0 |
 
-La nota E de Seguridad venía de una sola vulnerabilidad, `secrets:S6698`
-(clave de PostgreSQL escrita en `backend/internal/config/config.go`). Tras
-corregirla (R4) y sacar las filas de las listas fuera del componente (R5), la
-corrida [SonarQube #5](https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1/actions/runs/39883498505)
-sobre `5ad228a` da: Seguridad **A**, Vulnerabilidades **0**, Bloqueantes
-**0**, Mantenibilidad A, Duplicación 0,4 %, Bugs 0, Code smells 156 (43
-Críticos, 85 Mayores, 5 Menores, 23 Informativos), Security hotspots 6 y
-Cobertura 12,1 %.
+En la medición final, la puerta `Entrega 3` pasa: `sqale_rating` = 1 (A,
+falla si es peor que 3) y `duplicated_lines_density` = 0,4 (falla si pasa de
+20). Corrida: [SonarQube #6](https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1/actions/runs/39884217156).
+
+La nota E de Seguridad de la primera corrida venía de una sola
+vulnerabilidad, `secrets:S6698` (clave de PostgreSQL escrita en
+`backend/internal/config/config.go`). Al corregirla (R4), Seguridad pasa a A y
+los Bloqueantes a 0. Hallazgos abiertos al final: 156 (0 Bloqueantes, 43
+Críticos, 85 Mayores, 5 Menores, 23 Informativos).
 
 La cobertura es baja porque se calcula sobre todo el código y el frontend no
 reporta cobertura (ver 4.2).
@@ -113,10 +116,12 @@ introducido R2.
 
 ### 4.1 Hallazgos de SonarQube
 
-Tabla "Inventario por regla" de la corrida `0c63963`, agrupada por regla
-porque veinte casos de la misma regla son una sola decisión de tratamiento.
+Tabla "Inventario por regla" de la primera corrida (`0c63963`), agrupada por
+regla porque veinte casos de la misma regla son una sola decisión de
+tratamiento. La columna Estado indica qué se resolvió después; en la corrida
+final (`b023430`) ya no aparecen `secrets:S6698` ni `typescript:S6478`.
 
-Resumen por severidad: 159 hallazgos abiertos.
+Resumen por severidad en la primera corrida: 159 hallazgos abiertos.
 
 | Severidad | Cantidad |
 |---|---|
