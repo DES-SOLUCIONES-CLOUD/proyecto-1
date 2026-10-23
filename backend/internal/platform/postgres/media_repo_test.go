@@ -173,6 +173,64 @@ func TestUnFalloLiberaElArrendamientoParaElReintento(t *testing.T) {
 	}
 }
 
+func TestUnRetiroDevuelveElActivoParaQueOtroWorkerLoRetome(t *testing.T) {
+	pool := baseDePruebas(t)
+	repo := postgres.NewMediaRepo(pool)
+	activoID := activoDePrueba(t, pool, "uploaded")
+	ctx, ahora := context.Background(), time.Now().UTC()
+
+	if _, err := repo.Reclamar(ctx, activoID, ahora); err != nil {
+		t.Fatalf("Reclamar: %v", err)
+	}
+	// el worker recibe sigterm a mitad de la transcodificacion
+	if err := repo.Liberar(ctx, activoID); err != nil {
+		t.Fatalf("Liberar: %v", err)
+	}
+
+	activo, err := repo.GetByID(ctx, activoID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if activo.Status != "queued" || activo.FailureReason != "" {
+		t.Errorf("el activo debería volver a 'queued' sin marca de fallo: %+v", activo)
+	}
+
+	// la tarea reprogramada le llega a otro worker unos segundos despues,
+	// mucho antes de que venza el arrendamiento del que se apago
+	reclamado, err := repo.Reclamar(ctx, activoID, ahora.Add(5*time.Second))
+	if err != nil {
+		t.Fatalf("Reclamar: %v", err)
+	}
+	if !reclamado {
+		t.Error("tras el retiro, otro worker debería poder tomar el trabajo")
+	}
+}
+
+func TestUnRetiroTardioNoDeshaceUnActivoListo(t *testing.T) {
+	pool := baseDePruebas(t)
+	repo := postgres.NewMediaRepo(pool)
+	activoID := activoDePrueba(t, pool, "uploaded")
+	ctx := context.Background()
+
+	if _, err := repo.Reclamar(ctx, activoID, time.Now().UTC()); err != nil {
+		t.Fatalf("Reclamar: %v", err)
+	}
+	if err := repo.MarkReady(ctx, activoID, "hls/x/master.m3u8"); err != nil {
+		t.Fatalf("MarkReady: %v", err)
+	}
+	if err := repo.Liberar(ctx, activoID); err != nil {
+		t.Fatalf("Liberar: %v", err)
+	}
+
+	activo, err := repo.GetByID(ctx, activoID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if activo.Status != "ready" || activo.HLSMasterKey != "hls/x/master.m3u8" {
+		t.Errorf("un activo listo no debería retroceder: %+v", activo)
+	}
+}
+
 func TestElOriginalNuncaSeToca(t *testing.T) {
 	pool := baseDePruebas(t)
 	repo := postgres.NewMediaRepo(pool)

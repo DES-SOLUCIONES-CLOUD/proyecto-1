@@ -111,6 +111,12 @@ func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error
 
 	hlsKey, err := p.transcode(ctx, log, payload)
 	if err != nil {
+		if queue.Retirado(ctx) {
+			// el contexto del trabajo ya esta cancelado, con el la
+			// actualizacion no llegaria a la base
+			log.Warn("media: worker en retiro, el activo vuelve a la cola", "error", err)
+			return errors.Join(err, p.Assets.Liberar(context.WithoutCancel(ctx), asset.ID))
+		}
 		_ = p.Assets.MarkFailed(ctx, asset.ID, err.Error())
 		_ = p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingFailed)
 		if errors.Is(err, ErrEntradaInvalida) {

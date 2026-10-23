@@ -1,0 +1,78 @@
+# analisis de sonarqube en cada commit (entrega 3)
+#
+# mide el backend en go y el frontend en typescript con la puerta de calidad
+# de la entrega: duplicacion <= 20 % y mantenibilidad c o mejor
+# si la puerta no pasa, el job falla
+#
+# funciona de dos formas segun los secretos del repo:
+#   - con SONAR_HOST_URL y SONAR_TOKEN analiza contra ese servidor
+#     (sonarqube propio o sonarcloud, que tambien pide SONAR_ORGANIZATION)
+#   - sin secretos levanta sonarqube dentro del runner, y los resultados
+#     quedan en el resumen de la corrida y en el artefacto sonarqube-evidencia
+#
+# usa el mismo script que se corre en local (deploy/sonarqube/analizar.sh)
+
+name: SonarQube
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: sonar-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.26.9"
+
+jobs:
+  sonarqube:
+    name: Calidad de codigo (SonarQube)
+    runs-on: ubuntu-latest
+    services:
+      # postgres para que las pruebas de integracion tambien cuenten en la
+      # cobertura
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mooc_test
+          POSTGRES_USER: mooc
+          POSTGRES_PASSWORD: mooc
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mooc"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # historial completo para que sonar sepa que codigo es nuevo
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+
+      - name: Cobertura del backend
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgres://mooc:mooc@localhost:5432/mooc_test?sslmode=disable
+        run: go test ./... -count=1 -coverprofile=coverage.out
+
+      - name: Analizar con SonarQube
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+          SONAR_ADMIN_PASSWORD: ${{ secrets.SONAR_ADMIN_PASSWORD }}
+          SALIDA: ${{ github.workspace }}/sonarqube-evidencia
+        run: bash deploy/sonarqube/analizar.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sonarqube-evidencia
+          path: sonarqube-evidencia/
+          retention-days: 30

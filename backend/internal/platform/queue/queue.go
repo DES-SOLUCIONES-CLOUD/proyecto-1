@@ -6,7 +6,9 @@ package queue
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/hibiken/asynq"
 )
@@ -36,8 +38,11 @@ func NewServer(redisAddr string, concurrency int, log *slog.Logger) *asynq.Serve
 	return asynq.NewServer(
 		asynq.RedisClientOpt{Addr: redisAddr},
 		asynq.Config{
-			Concurrency:  concurrency,
-			ErrorHandler: NuevoManejadorDeErrores(log),
+			Concurrency:     concurrency,
+			ErrorHandler:    NuevoManejadorDeErrores(log),
+			IsFailure:       EsFallo,
+			RetryDelayFunc:  EsperaAntesDeReintentar,
+			ShutdownTimeout: PlazoDeRetiro,
 			Queues: map[string]int{
 				"critical": 6,
 				"default":  3,
@@ -45,6 +50,64 @@ func NewServer(redisAddr string, concurrency int, log *slog.Logger) *asynq.Serve
 			},
 		},
 	)
+}
+
+// PlazoDeRetiro es cuanto espera asynq a los trabajos activos al apagarse.
+// tiene que ser menor que los 10 s que da docker stop antes de matar el
+// proceso, si no el worker muere sin alcanzar a liberar el activo
+const PlazoDeRetiro = 8 * time.Second
+
+// ErrRetiro marca un trabajo que se corto porque el worker se esta apagando
+// (scale-down del mig, docker stop, despliegue) y no porque haya fallado.
+// por eso no debe gastar reintentos ni esperar el backoff: el trabajo esta
+// bien y otro worker lo puede tomar de una vez
+var ErrRetiro = errors.New("worker en retiro")
+
+// Retirado dice si el contexto del trabajo se cancelo por un retiro.
+func Retirado(ctx context.Context) bool {
+	return errors.Is(context.Cause(ctx), ErrRetiro)
+}
+
+// Retirable es el middleware que avisa del retiro a los trabajos en curso.
+//
+// cuando se cancela retiro, cancela el contexto de cada trabajo con ErrRetiro
+// como causa. ffmpeg y libreoffice corren con exec.CommandContext, asi que se
+// detienen de inmediato. el manejador ve Retirado(ctx), libera el activo, y
+// su error sale envuelto en ErrRetiro para que EsFallo lo reconozca.
+//
+// no se usa el BaseContext de asynq porque al cancelarlo asynq da el trabajo
+// por terminado y lo reprograma antes de que el manejador libere el activo,
+// y el siguiente worker lo encontraria todavia tomado y lo descartaria
+func Retirable(retiro context.Context) asynq.MiddlewareFunc {
+	return func(next asynq.Handler) asynq.Handler {
+		return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
+			ctx, cancelar := context.WithCancelCause(ctx)
+			defer cancelar(nil)
+			detener := context.AfterFunc(retiro, func() { cancelar(ErrRetiro) })
+			defer detener()
+
+			err := next.ProcessTask(ctx, t)
+			if err != nil && Retirado(ctx) && !errors.Is(err, ErrRetiro) {
+				return fmt.Errorf("%w: %w", ErrRetiro, err)
+			}
+			return err
+		})
+	}
+}
+
+// EsFallo es el IsFailure de asynq: un retiro vuelve a la cola sin contar
+// como reintento.
+func EsFallo(err error) bool {
+	return !errors.Is(err, ErrRetiro)
+}
+
+// EsperaAntesDeReintentar devuelve un trabajo retirado a la cola de una vez
+// y deja el backoff normal de asynq para los fallos de verdad.
+func EsperaAntesDeReintentar(n int, err error, t *asynq.Task) time.Duration {
+	if errors.Is(err, ErrRetiro) {
+		return 0
+	}
+	return asynq.DefaultRetryDelayFunc(n, err, t)
 }
 
 // AtributosDeLaTarea son los datos que asynq guarda en el contexto del
@@ -69,6 +132,10 @@ func AtributosDeLaTarea(ctx context.Context) []any {
 // reintentos. Se registra con este nombre exacto para que la regla de alerta
 // de observabilidad pueda engancharse a un valor estable y no a un texto libre.
 const AccionAgotado = "queue.task_dead_letter"
+
+// AccionRetiro aparece en el log cuando un trabajo vuelve a la cola porque su
+// worker se apago. es la linea que se busca en la demo de retiro seguro.
+const AccionRetiro = "queue.task_requeued_on_shutdown"
 
 // NuevoManejadorDeErrores devuelve el asynq.ErrorHandler que registra cada
 // intento fallido y distingue el último.
@@ -105,6 +172,9 @@ type IntentoFallido struct {
 // Agotado informa si este era el último intento y, por tanto, el trabajo pasa
 // a la dead-letter queue.
 func (f IntentoFallido) Agotado() bool {
+	if errors.Is(f.Err, ErrRetiro) {
+		return false
+	}
 	return f.Intento >= f.Maximo || errors.Is(f.Err, asynq.SkipRetry)
 }
 
@@ -118,6 +188,11 @@ func RegistrarIntentoFallido(ctx context.Context, log *slog.Logger, f IntentoFal
 	atributos := []any{
 		"tarea", f.Tarea, "id", f.ID, "cola", f.Cola,
 		"intento", f.Intento, "maximo", f.Maximo, "error", f.Err,
+	}
+	if errors.Is(f.Err, ErrRetiro) {
+		log.WarnContext(ctx, "worker en retiro: el trabajo vuelve a la cola sin consumir reintento",
+			append([]any{"accion", AccionRetiro}, atributos...)...)
+		return
 	}
 	if errors.Is(f.Err, asynq.SkipRetry) {
 		log.ErrorContext(ctx, "trabajo descartado: no se reintentará",

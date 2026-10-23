@@ -15,6 +15,7 @@ package documentos
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -151,6 +152,12 @@ func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) e
 
 	clavePDF, err := p.convertir(ctx, log, payload)
 	if err != nil {
+		if queue.Retirado(ctx) {
+			// igual que en media.Processor: con el contexto cancelado la
+			// actualizacion no llegaria a la base
+			log.Warn("documentos: worker en retiro, el activo vuelve a la cola", "error", err)
+			return errors.Join(err, p.Assets.Liberar(context.WithoutCancel(ctx), activo.ID))
+		}
 		_ = p.Assets.MarkFailed(ctx, activo.ID, err.Error())
 		_ = p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingFailed)
 		return err // asynq reintenta con backoff y, agotados, archiva y alerta.

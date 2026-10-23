@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hibiken/asynq"
 )
@@ -91,5 +92,88 @@ func TestUnErrorPermanenteSeDescartaSinReintento(t *testing.T) {
 	}
 	if strings.Contains(salida, "se reintentará con backoff") {
 		t.Errorf("no debería anunciarse un reintento:\n%s", salida)
+	}
+}
+
+func TestUnRetiroVuelveALaColaSinConsumirReintento(t *testing.T) {
+	// un worker que se apaga no hace fallar el trabajo. si contara como fallo,
+	// tres scale-down seguidos mandarian a la dlq un video que estaba bien
+	err := fmt.Errorf("%w: %w", ErrRetiro, errors.New("ffmpeg: signal: killed"))
+	if EsFallo(err) {
+		t.Error("un retiro no debería contar como fallo")
+	}
+	if d := EsperaAntesDeReintentar(0, err, asynq.NewTask(TaskProcessMedia, nil)); d != 0 {
+		t.Errorf("un retiro debería volver a la cola sin backoff, espera %v", d)
+	}
+	if !EsFallo(errors.New("ffmpeg reventó")) {
+		t.Error("un error normal sí debería contar como fallo")
+	}
+}
+
+func TestUnRetiroSeRegistraSinAlertar(t *testing.T) {
+	var reg registroEnMemoria
+	// aunque llegue en el ultimo intento, el retiro no agota el trabajo
+	RegistrarIntentoFallido(context.Background(), reg.logger(), IntentoFallido{
+		Tarea: TaskProcessMedia, ID: "tarea-1", Cola: "default",
+		Intento: 3, Maximo: 3,
+		Err: fmt.Errorf("%w: %w", ErrRetiro, context.Canceled),
+	})
+	salida := reg.b.String()
+	if strings.Contains(salida, AccionAgotado) {
+		t.Errorf("un retiro no debería mandar el trabajo a la DLQ:\n%s", salida)
+	}
+	if !strings.Contains(salida, AccionRetiro) || !strings.Contains(salida, "level=WARN") {
+		t.Errorf("se esperaba el aviso de retiro:\n%s", salida)
+	}
+}
+
+func TestRetirableCortaElTrabajoYMarcaElError(t *testing.T) {
+	retiro, retirar := context.WithCancel(context.Background())
+	empezo := make(chan struct{})
+	var visto bool
+
+	manejador := Retirable(retiro)(asynq.HandlerFunc(func(ctx context.Context, _ *asynq.Task) error {
+		close(empezo)
+		<-ctx.Done() // lo mismo que haria exec.CommandContext con ffmpeg
+		visto = Retirado(ctx)
+		return ctx.Err()
+	}))
+
+	resultado := make(chan error, 1)
+	go func() { resultado <- manejador.ProcessTask(context.Background(), asynq.NewTask(TaskProcessMedia, nil)) }()
+	<-empezo
+	retirar()
+	err := <-resultado
+
+	if !visto {
+		t.Error("el manejador debería ver Retirado(ctx) para liberar el activo")
+	}
+	if !errors.Is(err, ErrRetiro) {
+		t.Errorf("el error debería salir envuelto en ErrRetiro, salió %v", err)
+	}
+}
+
+func TestRetirableNoTocaUnTrabajoNormal(t *testing.T) {
+	retiro, retirar := context.WithCancel(context.Background())
+	defer retirar()
+	falla := errors.New("ffmpeg reventó")
+
+	err := Retirable(retiro)(asynq.HandlerFunc(func(ctx context.Context, _ *asynq.Task) error {
+		if Retirado(ctx) {
+			t.Error("sin retiro el contexto no debería estar marcado")
+		}
+		return falla
+	})).ProcessTask(context.Background(), asynq.NewTask(TaskProcessMedia, nil))
+
+	if !errors.Is(err, falla) || errors.Is(err, ErrRetiro) {
+		t.Errorf("el error debería pasar intacto, salió %v", err)
+	}
+}
+
+func TestElPlazoDeRetiroCabeEnElDeDocker(t *testing.T) {
+	// docker stop mata el proceso a los 10 s, si asynq esperara mas el worker
+	// moriria sin liberar el activo
+	if PlazoDeRetiro >= 10*time.Second {
+		t.Errorf("el plazo de retiro (%v) debe quedar por debajo de los 10 s de docker stop", PlazoDeRetiro)
 	}
 }

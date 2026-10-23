@@ -110,6 +110,23 @@ func (r *MediaRepo) Reclamar(ctx context.Context, id uuid.UUID, ahora time.Time)
 	return tag.RowsAffected() == 1, nil
 }
 
+// Liberar devuelve a la cola un activo cuyo worker se esta apagando.
+//
+// sin esto, cuando asynq reprograma el trabajo, el siguiente worker encuentra
+// el activo en 'processing' con el arrendamiento vigente, cree que es una
+// entrega duplicada y lo descarta, y el video se queda pegado. no se marca
+// como fallido porque no fallo: el original esta bien y solo falta procesarlo.
+//
+// solo cambia activos en 'processing', asi un activo que ya quedo listo no
+// se devuelve aunque el retiro llegue tarde.
+func (r *MediaRepo) Liberar(ctx context.Context, id uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE media_assets
+		   SET status='queued', processing_started_at=NULL, updated_at=now()
+		 WHERE id=$1 AND status='processing'`, id)
+	return err
+}
+
 func (r *MediaRepo) MarkReady(ctx context.Context, id uuid.UUID, hlsMasterKey string) error {
 	_, err := r.pool.Exec(ctx, `
 		UPDATE media_assets

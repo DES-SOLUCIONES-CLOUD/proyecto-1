@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type Enrollment, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { ListaPersonal } from "@/components/ListaPersonal";
 import { useI18n, type Clave } from "@/lib/i18n";
 
 // El estado de la inscripción llega como identificador del dominio; la clave
@@ -47,59 +48,38 @@ export default function MyCoursesPage() {
     }
   }
 
-  if (!authLoading && !user) {
-    return (
-      <div className="estado-vacio columna-estrecha">
-        <p>{t("misCursos.requiereSesion")}</p>
-        <p>
-          <Link href="/login">{t("nav.entrar")}</Link>
-        </p>
-      </div>
-    );
-  }
 
   return (
-    <div>
-      <header className="page-header">
-        <div>
-          <h1>{t("nav.misCursos")}</h1>
-          <p>{t("misCursos.subtitulo")}</p>
-        </div>
-      </header>
-
-      {error && (
-        <p className="error-banner" role="alert">
-          {error}
-        </p>
-      )}
-      {items === null && <p role="status">{t("comun.cargando")}</p>}
-
-      {items?.length === 0 && (
-        <div className="estado-vacio">
+    <ListaPersonal
+      titulo={t("nav.misCursos")}
+      subtitulo={t("misCursos.subtitulo")}
+      requiereSesion={t("misCursos.requiereSesion")}
+      items={items}
+      error={error}
+      vacio={
+        <>
           <p>{t("misCursos.vacio")}</p>
           <p>
             <Link href="/">{t("misCursos.explorar")}</Link>
           </p>
-        </div>
+        </>
+      }
+      clave={(e) => e.ID}
+      fila={(e) => (
+        <>
+          <div className="fila__datos">
+            <Link href={`/cursos/${e.CourseID}`}>{t("misCursos.verCurso")}</Link>
+            <p>
+              <span className="badge">{t(claveDeEstado[e.Status])}</span>
+            </p>
+          </div>
+          {e.Status === "active" && (
+            <button className="secondary" onClick={() => handleWithdraw(e.CourseID)}>
+              {t("misCursos.retirarme")}
+            </button>
+          )}
+        </>
       )}
-
-      <ul className="lista-filas">
-        {items?.map((e) => (
-          <li key={e.ID} className="card fila">
-            <div className="fila__datos">
-              <Link href={`/cursos/${e.CourseID}`}>{t("misCursos.verCurso")}</Link>
-              <p>
-                <span className="badge">{t(claveDeEstado[e.Status])}</span>
-              </p>
-            </div>
-            {e.Status === "active" && (
-              <button className="secondary" onClick={() => handleWithdraw(e.CourseID)}>
-                {t("misCursos.retirarme")}
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
+    />
   );
 }

@@ -1,0 +1,37 @@
+# sonarqube 10 community y el scanner para medir la deuda tecnica
+#
+#   bash deploy/sonarqube/analizar.sh
+#
+# el panel queda en http://localhost:9000 (usuario admin, clave de
+# SONAR_ADMIN_PASSWORD), es el que se muestra en el video
+
+name: mooc-sonarqube
+
+services:
+  sonarqube:
+    image: sonarqube:10.7-community
+    environment:
+      # sin esto elasticsearch pide subir vm.max_map_count en el host, y en
+      # docker desktop o en github actions no siempre se puede
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonar_datos:/opt/sonarqube/data
+      - sonar_extensiones:/opt/sonarqube/extensions
+
+  # corre una vez y termina: docker compose run --rm scanner
+  scanner:
+    image: sonarsource/sonar-scanner-cli:11.1
+    profiles: ["analisis"]
+    environment:
+      SONAR_HOST_URL: ${SONAR_HOST_URL:-http://sonarqube:9000}
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+    # el repo completo en solo lectura, el scanner no necesita escribir aqui
+    # (su carpeta de trabajo va a /tmp, ver analizar.sh)
+    volumes:
+      - ../..:/usr/src:ro
+
+volumes:
+  sonar_datos:
+  sonar_extensiones:
