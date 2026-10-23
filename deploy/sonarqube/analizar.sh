@@ -64,9 +64,13 @@ if [[ -z "${SONAR_HOST_URL:-}" ]]; then
     -d type=GLOBAL_ANALYSIS_TOKEN | "$PY" -c 'import json,sys; print(json.load(sys.stdin)["token"])')"
   # dentro de la red del compose el servidor se llama sonarqube
   url_scanner="http://sonarqube:9000"
+  # el token de analisis solo sirve para analizar, la api de lectura
+  # responde 403 con el, por eso los resultados se leen como admin
+  auth_lectura="admin:$ADMIN_PASS"
 else
   : "${SONAR_TOKEN:?con SONAR_HOST_URL hace falta SONAR_TOKEN}"
   url_scanner="$SONAR_HOST_URL"
+  auth_lectura="$SONAR_TOKEN:"
 fi
 
 extra=()
@@ -88,7 +92,7 @@ resultado=$?
 set -e
 
 echo "==> Recogiendo la evidencia en $SALIDA"
-leer() { curl -fsS -u "$SONAR_TOKEN:" "$SONAR_HOST_URL/api/$1"; }
+leer() { curl -fsS -u "$auth_lectura" "$SONAR_HOST_URL/api/$1"; }
 leer "measures/component?component=$PROYECTO&metricKeys=ncloc,duplicated_lines_density,duplicated_blocks,sqale_rating,sqale_index,sqale_debt_ratio,reliability_rating,security_rating,bugs,vulnerabilities,code_smells,security_hotspots,coverage" \
   > "$SALIDA/medidas.json"
 leer "qualitygates/project_status?projectKey=$PROYECTO" > "$SALIDA/puerta.json"
