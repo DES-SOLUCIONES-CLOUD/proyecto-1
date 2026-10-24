@@ -12,11 +12,11 @@
 #   plan         terraform plan, sin aplicar (queda en el resumen)
 #   infra        plan y, tras la aprobación del entorno gcp, apply de ESE plan
 #   publicar     construye las imágenes en el runner y las sube, etiquetadas con el commit
-#   desplegar    genera los .env, despliega Worker y Web y migra
+#   desplegar    mueve la etiqueta "desplegada" al commit, reemplaza las
+#                instancias de mig-workers y mig-api y migra
 #   todo         infra + publicar + desplegar
-#   certificado  Let's Encrypt en el Web Server (una vez, tras el primer despliegue)
 #   sembrar      datos sintéticos de las pruebas de carga
-#   encender     VM (y Cloud SQL con con_bd)
+#   encender     MIGs y VM de Redis (y Cloud SQL con con_bd)
 #   apagar       ídem
 #   estado       configuración efectiva, sin cambiar nada
 
@@ -27,8 +27,8 @@ name: Desplegar en GCP
 run-name: ${{ github.event_name == 'push' && 'Push a main — publicar y desplegar' || format('A mano — {0}', inputs.accion) }}
 
 on:
-  # Código nuevo en main: publica imágenes y redespliega las VM. No toca
-  # Terraform, no pide certificado y no siembra (eso sigue a mano).
+  # Código nuevo en main: publica imágenes y reemplaza las instancias de los
+  # MIG. No toca Terraform y no siembra (eso sigue a mano).
   push:
     branches: [main]
     paths-ignore:
@@ -49,7 +49,6 @@ on:
           - publicar
           - desplegar
           - todo
-          - certificado
           - sembrar
           - encender
           - apagar
@@ -136,6 +135,9 @@ jobs:
           CUENTA_FACTURACION: ${{ vars.CUENTA_FACTURACION }}
           PRESUPUESTO_MONTO: ${{ vars.PRESUPUESTO_MONTO }}
           PRESUPUESTO_MONEDA: ${{ vars.PRESUPUESTO_MONEDA }}
+          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
+          WORKER_CONCURRENCY: ${{ vars.WORKER_CONCURRENCY }}
+          AUTH_RATE_LIMIT_PER_MINUTE: ${{ vars.AUTH_RATE_LIMIT_PER_MINUTE }}
         run: bash deploy/gcp/escribir-tfvars.sh
 
       - name: Planificar
@@ -313,25 +315,11 @@ jobs:
             echo
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Los .env solo llevan nombres de secretos, IDs e IPs privadas; los
-      # valores los lee cada VM de Secret Manager al arrancar los contenedores.
-      - name: Generar la configuración de las VM
+      # La configuración de las instancias (.env, compose) está en las
+      # plantillas de Terraform; desplegar solo cambia las imágenes.
+      - name: Desplegar en los MIG
         if: env.ACCION != 'publicar'
-        env:
-          TLS_EMAIL: ${{ vars.TLS_EMAIL }}
-          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
-          WORKER_CONCURRENCY: ${{ vars.WORKER_CONCURRENCY }}
-          AUTH_RATE_LIMIT_PER_MINUTE: ${{ vars.AUTH_RATE_LIMIT_PER_MINUTE }}
-        run: bash deploy/gcp/generar-env.sh -f
-
-      # Primero el Worker: la API conecta con Redis al arrancar.
-      - name: Desplegar el Worker Server
-        if: env.ACCION != 'publicar'
-        run: bash deploy/gcp/desplegar-vm.sh worker "$MOOC_TAG"
-
-      - name: Desplegar el Web Server
-        if: env.ACCION != 'publicar'
-        run: bash deploy/gcp/desplegar-vm.sh web "$MOOC_TAG"
+        run: bash deploy/gcp/desplegar-vm.sh "$MOOC_TAG"
 
       - name: Migrar la base
         if: env.ACCION != 'publicar'
@@ -358,7 +346,7 @@ jobs:
   # -------------------------------------------------------------------------
   operar:
     name: Operar (${{ inputs.accion }})
-    if: contains(fromJSON('["certificado","sembrar","encender","apagar"]'), inputs.accion)
+    if: contains(fromJSON('["sembrar","encender","apagar"]'), inputs.accion)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: gcp
@@ -376,12 +364,6 @@ jobs:
           bucket: ${{ vars.TF_STATE_BUCKET }}
           terraform: ${{ env.TERRAFORM_VERSION }}
 
-      # Let's Encrypt limita las emisiones por nombre (5 por semana): se
-      # pide una vez, no en cada despliegue. certbot renueva después.
-      - name: Certificado de Let's Encrypt
-        if: env.ACCION == 'certificado'
-        run: bash deploy/gcp/remoto.sh web 'sudo bash /opt/mooc/actual/deploy/web/certificado.sh letsencrypt'
-
       - name: Sembrar los datos sintéticos
         if: env.ACCION == 'sembrar'
         env:
@@ -389,15 +371,15 @@ jobs:
           SEED_TEACHERS: ${{ vars.SEED_TEACHERS || '3' }}
           SEED_ENROLL: ${{ vars.SEED_ENROLL || '0' }}
         run: |
-          bash deploy/gcp/remoto.sh web "sudo SEED_STUDENTS='$SEED_STUDENTS' SEED_TEACHERS='$SEED_TEACHERS' SEED_ENROLL='$SEED_ENROLL' bash /opt/mooc/actual/deploy/gcp/en-vm.sh sembrar"
+          bash deploy/gcp/remoto.sh api "sudo SEED_STUDENTS='$SEED_STUDENTS' SEED_TEACHERS='$SEED_TEACHERS' SEED_ENROLL='$SEED_ENROLL' /opt/mooc/bin/en-vm.sh sembrar"
           # El escenario lleva sesiones válidas de los usuarios sintéticos: no
           # se sube como artefacto (el repositorio es público).
           {
             echo "### Datos sintéticos"
             echo
-            echo "Escenario en el Web Server, \`/opt/mooc/salida/escenario.json\`. Copiarlo a la máquina del generador de carga con:"
+            echo "Escenario en una instancia de mig-api, \`/opt/mooc/salida/escenario.json\`. Con mig-api en 1 instancia, copiarlo a la máquina del generador de carga con:"
             echo
-            echo "\`deploy/gcp/remoto.sh web 'sudo cat /opt/mooc/salida/escenario.json' > load/salida/escenario.json\`"
+            echo "\`deploy/gcp/remoto.sh api 'sudo cat /opt/mooc/salida/escenario.json' > load/salida/escenario.json\`"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
 

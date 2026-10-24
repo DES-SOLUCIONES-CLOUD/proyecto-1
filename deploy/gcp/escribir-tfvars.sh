@@ -15,6 +15,9 @@
 #   DOMINIO_WEB                  dominio_web
 #   CUENTA_FACTURACION           cuenta_facturacion
 #   PRESUPUESTO_MONTO, PRESUPUESTO_MONEDA
+#   ADMIN_EMAIL                  admin_email
+#   WORKER_CONCURRENCY           worker_concurrency
+#   AUTH_RATE_LIMIT_PER_MINUTE   auth_rate_limit_per_minute
 #
 # Las vacías no se escriben y Terraform usa su valor por defecto
 # (variables.tf). CREAR_BD no tiene valor por defecto a propósito: en un
@@ -65,6 +68,9 @@ agregar texto dominio_web "${DOMINIO_WEB:-}"
 agregar texto cuenta_facturacion "${CUENTA_FACTURACION:-}"
 agregar numero presupuesto_monto "${PRESUPUESTO_MONTO:-}"
 agregar texto presupuesto_moneda "${PRESUPUESTO_MONEDA:-}"
+agregar texto admin_email "${ADMIN_EMAIL:-}"
+agregar numero worker_concurrency "${WORKER_CONCURRENCY:-}"
+agregar texto auth_rate_limit_per_minute "${AUTH_RATE_LIMIT_PER_MINUTE:-}"
 
 {
   echo "# Generado por deploy/gcp/escribir-tfvars.sh el $(date -u '+%Y-%m-%d %H:%M') UTC."
