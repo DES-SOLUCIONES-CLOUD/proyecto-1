@@ -98,6 +98,27 @@ run "completo" {
     condition     = google_compute_instance_group_manager.api.name == "mig-api" && google_compute_instance_group_manager.workers.name == "mig-workers"
     error_message = "nombres de los MIG"
   }
+  # Health check del balanceador: /healthz en el 8080, 5 s, 3 s, 2 fallos.
+  assert {
+    condition = (google_compute_health_check.api.http_health_check[0].request_path == "/healthz" &&
+      google_compute_health_check.api.http_health_check[0].port == 8080 &&
+      google_compute_health_check.api.check_interval_sec == 5 &&
+      google_compute_health_check.api.timeout_sec == 3 &&
+    google_compute_health_check.api.unhealthy_threshold == 2)
+    error_message = "health check"
+  }
+  assert {
+    condition     = google_compute_backend_service.api.port_name == "http-api" && google_compute_backend_service.frontend.port_name == "http-web"
+    error_message = "puertos con nombre"
+  }
+  assert {
+    condition     = google_compute_global_forwarding_rule.https.port_range == "443" && google_compute_global_forwarding_rule.http.port_range == "80"
+    error_message = "reglas de reenvío"
+  }
+  assert {
+    condition     = google_compute_managed_ssl_certificate.web.managed[0].domains[0] == "203.0.113.10.sslip.io" && google_compute_ssl_policy.tls12.min_tls_version == "TLS_1_2"
+    error_message = "certificado y TLS"
+  }
   # Solo los rangos de los health checks y del balanceador llegan a la API.
   assert {
     condition     = toset(google_compute_firewall.health_checks.source_ranges) == toset(["130.211.0.0/22", "35.191.0.0/16"])

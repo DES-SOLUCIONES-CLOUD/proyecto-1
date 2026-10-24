@@ -145,6 +145,12 @@ variable "admin_email" {
   default     = ""
 }
 
+variable "lb_muestreo_logs" {
+  description = "Fracción de peticiones a la API que el balanceador registra en Cloud Logging (0-1). Las métricas del balanceador no dependen de esto."
+  type        = number
+  default     = 0.1
+}
+
 # --- Red ---------------------------------------------------------------------
 
 variable "cidr_api" {

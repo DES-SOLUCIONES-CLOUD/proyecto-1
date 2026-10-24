@@ -47,6 +47,11 @@ output "url_publica" {
   value = local.url_publica
 }
 
+output "certificado" {
+  description = "Certificado administrado del balanceador (gcloud compute ssl-certificates describe <este> --global para ver si ya está ACTIVE)."
+  value       = google_compute_managed_ssl_certificate.web.name
+}
+
 output "ip_redis" {
   description = "IP interna fija de Redis: REDIS_ADDR de la API y de los workers."
   value       = google_compute_address.redis_interna.address
