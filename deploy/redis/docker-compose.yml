@@ -1,0 +1,77 @@
+# VM fija de Redis (GCE e2-small, subred datos, sin IP externa, IP interna
+# estática): la cola asynq, las sesiones, la caché y los límites de tasa, y
+# el SMTP de pruebas. Fuera de los MIG a propósito: el autoscaler borra
+# instancias al reducir, y la cola no puede irse con ellas.
+#
+#   sudo /opt/mooc/bin/en-vm.sh redis
+#
+# Presupuesto de memoria (2 GB, ~1,6 disponibles tras el sistema, Docker y
+# el Ops Agent): redis 1 GiB, mailpit 128 MiB. Con la VM para él solo, Redis
+# tiene sitio para una cola larga en una prueba de saturación de workers.
+
+name: mooc-redis
+
+x-registro: &registro
+  # Rotación de logs: con el driver por defecto crecen sin límite.
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+services:
+  redis:
+    <<: *registro
+    # De Docker Hub por Cloud NAT. Sin dependencias del commit desplegado:
+    # esta VM no cambia al desplegar una versión nueva.
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    mem_limit: 1g
+    # Sin contraseña: la API y el worker leen solo REDIS_ADDR (host:puerto) y
+    # construyen el cliente sin credenciales (asynq.RedisClientOpt{Addr} y
+    # redis.Options{Addr}). Añadir requirepass exige cambiar ese código (ver
+    # docs/entrega3/deuda-tecnica.md). El control de acceso es de red: la VM
+    # no tiene IP externa, el puerto se publica solo en su IP interna y el
+    # firewall de la VPC admite 6379 únicamente desde las cuentas de servicio
+    # de la API y de los workers.
+    #
+    # appendonly: la cola vive aquí, y sin persistencia un reinicio de la
+    # máquina perdería los trabajos aceptados que aún no se procesaron.
+    # noeviction: asynq guarda trabajos, no caché; que Redis expulse claves
+    # bajo presión de memoria corrompería la cola en silencio. Mejor que
+    # rechace escrituras y el error se vea en la API.
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 768mb
+      - --maxmemory-policy
+      - noeviction
+    ports:
+      - "${REDIS_BIND_IP:?falta REDIS_BIND_IP (IP interna de esta VM)}:6379:6379"
+    volumes:
+      - redis_datos:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # SMTP de pruebas. Sin él el registro responde 500: la API devuelve el error
+  # del envío del correo de verificación. No hay SMTP real en esta entrega (y
+  # GCE bloquea el puerto 25 saliente). Aquí y no en cada réplica de la API:
+  # un solo buzón para todas. La interfaz web se consulta por túnel SSH sobre
+  # IAP:
+  #   deploy/gcp/remoto.sh redis -- -L 8025:127.0.0.1:8025 -N
+  mailpit:
+    <<: *registro
+    image: axllent/mailpit:v1.22
+    restart: unless-stopped
+    mem_limit: 128m
+    ports:
+      - "${REDIS_BIND_IP:?falta REDIS_BIND_IP (IP interna de esta VM)}:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+volumes:
+  redis_datos:

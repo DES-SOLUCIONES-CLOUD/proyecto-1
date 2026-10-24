@@ -1,0 +1,154 @@
+# Instancia de mig-api (GCE e2-small, subred api, sin IP externa): API y
+# frontend detrás del balanceador externo. La escribe el script de arranque
+# desde los metadatos de la plantilla y la levanta en-vm.sh:
+#
+#   sudo /opt/mooc/bin/en-vm.sh api
+#
+# No se lanza a mano con `docker compose up`: DB_PASSWORD y S3_SECRET_KEY no
+# están en ningún archivo, las lee en-vm.sh de Secret Manager con la cuenta
+# de servicio de la instancia y las exporta solo para esa invocación (y se
+# niega a seguir si llegan vacías). Por lo mismo las imágenes tienen un
+# valor por defecto inservible en lugar de :?:.
+#
+# Sin Nginx: TLS, la redirección a https y el reparto entre /api y el
+# frontend los hace el balanceador (terraform/balanceador.tf), que entrega
+# directamente en el 8080 y el 3000 de cada instancia. El firewall solo deja
+# llegar a esos puertos a los rangos del balanceador.
+#
+# Presupuesto de memoria (2 GB, ~1,6 disponibles tras el sistema, Docker y
+# el Ops Agent): api 768 MiB, frontend 384.
+
+name: mooc-api
+
+x-registro: &registro
+  # Rotación de logs: con el driver por defecto crecen sin límite y un disco de
+  # 30 GiB se llena en una prueba de estrés larga.
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+services:
+  api:
+    <<: *registro
+    # De Artifact Registry (deploy/gcp/publicar.sh). Sin `build`: compilar en
+    # una e2-small agota la memoria y la ráfaga de CPU.
+    image: ${IMAGEN_API:-sin-publicar/mooc-api}
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      APP_ENV: production
+      API_PORT: 8080
+      # IP privada de Cloud SQL. sslmode=require: la instancia tiene
+      # ssl_mode=ENCRYPTED_ONLY y rechaza conexiones sin TLS; declararlo aquí
+      # hace que el fallo sea del cliente y explícito si alguien lo cambia.
+      # No verifica la CA del servidor (verify-ca exigiría distribuir su
+      # certificado); la red es privada y el peering, de Google.
+      DATABASE_URL: postgres://${DB_USER:?falta DB_USER}:${DB_PASSWORD:-}@${DB_HOST:?falta DB_HOST}:5432/${DB_NAME:?falta DB_NAME}?sslmode=require
+      # Pool de la API. Sumado al del worker tiene que caber en el
+      # max_connections de Cloud SQL (ver deploy/gcp/README.md).
+      DB_MAX_CONNS: ${DB_MAX_CONNS:-20}
+      # IP interna fija de la VM de Redis. Redis no tiene contraseña: lo
+      # protege el firewall, que solo admite las cuentas de servicio de la
+      # API y de los workers (ver deploy/redis).
+      REDIS_ADDR: ${REDIS_ADDR:?falta REDIS_ADDR (IP interna de Redis):6379}
+      # API XML de Cloud Storage. Exactamente este host: minio-go solo
+      # reconoce GCS por él (y ajusta la subida de objetos a lo que GCS
+      # admite); un endpoint regional o private.googleapis.com se trataría
+      # como un S3 genérico.
+      S3_ENDPOINT: storage.googleapis.com
+      S3_PUBLIC_ENDPOINT: storage.googleapis.com
+      # Región del ámbito de la firma SigV4 que espera GCS.
+      S3_REGION: auto
+      S3_BUCKET: ${S3_BUCKET:?falta S3_BUCKET}
+      # Los derivados hls/* van a un bucket aparte legible por cualquiera:
+      # el reproductor pide variantes y segmentos sin firma.
+      S3_BUCKET_HLS: ${S3_BUCKET_HLS:?falta S3_BUCKET_HLS}
+      # Clave HMAC de la cuenta de servicio de la API. El identificador está
+      # en el .env; el secreto lo trae en-vm.sh de Secret Manager.
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?falta S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_USE_SSL: "true"
+      S3_PUBLIC_USE_SSL: "true"
+      # Los buckets los crea Terraform; un nombre mal escrito tiene que
+      # fallar, no crear un bucket sin CORS ni prevención de acceso público.
+      S3_CREATE_BUCKET: "false"
+      # Vacía a propósito: sin CDN todo se firma uno a uno.
+      # Rellenarla quitaría la firma de TODAS las claves, originales
+      # incluidos, no solo las de HLS.
+      S3_PUBLIC_URL: ""
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?falta PUBLIC_BASE_URL (https://...)}
+      COOKIE_SECURE: "true"
+      # Mailpit en la VM de Redis: un solo buzón para todas las réplicas.
+      SMTP_HOST: ${SMTP_HOST:?falta SMTP_HOST (IP interna de Redis)}
+      SMTP_PORT: 1025
+      SMTP_FROM: ${SMTP_FROM:-no-reply@mooc.local}
+      CLAMAV_ADDR: ""
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-}
+      # El balanceador AÑADE a X-Forwarded-For "<IP del cliente>, <IP del
+      # balanceador>" detrás de lo que mande el cliente. Con 2, la API toma
+      # la IP real y no la que el cliente inventa para saltarse el límite de
+      # login (el Nginx de la Entrega 2 sobrescribía la cabecera).
+      TRUSTED_PROXY_HOPS: "2"
+      BADGE_SIGNING_KEY: ${BADGE_SIGNING_KEY:-}
+      BADGE_KEY_ID: ${BADGE_KEY_ID:-mooc-badges-1}
+      ISSUER_NAME: ${ISSUER_NAME:-Plataforma MOOC}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    # Publicado en el host: el balanceador entrega en el 8080 de la VM.
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+  # Migraciones como paso explícito: `deploy/gcp/migrar.sh`. La API también
+  # migra al arrancar, serializada con un advisory lock: varias réplicas que
+  # arrancan a la vez no chocan.
+  migrate:
+    image: ${IMAGEN_MIGRATE:-sin-publicar/mooc-migrate}
+    profiles: ["operacion"]
+    environment:
+      DATABASE_URL: postgres://${DB_USER:?falta DB_USER}:${DB_PASSWORD:-}@${DB_HOST:?falta DB_HOST}:5432/${DB_NAME:?falta DB_NAME}?sslmode=require
+
+  # Datos sintéticos de las pruebas de carga: `en-vm.sh sembrar`. Corre aquí
+  # porque Cloud SQL solo es alcanzable desde las instancias de API y workers.
+  #
+  # El sembrador se niega a correr fuera de development/test/ci: crea cuentas
+  # con una contraseña pública y abre sus sesiones. Este entorno es de
+  # pruebas de la entrega, no de producción real, y se declara a conciencia
+  # con SEED_PERMITIR_ENTORNO=1 en lugar de disfrazar APP_ENV. Antes de dar
+  # la plataforma por pública habría que borrar esas cuentas.
+  seed:
+    image: ${IMAGEN_SEED:-sin-publicar/mooc-seed}
+    profiles: ["operacion"]
+    environment:
+      APP_ENV: production
+      SEED_PERMITIR_ENTORNO: "1"
+      DATABASE_URL: postgres://${DB_USER:?falta DB_USER}:${DB_PASSWORD:-}@${DB_HOST:?falta DB_HOST}:5432/${DB_NAME:?falta DB_NAME}?sslmode=require
+      SEED_STUDENTS: ${SEED_STUDENTS:-500}
+      SEED_TEACHERS: ${SEED_TEACHERS:-3}
+      SEED_ENROLL: ${SEED_ENROLL:-1}
+      SEED_OUT: /salida/escenario.json
+    volumes:
+      - /opt/mooc/salida:/salida
+
+  # Next.js en el mismo origen que la API (no hace falta CORS): el
+  # balanceador le manda todo lo que no es /api/. publicar.sh incrusta
+  # NEXT_PUBLIC_API_URL al compilar. HOSTNAME=0.0.0.0: el server standalone,
+  # si no, escucha solo en localhost.
+  # El perfil permite apagarlo en una prueba de carga (quita
+  # COMPOSE_PROFILES del .env); por defecto va encendido.
+  frontend:
+    <<: *registro
+    image: ${IMAGEN_FRONTEND:-sin-publicar/mooc-frontend}
+    profiles: ["frontend"]
+    restart: unless-stopped
+    mem_limit: 384m
+    environment:
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+    ports:
+      - "3000:3000"
