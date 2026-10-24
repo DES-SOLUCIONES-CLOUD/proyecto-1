@@ -58,6 +58,93 @@ variable "instalar_ops_agent" {
   default     = true
 }
 
+variable "imagen_tag" {
+  description = "Etiqueta de las imágenes de Artifact Registry que arrancan las instancias. desplegar-vm.sh mueve 'desplegada' al commit que se despliega y reemplaza las instancias; Terraform no necesita conocer el commit."
+  type        = string
+  default     = "desplegada"
+}
+
+# --- Autoescalado ----------------------------------------------------------------
+
+variable "mig_api_min" {
+  description = "Instancias mínimas de mig-api."
+  type        = number
+  default     = 1
+}
+
+variable "mig_api_max" {
+  description = "Instancias máximas de mig-api."
+  type        = number
+  default     = 3
+}
+
+variable "mig_workers_min" {
+  description = "Instancias mínimas de mig-workers."
+  type        = number
+  default     = 1
+}
+
+variable "mig_workers_max" {
+  description = "Instancias máximas de mig-workers."
+  type        = number
+  default     = 3
+}
+
+variable "mig_cpu_objetivo" {
+  description = "Utilización de CPU media que el autoscaler intenta mantener en cada MIG (0-1)."
+  type        = number
+  default     = 0.6
+
+  validation {
+    condition     = var.mig_cpu_objetivo > 0 && var.mig_cpu_objetivo < 1
+    error_message = "mig_cpu_objetivo va entre 0 y 1 (0.6 = 60 %)."
+  }
+}
+
+variable "mig_cooldown" {
+  description = "Segundos que el autoscaler ignora la CPU de una instancia recién creada (cooldown_period / periodo de inicialización)."
+  type        = number
+  default     = 120
+}
+
+variable "mig_retraso_inicial" {
+  description = "Segundos antes de que el autohealing empiece a juzgar una instancia nueva de mig-api: lo que tarda en instalar Docker y bajar las imágenes."
+  type        = number
+  default     = 300
+}
+
+# --- Parámetros de la aplicación -----------------------------------------------------
+
+variable "worker_concurrency" {
+  description = "Trabajos simultáneos por instancia de worker. 2 en una e2-small: dos FFmpeg ya rondan los 2 GB."
+  type        = number
+  default     = 2
+}
+
+variable "api_db_max_conns" {
+  description = "Pool de conexiones a Cloud SQL por instancia de API. Con el máximo de instancias de los dos MIG: 3 x API + 3 x worker tiene que caber en max_connections (100 en db-custom-1-3840)."
+  type        = number
+  default     = 20
+}
+
+variable "worker_db_max_conns" {
+  description = "Pool de conexiones a Cloud SQL por instancia de worker."
+  type        = number
+  default     = 5
+}
+
+variable "auth_rate_limit_per_minute" {
+  description = "Intentos de autenticación por IP y minuto. Vacío = 10, el valor de producción. Subirlo solo para una corrida de carga concreta, y registrarlo en el informe."
+  type        = string
+  default     = ""
+}
+
+variable "admin_email" {
+  description = "Correo del administrador inicial: se crea en el primer arranque si no existe ninguno, con la contraseña del secreto <prefijo>-admin-password. Vaciarlo después."
+  type        = string
+  default     = ""
+}
+
 # --- Red ---------------------------------------------------------------------
 
 variable "cidr_api" {

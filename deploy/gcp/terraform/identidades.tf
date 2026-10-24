@@ -183,6 +183,16 @@ resource "google_artifact_registry_repository" "imagenes" {
       keep_count = 5
     }
   }
+  # La etiqueta que arrancan las instancias de los MIG (desplegar-vm.sh la
+  # mueve): borrar esa versión dejaría sin imagen al próximo scale-out.
+  cleanup_policies {
+    id     = "conservar-desplegada"
+    action = "KEEP"
+    condition {
+      tag_state    = "TAGGED"
+      tag_prefixes = [var.imagen_tag]
+    }
+  }
   cleanup_policies {
     id     = "borrar-antiguas"
     action = "DELETE"

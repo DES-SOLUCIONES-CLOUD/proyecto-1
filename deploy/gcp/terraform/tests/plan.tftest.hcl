@@ -5,6 +5,8 @@ mock_provider "google" {
   mock_resource "google_compute_subnetwork" { defaults = { id = "projects/mi-proyecto/regions/us-central1/subnetworks/s" } }
   mock_resource "google_compute_address" { defaults = { address = "10.0.1.5" } }
   mock_resource "google_compute_global_address" { defaults = { address = "203.0.113.10", id = "projects/mi-proyecto/global/addresses/mooc-lb-ip" } }
+  mock_resource "google_compute_instance_group_manager" { defaults = { id = "projects/mi-proyecto/zones/us-central1-a/instanceGroupManagers/mig", instance_group = "projects/mi-proyecto/zones/us-central1-a/instanceGroups/mig" } }
+  mock_resource "google_compute_instance_template" { defaults = { self_link_unique = "projects/mi-proyecto/global/instanceTemplates/t?uniqueId=1" } }
   mock_resource "google_sql_database_instance" { defaults = { service_account_email_address = "p123@gcp-sa-cloud-sql.iam.gserviceaccount.com", private_ip_address = "10.30.0.3" } }
 }
 mock_provider "random" {}
@@ -66,8 +68,40 @@ run "completo" {
   }
   # Ningún archivo de los metadatos lleva finales CRLF.
   assert {
-    condition     = alltrue([for v in values(google_compute_instance.redis.metadata) : !strcontains(v, "\r")])
+    condition = alltrue([for m in [google_compute_instance.redis.metadata, google_compute_instance_template.api.metadata, google_compute_instance_template.worker.metadata] :
+    alltrue([for v in values(m) : !strcontains(v, "\r")])])
     error_message = "metadatos con CRLF"
+  }
+
+  # Ninguna plantilla tiene IP externa.
+  assert {
+    condition     = length(google_compute_instance_template.api.network_interface[0].access_config) == 0 && length(google_compute_instance_template.worker.network_interface[0].access_config) == 0
+    error_message = "plantillas sin ip externa"
+  }
+  # La plantilla de API lleva DATABASE_URL (sus partes) y REDIS_ADDR.
+  assert {
+    condition     = strcontains(google_compute_instance_template.api.metadata["mooc-env"], "REDIS_ADDR=10.0.1.5:6379") && strcontains(google_compute_instance_template.api.metadata["mooc-env"], "DB_HOST=10.30.0.3") && google_compute_instance_template.api.metadata["mooc-rol"] == "api"
+    error_message = "env de la api"
+  }
+  assert {
+    condition     = strcontains(google_compute_instance_template.worker.metadata["mooc-env"], "REDIS_ADDR=10.0.1.5:6379") && strcontains(google_compute_instance_template.worker.metadata["mooc-env"], "WORKER_CONCURRENCY=2")
+    error_message = "env del worker"
+  }
+  # Autoscalers: 1 a 3, CPU 60 %, cooldown 120 s.
+  assert {
+    condition = alltrue([for a in [google_compute_autoscaler.api, google_compute_autoscaler.workers] :
+      a.autoscaling_policy[0].min_replicas == 1 && a.autoscaling_policy[0].max_replicas == 3 &&
+    a.autoscaling_policy[0].cpu_utilization[0].target == 0.6 && a.autoscaling_policy[0].cooldown_period == 120])
+    error_message = "autoscalers"
+  }
+  assert {
+    condition     = google_compute_instance_group_manager.api.name == "mig-api" && google_compute_instance_group_manager.workers.name == "mig-workers"
+    error_message = "nombres de los MIG"
+  }
+  # Solo los rangos de los health checks y del balanceador llegan a la API.
+  assert {
+    condition     = toset(google_compute_firewall.health_checks.source_ranges) == toset(["130.211.0.0/22", "35.191.0.0/16"])
+    error_message = "firewall de health checks"
   }
 }
 

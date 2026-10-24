@@ -136,7 +136,8 @@ resource "google_compute_address" "redis_interna" {
 #
 # Todo lo que no está aquí queda cerrado por la regla implícita de denegar la
 # entrada. La salida está abierta salvo hacia Cloud SQL (abajo). La regla que
-# deja entrar al balanceador está en balanceador.tf.
+# deja entrar al balanceador y a los health checks está en computo.tf, junto
+# al MIG de API.
 
 resource "google_compute_firewall" "redis" {
   name                    = "${var.prefijo}-permitir-redis"

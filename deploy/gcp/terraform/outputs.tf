@@ -17,6 +17,19 @@ output "prefijo" {
   value = var.prefijo
 }
 
+output "mig_api" {
+  value = google_compute_instance_group_manager.api.name
+}
+
+output "mig_workers" {
+  value = google_compute_instance_group_manager.workers.name
+}
+
+output "imagen_tag" {
+  description = "Etiqueta móvil que arrancan las instancias (desplegar-vm.sh la mueve)."
+  value       = var.imagen_tag
+}
+
 output "vm_redis" {
   value = google_compute_instance.redis.name
 }
