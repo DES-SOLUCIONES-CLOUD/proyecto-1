@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # Carga un .env de despliegue en el entorno del script que lo incluye. Se usa
-# con `source`, EN la VM (en-vm.sh y deploy/web/certificado.sh).
+# con `source`, EN la VM (en-vm.sh).
 #
 # No se hace `source` del .env: ese archivo está escrito para
 # `docker compose --env-file`, que toma cada línea CLAVE=valor al pie de la

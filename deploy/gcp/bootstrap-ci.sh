@@ -209,7 +209,7 @@ ROLES=(
   # (storage.admin no incluye storage.hmacKeys.*).
   roles/storage.hmacKeyAdmin
   # identidades.tf: secretos, sus versiones y quién los lee. Terraform lee el
-  # valor de las versiones al refrescar, y generar-env.sh comprueba que
+  # valor de las versiones al refrescar, y desplegar-infra.sh comprueba que
   # tengan una activa; la clave de insignias se crea si falta.
   roles/secretmanager.admin
   # identidades.tf: el repositorio Docker, su política de limpieza y su IAM;

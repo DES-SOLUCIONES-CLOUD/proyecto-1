@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Abre una sesión o ejecuta un comando en el Web o el Worker Server por el
-# túnel de IAP.
+# Abre una sesión o ejecuta un comando en una VM por el túnel de IAP. Con
+# api o worker entra en la primera instancia en marcha de su MIG.
 #
-#   deploy/gcp/remoto.sh worker                                  # sesión interactiva
-#   deploy/gcp/remoto.sh web 'sudo /opt/mooc/actual/deploy/gcp/en-vm.sh estado'
-#   deploy/gcp/remoto.sh web 'sudo /opt/mooc/actual/deploy/web/certificado.sh letsencrypt'
-#   deploy/gcp/remoto.sh web -- -L 8025:127.0.0.1:8025 -N        # Mailpit en localhost:8025
+#   deploy/gcp/remoto.sh redis                                    # sesión interactiva
+#   deploy/gcp/remoto.sh api 'sudo /opt/mooc/bin/en-vm.sh estado'
+#   deploy/gcp/remoto.sh worker 'sudo docker logs -f mooc-worker-worker-1'
+#   deploy/gcp/remoto.sh redis -- -L 8025:127.0.0.1:8025 -N       # Mailpit en localhost:8025
 #
 # Lo que sigue a `--` va tal cual a ssh (túneles de puertos).
 source "$(dirname "$0")/lib.sh"
@@ -13,7 +13,7 @@ requiere terraform
 comprobar_gcloud
 requiere_infra
 
-rol="${1:?uso: remoto.sh <web|worker> [comando | -- opciones de ssh]}"
+rol="${1:?uso: remoto.sh <api|worker|redis> [comando | -- opciones de ssh]}"
 shift
 vm="$(vm_de "$rol")"
 if [[ "${1:-}" == "--" ]]; then

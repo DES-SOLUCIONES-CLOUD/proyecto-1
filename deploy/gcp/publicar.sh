@@ -2,7 +2,7 @@
 # Construye las imágenes FUERA de las e2-small y las publica en Artifact
 # Registry con el commit como etiqueta.
 #
-#   deploy/gcp/publicar.sh              # api, migrate, seed, worker, frontend y réplica de redis
+#   deploy/gcp/publicar.sh              # api, migrate, seed, worker y frontend
 #   deploy/gcp/publicar.sh --frontend   # aceptada; el frontend ya va siempre
 #
 # Por qué no compilar en las VM: el builder de Go y la imagen del worker
@@ -64,19 +64,14 @@ construir seed
 construir worker
 
 # Next incrusta NEXT_PUBLIC_API_URL al compilar: la imagen queda atada al
-# origen del Web Server (si cambia la IP o el dominio, se vuelve a publicar).
+# origen público del balanceador (si cambia su IP o el dominio, se vuelve a
+# publicar).
 aviso "construyendo frontend para $(salida url_publica)"
 fijar_cache frontend
 docker buildx build --platform linux/amd64 ${CACHE[@]+"${CACHE[@]}"} \
   --build-arg "NEXT_PUBLIC_API_URL=$(salida url_publica)" \
   -t "$REGISTRO/mooc-frontend:$TAG" --push frontend
 
-# Redis se replica en el registro para que el Worker no dependa de Docker Hub
-# ni de Cloud NAT: Artifact Registry le llega por Private Google Access.
-# imagetools copia el manifiesto entre registros sin descargar la imagen aquí.
-aviso "replicando redis:7.4-alpine en Artifact Registry"
-docker buildx imagetools create -t "$REGISTRO/redis:7.4-alpine" docker.io/library/redis:7.4-alpine
-
 mkdir -p "$ESTADO"
 echo "$TAG" > "$ESTADO/ultimo-tag"
-aviso "publicado $REGISTRO/*:$TAG"
+aviso "publicado $REGISTRO/*:$TAG. Siguiente: deploy/gcp/desplegar-vm.sh"

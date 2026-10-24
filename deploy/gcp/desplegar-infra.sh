@@ -110,5 +110,5 @@ asegurar_clave_insignias "$PROYECTO" "$PREFIJO" "$REGION"
 tf apply -input=false "$@"
 releer_salidas
 
-aviso "infraestructura lista. Siguiente: deploy/gcp/publicar.sh y deploy/gcp/generar-env.sh"
+aviso "infraestructura lista. Si hay un commit nuevo: deploy/gcp/publicar.sh y deploy/gcp/desplegar-vm.sh"
 tf output

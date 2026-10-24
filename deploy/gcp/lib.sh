@@ -96,7 +96,7 @@ asegurar_init() {
 }
 
 # Las salidas se leen una vez por ejecución: cada `terraform output` tarda
-# casi un segundo y generar-env.sh pide una veintena. Se cargan en el shell
+# casi un segundo y algunos scripts piden una veintena. Se cargan en el shell
 # del script (requiere_infra) y no dentro de $(salida ...), que es un
 # subshell: ahí la caché se perdería al volver.
 SALIDAS=""
@@ -237,11 +237,28 @@ registrar_bitacora() {
   aviso "bitácora actualizada: $archivo (completar la columna «Propósito» de la fila nueva)"
 }
 
-vm_de() {
+# mig_de <rol>: nombre del MIG del rol (api, worker).
+mig_de() {
   case "$1" in
-    web) salida vm_web ;;
-    worker) salida vm_worker ;;
-    *) morir "rol desconocido '$1' (web|worker)" ;;
+    api) salida mig_api ;;
+    worker) salida mig_workers ;;
+    *) morir "rol sin MIG '$1' (api|worker)" ;;
+  esac
+}
+
+# vm_de <rol>: la VM donde entrar. Redis es una VM fija; en api y worker, la
+# primera instancia en marcha del MIG (son intercambiables: misma plantilla).
+vm_de() {
+  local vm
+  case "$1" in
+    redis) salida vm_redis ;;
+    api|worker)
+      vm="$(gc compute instance-groups managed list-instances "$(mig_de "$1")" --zone "$(salida zona)" \
+              --filter 'instanceStatus=RUNNING' --format 'value(name)' --limit 1 2>/dev/null || true)"
+      [[ -n "$vm" ]] || morir "$(mig_de "$1") no tiene instancias en marcha (energia.sh estado)"
+      echo "$vm"
+      ;;
+    *) morir "rol desconocido '$1' (api|worker|redis)" ;;
   esac
 }
 
