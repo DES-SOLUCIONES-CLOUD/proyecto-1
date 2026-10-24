@@ -1,19 +1,21 @@
 #!/bin/bash
 # Script de arranque de las VM (metadato startup-script). Corre como root en
-# cada arranque; el trabajo real solo la primera vez. Instala Docker Engine
-# con el plugin compose, configura el acceso a Artifact Registry y el Ops
-# Agent. No despliega nada ni lleva secretos: eso es deploy/gcp/desplegar-vm.sh.
+# cada arranque, en dos partes:
+#
+# 1. Solo la primera vez: instala Docker Engine con el plugin compose,
+#    configura el acceso a Artifact Registry y el Ops Agent.
+# 2. Siempre: escribe desde los metadatos de la instancia su .env, su
+#    docker-compose.yml y en-vm.sh, y levanta los contenedores de su rol.
+#
+# La segunda parte es la que permite que el autoscaler cree instancias sin
+# que nadie entre a configurarlas. Este script no lleva secretos (lo puede
+# leer cualquiera con compute.instances.get): en-vm.sh los lee de Secret
+# Manager con la cuenta de servicio de la instancia.
 set -euo pipefail
 exec >>/var/log/mooc-arranque.log 2>&1
 echo "== arranque $(date -Is)"
 
 MARCA=/var/lib/mooc-arranque-ok
-if [[ -f "$MARCA" ]]; then
-  echo "ya instalado"
-  exit 0
-fi
-
-export DEBIAN_FRONTEND=noninteractive
 
 # apt puede estar ocupado por las actualizaciones automáticas del primer
 # arranque; se reintenta en lugar de fallar.
@@ -26,54 +28,82 @@ apt_() {
   return 1
 }
 
-apt_ update
-apt_ install -y ca-certificates curl gnupg
+instalar() {
+  export DEBIAN_FRONTEND=noninteractive
+  apt_ update
+  apt_ install -y ca-certificates curl gnupg
 
-# Docker Engine desde el repositorio de Docker: el docker.io de Debian 12 no
-# trae el plugin compose v2, y los compose de deploy/ lo necesitan (name:,
-# profiles, mem_limit con depends_on condicional).
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-chmod a+r /etc/apt/keyrings/docker.asc
-# shellcheck disable=SC1091
-. /etc/os-release
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $VERSION_CODENAME stable" \
-  > /etc/apt/sources.list.d/docker.list
-apt_ update
-apt_ install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  # Docker Engine desde el repositorio de Docker: el docker.io de Debian 12 no
+  # trae el plugin compose v2, y los compose de deploy/ lo necesitan (name:,
+  # profiles, mem_limit con depends_on condicional).
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $VERSION_CODENAME stable" \
+    > /etc/apt/sources.list.d/docker.list
+  apt_ update
+  apt_ install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
-# Rotación de registros por defecto para cualquier contenedor, también los
-# que se lancen a mano; los compose además la fijan por servicio.
-mkdir -p /etc/docker
-cat > /etc/docker/daemon.json <<'JSON'
+  # Rotación de registros por defecto para cualquier contenedor, también los
+  # que se lancen a mano; los compose además la fijan por servicio.
+  mkdir -p /etc/docker
+  cat > /etc/docker/daemon.json <<'JSON'
 { "log-driver": "json-file", "log-opts": { "max-size": "20m", "max-file": "5" } }
 JSON
-systemctl enable docker
-systemctl restart docker
+  systemctl enable docker
+  systemctl restart docker
 
-# gcloud viene en las imágenes de Debian de GCE; si no, se instala. Lo usan
-# el credential helper de Docker y en-vm.sh para leer Secret Manager.
-if ! command -v gcloud >/dev/null 2>&1; then
-  curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg -o /etc/apt/keyrings/cloud.google.asc
-  echo "deb [signed-by=/etc/apt/keyrings/cloud.google.asc] https://packages.cloud.google.com/apt cloud-sdk main" \
-    > /etc/apt/sources.list.d/google-cloud-sdk.list
-  apt_ update
-  apt_ install -y google-cloud-cli
-fi
+  # gcloud viene en las imágenes de Debian de GCE; si no, se instala. Lo usan
+  # el credential helper de Docker y en-vm.sh para leer Secret Manager.
+  if ! command -v gcloud >/dev/null 2>&1; then
+    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg -o /etc/apt/keyrings/cloud.google.asc
+    echo "deb [signed-by=/etc/apt/keyrings/cloud.google.asc] https://packages.cloud.google.com/apt cloud-sdk main" \
+      > /etc/apt/sources.list.d/google-cloud-sdk.list
+    apt_ update
+    apt_ install -y google-cloud-cli
+  fi
 
-# Pull desde Artifact Registry con la cuenta de servicio de la VM. Para root:
-# los despliegues corren con sudo.
-gcloud auth configure-docker ${registro_host} --quiet
+  # Pull desde Artifact Registry con la cuenta de servicio de la VM. Para
+  # root: en-vm.sh corre como root.
+  gcloud auth configure-docker ${registro_host} --quiet
 
 %{ if instalar_ops_agent ~}
-# Ops Agent: sin él Cloud Monitoring no ve memoria ni uso de disco de la VM.
-curl -fsSL https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh -o /tmp/ops-agent.sh
-bash /tmp/ops-agent.sh --also-install
-rm -f /tmp/ops-agent.sh
+  # Ops Agent: sin él Cloud Monitoring no ve memoria ni uso de disco de la VM.
+  curl -fsSL https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh -o /tmp/ops-agent.sh
+  bash /tmp/ops-agent.sh --also-install
+  rm -f /tmp/ops-agent.sh
 %{ endif ~}
 
-install -d -m 0755 /opt/mooc /opt/mooc/releases
-install -d -m 0700 /opt/mooc/config
+  touch "$MARCA"
+  echo "== instalación terminada $(date -Is)"
+}
 
-touch "$MARCA"
-echo "== arranque terminado $(date -Is)"
+if [[ -f "$MARCA" ]]; then
+  echo "ya instalado"
+else
+  instalar
+fi
+
+# --- Configuración y arranque del rol -------------------------------------------
+
+meta() {
+  curl -sSf -H 'Metadata-Flavor: Google' \
+    "http://metadata.google.internal/computeMetadata/v1/instance/attributes/$1"
+}
+
+ROL="$(meta mooc-rol)"
+install -d -m 0755 /opt/mooc /opt/mooc/bin "/opt/mooc/$ROL"
+install -d -m 0700 /opt/mooc/config
+meta mooc-en-vm > /opt/mooc/bin/en-vm.sh
+meta mooc-env-lib > /opt/mooc/bin/env.sh
+chmod 0755 /opt/mooc/bin/en-vm.sh
+meta mooc-compose > "/opt/mooc/$ROL/docker-compose.yml"
+( umask 077; meta mooc-env > "/opt/mooc/config/$ROL.env" )
+
+# Si falla (Cloud SQL detenida, imagen sin publicar), el registro queda aquí
+# y en Cloud Logging; se reintenta a mano con
+#   sudo /opt/mooc/bin/en-vm.sh <rol>
+/opt/mooc/bin/en-vm.sh "$ROL"
+echo "== arranque terminado ($ROL) $(date -Is)"

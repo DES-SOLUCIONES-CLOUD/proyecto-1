@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Se ejecuta EN la VM, como root (lo llama desplegar-vm.sh, o a mano tras
-# `gcloud compute ssh --tunnel-through-iap`). Lee /opt/mooc/config/<rol>.env,
-# trae los secretos de Secret Manager solo para esta invocación y levanta el
-# compose del rol con las imágenes de Artifact Registry del commit
-# desplegado.
+# Se ejecuta EN la VM, como root. El script de arranque
+# (terraform/arranque.sh.tftpl) lo copia de los metadatos de la instancia a
+# /opt/mooc/bin/en-vm.sh, junto con el .env y el docker-compose.yml del rol,
+# y lo llama en cada arranque. También se usa a mano tras
+# `deploy/gcp/remoto.sh`.
 #
-#   en-vm.sh web       # nginx + api + mailpit + frontend
-#   en-vm.sh worker    # redis + worker
-#   en-vm.sh migrar    # migraciones contra Cloud SQL (en el Web Server)
-#   en-vm.sh sembrar   # datos sintéticos de las pruebas de carga (Web Server)
+#   en-vm.sh api       # api + frontend (instancias de mig-api)
+#   en-vm.sh worker    # worker asynq (instancias de mig-workers)
+#   en-vm.sh redis     # redis + mailpit (VM fija)
+#   en-vm.sh migrar    # migraciones contra Cloud SQL (en una instancia de API)
+#   en-vm.sh sembrar   # datos sintéticos de las pruebas de carga (API)
 #   en-vm.sh estado    # contenedores, disco y memoria
 #
 # Los secretos acaban en el entorno de los contenedores (visible con
@@ -17,32 +18,43 @@
 # puede leer los suyos: los permisos están por secreto en Terraform.
 set -euo pipefail
 
-accion="${1:?uso: en-vm.sh <web|worker|migrar|sembrar|estado>}"
+BASE="${MOOC_BASE:-/opt/mooc}"
+
+# El rol de esta VM es el único con .env en config/.
+rol_local() {
+  local r
+  for r in api worker redis; do
+    [[ -f "$BASE/config/$r.env" ]] && { echo "$r"; return; }
+  done
+  echo "sin configuración en $BASE/config: ¿terminó el script de arranque? sudo tail -50 /var/log/mooc-arranque.log" >&2
+  exit 1
+}
+
+accion="${1:?uso: en-vm.sh <api|worker|redis|migrar|sembrar|estado>}"
 case "$accion" in
-  web|migrar|sembrar) rol=web ;;
-  worker) rol=worker ;;
-  estado)
-    rol=""
-    for r in web worker; do
-      [[ -f "/opt/mooc/config/$r.env" ]] && rol=$r
-    done
-    [[ -n "$rol" ]] || { echo "sin configuración en /opt/mooc/config" >&2; exit 1; }
+  api|worker|redis) rol="$accion" ;;
+  migrar|sembrar)
+    rol=api
+    [[ "$(rol_local)" == api ]] || { echo "$accion solo corre en una instancia de mig-api" >&2; exit 1; }
     ;;
+  estado) rol="$(rol_local)" ;;
   *) echo "acción desconocida '$accion'" >&2; exit 1 ;;
 esac
 
-DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-CONFIG="${MOOC_CONFIG:-/opt/mooc/config/$rol.env}"
-[[ -f "$CONFIG" ]] || { echo "falta $CONFIG (deploy/gcp/generar-env.sh + desplegar-vm.sh)" >&2; exit 1; }
+DIR="$(cd "$(dirname "$0")" && pwd)"
+CONFIG="${MOOC_CONFIG:-$BASE/config/$rol.env}"
+COMPOSE_FILE="$BASE/$rol/docker-compose.yml"
+[[ -f "$CONFIG" ]] || { echo "falta $CONFIG (lo escribe el script de arranque desde el metadato mooc-env)" >&2; exit 1; }
+[[ -f "$COMPOSE_FILE" ]] || { echo "falta $COMPOSE_FILE (metadato mooc-compose)" >&2; exit 1; }
 # shellcheck source=deploy/gcp/env.sh
-source "$DIR/deploy/gcp/env.sh"
+source "$DIR/env.sh"
 cargar_env "$CONFIG"
 # El frontend va siempre, salvo que el .env lo declare (aunque sea vacío).
-if [[ "$rol" == web && -z "${COMPOSE_PROFILES+x}" ]]; then
+if [[ "$rol" == api && -z "${COMPOSE_PROFILES+x}" ]]; then
   export COMPOSE_PROFILES=frontend
 fi
 
-compose() { docker compose -f "$DIR/deploy/$rol/docker-compose.yml" --env-file "$CONFIG" "$@"; }
+compose() { docker compose -f "$COMPOSE_FILE" --env-file "$CONFIG" "$@"; }
 
 # secreto <nombre>: última versión, vacío si no existe o no hay permiso.
 secreto() {
@@ -64,10 +76,10 @@ cargar_secretos() {
   S3_SECRET_KEY="${S3_SECRET_KEY:-$(secreto "${SECRETO_S3_SECRET_KEY:-}")}"
   obligatorio S3_SECRET_KEY "${SECRETO_S3_SECRET_KEY:-}"
   export DB_PASSWORD S3_SECRET_KEY
-  if [[ "$rol" == web ]]; then
+  if [[ "$rol" == api ]]; then
     # La contraseña del administrador solo viaja mientras ADMIN_EMAIL esté
     # definido: el administrador se crea en el primer arranque y después
-    # conviene retirar el correo del .env.
+    # conviene retirar el correo (variable admin_email de Terraform).
     ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
     if [[ -n "${ADMIN_EMAIL:-}" && -z "$ADMIN_PASSWORD" ]]; then
       ADMIN_PASSWORD="$(secreto "${SECRETO_ADMIN_PASSWORD:-}")"
@@ -77,43 +89,30 @@ cargar_secretos() {
   fi
 }
 
-# Imágenes del commit desplegado (VERSION lo escribe desplegar-vm.sh).
+# Imágenes de Artifact Registry con la etiqueta de la plantilla (MOOC_TAG,
+# normalmente "desplegada", que desplegar-vm.sh mueve al commit desplegado).
 fijar_imagenes() {
-  local tag
-  tag="$(cat "$DIR/VERSION" 2>/dev/null || true)"
-  [[ -n "$tag" ]] || { echo "falta $DIR/VERSION: despliega con deploy/gcp/desplegar-vm.sh" >&2; exit 1; }
   : "${REGISTRO:?falta REGISTRO en $CONFIG}"
-  if [[ "$rol" == web ]]; then
+  local tag="${MOOC_TAG:?falta MOOC_TAG en $CONFIG}"
+  if [[ "$rol" == api ]]; then
     export IMAGEN_API="$REGISTRO/mooc-api:$tag"
     export IMAGEN_MIGRATE="$REGISTRO/mooc-migrate:$tag"
     export IMAGEN_SEED="$REGISTRO/mooc-seed:$tag"
     export IMAGEN_FRONTEND="$REGISTRO/mooc-frontend:$tag"
   else
     export IMAGEN_WORKER="$REGISTRO/mooc-worker:$tag"
-    export IMAGEN_REDIS="$REGISTRO/redis:7.4-alpine"
   fi
 }
 
 case "$accion" in
-  web)
+  api|worker)
     cargar_secretos
     fijar_imagenes
     compose pull --quiet
-    # nginx no arranca sin certificado: si no hay ninguno, uno autofirmado
-    # provisional; `certificado.sh letsencrypt` lo sustituye.
-    MOOC_CONFIG="$CONFIG" "$DIR/deploy/web/certificado.sh" asegurar
     compose up -d --remove-orphans
-    # nginx se recrea siempre. Monta su configuración a través del enlace
-    # /opt/mooc/actual, y un bind mount fija el archivo al crear el
-    # contenedor: sin recrearlo seguiría leyendo la versión anterior, que la
-    # rotación de desplegar-vm.sh acaba borrando. Compose no lo detecta,
-    # porque la ruta escrita en el compose no cambia entre versiones.
-    compose up -d --no-deps --force-recreate nginx
     compose ps
     ;;
-  worker)
-    cargar_secretos
-    fijar_imagenes
+  redis)
     compose pull --quiet
     compose up -d --remove-orphans
     compose ps
@@ -124,10 +123,10 @@ case "$accion" in
     compose run --rm migrate
     ;;
   sembrar)
-    # Cloud SQL solo es alcanzable desde las dos VM, así que el sembrador
+    # Cloud SQL solo es alcanzable desde las instancias, así que el sembrador
     # corre aquí. El escenario (ids y sesiones) queda en /opt/mooc/salida
     # para copiarlo a la máquina del generador de carga:
-    #   deploy/gcp/remoto.sh web 'sudo cat /opt/mooc/salida/escenario.json' > load/salida/escenario.json
+    #   deploy/gcp/remoto.sh api 'sudo cat /opt/mooc/salida/escenario.json' > load/salida/escenario.json
     cargar_secretos
     fijar_imagenes
     mkdir -p /opt/mooc/salida
