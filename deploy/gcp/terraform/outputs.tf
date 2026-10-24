@@ -17,16 +17,13 @@ output "prefijo" {
   value = var.prefijo
 }
 
-output "vm_web" {
-  value = google_compute_instance.web.name
+output "vm_redis" {
+  value = google_compute_instance.redis.name
 }
 
-output "vm_worker" {
-  value = google_compute_instance.worker.name
-}
-
-output "ip_web" {
-  value = google_compute_address.web.address
+output "ip_lb" {
+  description = "IP pública del balanceador."
+  value       = google_compute_global_address.lb.address
 }
 
 output "host_web" {
@@ -37,9 +34,9 @@ output "url_publica" {
   value = local.url_publica
 }
 
-output "ip_worker" {
-  description = "IP interna del Worker: REDIS_ADDR del Web y REDIS_BIND_IP del Worker."
-  value       = google_compute_address.worker_interna.address
+output "ip_redis" {
+  description = "IP interna fija de Redis: REDIS_ADDR de la API y de los workers."
+  value       = google_compute_address.redis_interna.address
 }
 
 output "bd_instancia" {
@@ -110,6 +107,10 @@ output "sa_web" {
 
 output "sa_worker" {
   value = data.google_service_account.worker.email
+}
+
+output "sa_redis" {
+  value = data.google_service_account.redis.email
 }
 
 output "nat_activa" {

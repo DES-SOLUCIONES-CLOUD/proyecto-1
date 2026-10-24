@@ -5,7 +5,7 @@
 resource "google_billing_budget" "mensual" {
   count           = var.cuenta_facturacion != "" ? 1 : 0
   billing_account = var.cuenta_facturacion
-  display_name    = "${var.prefijo} - entrega 2"
+  display_name    = "${var.prefijo} - entrega 3"
 
   budget_filter {
     projects = ["projects/${data.google_project.actual.number}"]

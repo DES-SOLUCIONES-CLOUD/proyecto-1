@@ -29,7 +29,13 @@ variable "prefijo" {
 # --- Cómputo -----------------------------------------------------------------
 
 variable "tipo_maquina" {
-  description = "Tipo de las dos VM. e2-small = 2 vCPU compartidas (0,5 vCPU sostenida con ráfaga) y 2 GB. e2-custom-2-2048 da 2 vCPU dedicadas con los mismos 2 GB (ver README)."
+  description = "Tipo de las instancias de los MIG. e2-small = 2 vCPU compartidas (0,5 vCPU sostenida con ráfaga) y 2 GB, dentro del límite de referencia (2 vCPU / 2 GiB / 30 GiB)."
+  type        = string
+  default     = "e2-small"
+}
+
+variable "tipo_maquina_redis" {
+  description = "Tipo de la VM fija de Redis."
   type        = string
   default     = "e2-small"
 }
@@ -54,22 +60,28 @@ variable "instalar_ops_agent" {
 
 # --- Red ---------------------------------------------------------------------
 
-variable "cidr_web" {
-  description = "Subred del Web Server."
+variable "cidr_api" {
+  description = "Subred de las instancias de mig-api."
   type        = string
-  default     = "10.10.1.0/24"
+  default     = "10.0.0.0/24"
 }
 
-variable "cidr_worker" {
-  description = "Subred privada del Worker Server."
+variable "cidr_datos" {
+  description = "Subred privada de la VM de Redis."
   type        = string
-  default     = "10.10.2.0/24"
+  default     = "10.0.1.0/24"
 }
 
-variable "ip_worker" {
-  description = "IP interna fija del Worker (Redis). Fija para que REDIS_ADDR del Web no cambie al recrear la VM."
+variable "cidr_workers" {
+  description = "Subred de las instancias de mig-workers."
   type        = string
-  default     = "10.10.2.10"
+  default     = "10.0.2.0/24"
+}
+
+variable "ip_redis" {
+  description = "IP interna fija de la VM de Redis, dentro de cidr_datos. Fija porque REDIS_ADDR va en las plantillas."
+  type        = string
+  default     = "10.0.1.5"
 }
 
 variable "psa_direccion" {
@@ -85,13 +97,13 @@ variable "psa_prefijo" {
 }
 
 variable "habilitar_nat" {
-  description = "Cloud NAT para la salida del Worker. Hace falta en el primer arranque (Docker, Ops Agent); después el Worker solo habla con APIs de Google por Private Google Access y se puede apagar."
+  description = "Cloud NAT para la salida de las VM. Cada instancia nueva de un MIG instala Docker desde Internet al arrancar: sin NAT el scale-out falla."
   type        = bool
   default     = true
 }
 
 variable "dominio_web" {
-  description = "Nombre del Web Server para TLS. Vacío: <IP estática>.sslip.io."
+  description = "Nombre público para el certificado del balanceador. Vacío: <IP del balanceador>.sslip.io."
   type        = string
   default     = ""
 }

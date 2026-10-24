@@ -13,7 +13,8 @@
 #      cuenta de CI no puede habilitar APIs.
 #   2. El bucket del estado de Terraform.
 #   3. Las cuentas de servicio: mooc-deployer con los roles mínimos, y las
-#      de las VM (mooc-web, mooc-worker), de las que CI solo puede hacer uso.
+#      de las VM (mooc-web para la API, mooc-worker, mooc-redis), de las que
+#      CI solo puede hacer uso.
 #      Deshabilita la cuenta por defecto de Compute Engine.
 #   4. Workload Identity Federation: GitHub se autentica con el token OIDC
 #      de cada ejecución y no hay ninguna llave JSON que guardar ni rotar.
@@ -258,19 +259,24 @@ done
 # en las VM, el firewall, las claves HMAC y los permisos sobre buckets y
 # secretos. mooc-deployer puede usarlas (actAs: crear la VM con ellas y
 # entrar por OS Login) pero no cambiar su IAM ni crear otras.
-for rol_vm in web worker; do
+for rol_vm in web worker redis; do
   cuenta="$PREFIJO-$rol_vm@$PROYECTO.iam.gserviceaccount.com"
   if ! gcloud iam service-accounts describe "$cuenta" --project "$PROYECTO" >/dev/null 2>&1; then
     aviso "creando la cuenta de servicio $cuenta"
-    if [[ "$rol_vm" == web ]]; then
-      gcloud iam service-accounts create "$PREFIJO-web" --project "$PROYECTO" \
-        --display-name "MOOC Web Server (API)" \
-        --description "VM Web y API: firma cargas y descargas, lee Secret Manager y Artifact Registry."
-    else
-      gcloud iam service-accounts create "$PREFIJO-worker" --project "$PROYECTO" \
-        --display-name "MOOC Worker Server" \
-        --description "VM Worker: lee originales, escribe derivados HLS y PDFs de presentaciones."
-    fi
+    case "$rol_vm" in
+      web)
+        gcloud iam service-accounts create "$PREFIJO-web" --project "$PROYECTO" \
+          --display-name "MOOC API (mig-api)" \
+          --description "Instancias de API y frontend: firma cargas y descargas, lee Secret Manager y Artifact Registry." ;;
+      worker)
+        gcloud iam service-accounts create "$PREFIJO-worker" --project "$PROYECTO" \
+          --display-name "MOOC Workers (mig-workers)" \
+          --description "Instancias de worker: leen originales, escriben derivados HLS y PDFs de presentaciones." ;;
+      redis)
+        gcloud iam service-accounts create "$PREFIJO-redis" --project "$PROYECTO" \
+          --display-name "MOOC Redis" \
+          --description "VM fija de Redis y Mailpit: solo registros, métricas e imágenes." ;;
+    esac
     for _ in $(seq 1 20); do
       gcloud iam service-accounts describe "$cuenta" --project "$PROYECTO" >/dev/null 2>&1 && break
       sleep 3

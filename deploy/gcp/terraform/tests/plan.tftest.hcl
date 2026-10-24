@@ -3,7 +3,8 @@ mock_provider "google" {
   mock_data "google_service_account" { defaults = { email = "sa@p.iam.gserviceaccount.com", member = "serviceAccount:sa@p.iam.gserviceaccount.com" } }
   mock_resource "google_compute_network" { defaults = { id = "projects/mi-proyecto/global/networks/mooc-vpc" } }
   mock_resource "google_compute_subnetwork" { defaults = { id = "projects/mi-proyecto/regions/us-central1/subnetworks/s" } }
-  mock_resource "google_compute_address" { defaults = { address = "203.0.113.10" } }
+  mock_resource "google_compute_address" { defaults = { address = "10.0.1.5" } }
+  mock_resource "google_compute_global_address" { defaults = { address = "203.0.113.10", id = "projects/mi-proyecto/global/addresses/mooc-lb-ip" } }
   mock_resource "google_sql_database_instance" { defaults = { service_account_email_address = "p123@gcp-sa-cloud-sql.iam.gserviceaccount.com", private_ip_address = "10.30.0.3" } }
 }
 mock_provider "random" {}
@@ -15,8 +16,8 @@ variables {
 run "completo" {
   command = apply
   assert {
-    condition     = output.url_publica == "https://203.0.113.10.sslip.io"
-    error_message = "url_publica"
+    condition     = output.url_publica == "https://203.0.113.10.sslip.io" && output.ip_lb == "203.0.113.10"
+    error_message = "url_publica: ${output.url_publica}"
   }
   assert {
     condition     = output.bucket_hls == "mi-proyecto-mooc-hls"
@@ -35,8 +36,8 @@ run "completo" {
     error_message = "bd"
   }
   assert {
-    condition     = contains(google_storage_bucket.objetos.cors[0].response_header, "ETag")
-    error_message = "cors etag"
+    condition     = contains(google_storage_bucket.objetos.cors[0].response_header, "ETag") && contains(google_storage_bucket.objetos.cors[0].origin, "https://203.0.113.10.sslip.io")
+    error_message = "cors"
   }
   # La clave de insignias no se lee con un data source: el plan de CI no
   # debe depender de que ya exista.
@@ -46,8 +47,27 @@ run "completo" {
   }
   # Las cuentas de las VM las crea bootstrap-ci.sh; aquí solo se leen.
   assert {
-    condition     = google_compute_instance.web.service_account[0].email == data.google_service_account.web.email
-    error_message = "cuenta de servicio del Web"
+    condition     = google_compute_instance.redis.service_account[0].email == data.google_service_account.redis.email
+    error_message = "cuenta de servicio de Redis"
+  }
+
+  # Redis: VM fija e2-small, IP 10.0.1.5 en la subred de datos, sin IP externa.
+  assert {
+    condition     = google_compute_address.redis_interna.address == "10.0.1.5" && google_compute_subnetwork.datos.ip_cidr_range == "10.0.1.0/24"
+    error_message = "ip de redis"
+  }
+  assert {
+    condition     = length(google_compute_instance.redis.network_interface[0].access_config) == 0 && google_compute_instance.redis.machine_type == "e2-small"
+    error_message = "redis sin ip externa"
+  }
+  assert {
+    condition     = google_compute_instance.redis.metadata["mooc-rol"] == "redis" && strcontains(google_compute_instance.redis.metadata["mooc-env"], "REDIS_BIND_IP=10.0.1.5")
+    error_message = "metadatos de redis"
+  }
+  # Ningún archivo de los metadatos lleva finales CRLF.
+  assert {
+    condition     = alltrue([for v in values(google_compute_instance.redis.metadata) : !strcontains(v, "\r")])
+    error_message = "metadatos con CRLF"
   }
 }
 

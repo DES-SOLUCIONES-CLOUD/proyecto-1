@@ -45,6 +45,6 @@ provider "google" {
 
   default_labels = {
     proyecto = var.prefijo
-    entrega  = "2"
+    entrega  = "3"
   }
 }
