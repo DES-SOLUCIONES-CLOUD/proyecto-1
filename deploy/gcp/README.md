@@ -1,36 +1,39 @@
-# Despliegue en Google Cloud (Entrega 2)
+# Despliegue en Google Cloud (Entrega 3)
 
 Infraestructura como código (Terraform, provider `google`) y scripts para
-desplegar la plataforma en dos VM de Compute Engine, con Cloud SQL for
-PostgreSQL 16 por IP privada, Cloud Storage por su API XML compatible con S3
-y las imágenes en Artifact Registry.
+desplegar la plataforma detrás de un balanceador de aplicaciones externo,
+con dos grupos administrados de instancias (MIG) que autoescalan (API y
+workers), una VM fija de Redis, Cloud SQL for PostgreSQL 16 por IP privada,
+Cloud Storage por su API XML compatible con S3 y las imágenes en Artifact
+Registry.
 
-El informe de arquitectura (componentes, diagrama, decisiones, HLS público)
-está en [`docs/entrega2/Documento Arquitectura.docx`](../../docs/entrega2/Documento%20Arquitectura.docx).
-Índice operativo: [`docs/entrega2/`](../../docs/entrega2/README.md).
-Arranque que solo puede hacer el equipo: [`docs/entrega2/arranque.md`](../../docs/entrega2/arranque.md).
+La Entrega 2 (dos VM fijas con Nginx) está en el historial de git, con su
+documentación en [`docs/entrega2/`](../../docs/entrega2/README.md).
+
+Arranque que solo puede hacer el equipo: [`docs/entrega2/arranque.md`](../../docs/entrega2/arranque.md)
+(sigue vigente; `bootstrap-ci.sh` ahora crea también la cuenta `mooc-redis`).
 
 ```
 deploy/
 |-- gcp/
-|   |-- terraform/          VPC, firewall, NAT, VM, Cloud SQL, buckets, IAM, secretos, presupuesto
-|   |-- bootstrap-ci.sh     (una vez, el dueño) bucket del estado, cuenta de CI, Workload Identity
+|   |-- terraform/          VPC, firewall, NAT, balanceador, plantillas, MIGs, autoscalers,
+|   |                       VM de Redis, Cloud SQL, buckets, IAM, secretos, presupuesto
+|   |-- bootstrap-ci.sh     (una vez, el dueño) bucket del estado, cuentas, Workload Identity
 |   |-- desplegar-infra.sh  habilita APIs, terraform plan/apply, clave de insignias
 |   |-- escribir-tfvars.sh  (CI) terraform.tfvars desde las variables del repositorio
 |   |-- publicar.sh         construye y sube imágenes a Artifact Registry
-|   |-- generar-env.sh      deploy/web/.env y deploy/worker/.env desde las salidas
-|   |-- desplegar-vm.sh     copia deploy/ del commit por IAP y levanta el compose
+|   |-- desplegar-vm.sh     mueve la etiqueta "desplegada" y reemplaza las instancias de los MIG
 |   |-- en-vm.sh            (en la VM) lee Secret Manager y ejecuta docker compose
-|   |-- migrar.sh           migraciones contra Cloud SQL desde el Web Server
-|   |-- remoto.sh           ssh / comandos / túneles por IAP
-|   |-- energia.sh          detener e iniciar VM (y Cloud SQL)
+|   |-- migrar.sh           migraciones contra Cloud SQL desde una instancia de API
+|   |-- remoto.sh           ssh / comandos / túneles por IAP (api, worker, redis)
+|   |-- energia.sh          apagar e iniciar MIGs, Redis (y Cloud SQL)
 |   |-- resumen.sh          configuración efectiva en Markdown (evidencia del informe)
 |   |-- bd.sh               exportar, eliminar y recrear Cloud SQL
 |   |-- migrar-datos.sh     MinIO -> GCS y dump local -> Cloud SQL, con checksums y evidencia
 |   `-- destruir.sh         respaldar y eliminar todo
-|-- web/                    compose del Web Server (nginx TLS, API, frontend, Mailpit, certbot)
-|-- worker/                 compose del Worker Server (Redis, worker)
-`-- nginx/web-tls.conf      proxy con TLS, 80 -> 443, X-Forwarded-* fijos
+|-- api/                    compose de las instancias de mig-api (API :8080, frontend :3000)
+|-- worker/                 compose de las instancias de mig-workers (worker asynq)
+`-- redis/                  compose de la VM de Redis (Redis, Mailpit)
 
 .github/workflows/desplegar-gcp.yml    despliegue desde GitHub Actions (manual)
 .github/workflows/apagado-nocturno.yml apagado programado, opcional
@@ -45,43 +48,69 @@ comparten el estado de Terraform en un bucket.
 
 ## Arquitectura desplegada
 
-| Componente del enunciado | Servicio de GCP | Configuración |
+| Componente | Servicio de GCP | Configuración |
 |---|---|---|
-| Web Server | Compute Engine `e2-small` | Debian 12, pd-balanced 30 GB, Shielded VM, IP externa estática, subred `10.10.1.0/24` |
-| Worker Server | Compute Engine `e2-small` | Igual, sin IP externa, IP interna fija `10.10.2.10`, subred `10.10.2.0/24` con Private Google Access |
-| Red virtual privada | VPC modo custom | Dos subredes regionales, Cloud Router + Cloud NAT solo para la subred del Worker |
-| Firewall | Reglas de VPC por cuenta de servicio | 80/443 públicos al Web; 6379 Web -> Worker; 22 solo desde IAP; egress 5432 al rango de Cloud SQL solo desde las dos VM |
+| Entrada pública | External Application Load Balancer global (`EXTERNAL_MANAGED`) | IP global fija, 443 con certificado administrado por Google (TLS 1.2+), 80 redirige a 443; `/api/*` a la API y el resto al frontend |
+| API y frontend | MIG zonal `mig-api` con plantilla `e2-small` | 1 a 3 instancias, autoescala con CPU al 60 %, cooldown 120 s, autohealing por `/healthz`; subred `10.0.0.0/24`, sin IP externa |
+| Workers | MIG zonal `mig-workers` con plantilla `e2-small` | 1 a 3 instancias, CPU al 60 %, cooldown 120 s; FFmpeg y LibreOffice; subred `10.0.2.0/24`, sin IP externa |
+| Cola, sesiones, caché | VM fija `mooc-redis` `e2-small` | Redis 7.4 (AOF, `noeviction`) y Mailpit; IP interna estática `10.0.1.5` en la subred `10.0.1.0/24`, sin IP externa |
+| Red virtual privada | VPC modo custom | Tres subredes con Private Google Access; Cloud Router + Cloud NAT solo de salida |
+| Firewall | Reglas de VPC por cuenta de servicio | 8080/3000 a la API solo desde los rangos del balanceador; 6379 a Redis solo desde API y workers; 1025 (SMTP) solo desde la API; 22 solo desde IAP; egress 5432 solo desde API y workers |
 | PostgreSQL administrado | Cloud SQL for PostgreSQL 16, Enterprise | `db-custom-1-3840`, zonal, sin réplicas, solo IP privada (Private Service Access), `ENCRYPTED_ONLY`, backups diarios x3 |
 | Almacenamiento de objetos | Cloud Storage (API XML, HMAC) | Bucket privado `objetos`, bucket `hls` público de solo lectura, bucket `respaldos` |
-| Cola de mensajería | Redis 7.4 en contenedor en el Worker | AOF, `noeviction`, publicado solo en la IP interna |
-| Imágenes | Artifact Registry (Docker) | Se construyen fuera de las VM; pull con la cuenta de servicio |
+| Imágenes | Artifact Registry (Docker) | Se construyen fuera de las VM; las instancias arrancan la etiqueta `desplegada` |
 | Secretos | Secret Manager | Contraseña de la base, secretos HMAC, contraseña del admin, clave de insignias |
 | Administración | IAP TCP forwarding + OS Login | `gcloud compute ssh --tunnel-through-iap`; sin 22 abierto a Internet |
-| Métricas de VM | Ops Agent + Cloud Monitoring | Memoria y disco, que GCE no reporta sin agente |
-| Métricas de la base | Cloud SQL Query Insights | Latencia y carga por consulta |
+| Métricas | Ops Agent + Cloud Monitoring | CPU, memoria y disco de cada instancia; métricas del balanceador y del autoscaler |
 | Costos | Cloud Billing Budget | Alertas al 50, 90 y 100 % (y 100 % proyectado), sin descontar créditos |
 
-No se usan Cloud Load Balancing, Cloud CDN, Cloud Run, GKE ni Memorystore:
-el enunciado los excluye o no los pide en esta etapa.
-
 ```
-                      Internet
-                         |  443 / 80 (solo IP estática del Web)
-+------------------------|------------------------------ VPC mooc-vpc -----+
-|  subred web 10.10.1.0/24                  subred worker 10.10.2.0/24     |
-|  +---------------------------+   6379    +---------------------------+   |
-|  | Web Server (sa mooc-web)  |---------->| Worker (sa mooc-worker)   |   |
-|  | nginx TLS -> api, mailpit |           | redis, worker (FFmpeg/LO) |   |
-|  +-------------+-------------+           +------+-------------+------+   |
-|                | 5432 (TLS)                     | 5432        | PGA / NAT |
-|        +-------v-------------------------------v---+         |           |
-|        | Cloud SQL (peering servicenetworking)     |         |           |
-|        | rango PSA 10.30.0.0/20, sin IP pública    |         |           |
-|        +-------------------------------------------+         |           |
-+--------------------------------------------------------------|-----------+
-   Navegador --PUT/GET firmado--> storage.googleapis.com <------+
+                         Internet
+                            |  443 / 80
+                 +----------v-----------+
+                 | Balanceador externo  |  IP global, certificado, /healthz
+                 +----+-------------+---+
+            /api/*    |             |   resto
++---------------------|-------------|----------------- VPC mooc-vpc ----------+
+|  subred api 10.0.0.0/24           |                                         |
+|  +-------------------v-------------v--+     6379 / 1025    +-------------+   |
+|  | mig-api (1-3): api :8080,          |------------------->| mooc-redis  |   |
+|  |                frontend :3000      |                    | 10.0.1.5    |   |
+|  +----------------+-------------------+                    | redis,      |   |
+|                   | 5432 (TLS)          6379               | mailpit     |   |
+|                   |           +-------------------------->+-------------+   |
+|  subred workers   |           |                          subred datos       |
+|  +----------------|-----------+-------+                  10.0.1.0/24        |
+|  | mig-workers (1-3): worker (FFmpeg) |                                     |
+|  +----------------|-------------------+                                     |
+|           +------v--------------------------------+                         |
+|           | Cloud SQL (peering servicenetworking) |                         |
+|           | rango PSA 10.30.0.0/20, sin IP pública|                         |
+|           +---------------------------------------+                         |
++-----------------------------------------------------------------------------+
+   Navegador --PUT/GET firmado--> storage.googleapis.com <-- API y workers (PGA)
              --GET sin firma (hls/*)--> bucket hls
 ```
+
+### Cómo nace una instancia
+
+Nadie entra a configurar las instancias de los MIG: las crea y las borra el
+autoscaler. Todo lo que define una instancia está en su plantilla
+([`terraform/computo.tf`](terraform/computo.tf)):
+
+1. El script de arranque ([`terraform/arranque.sh.tftpl`](terraform/arranque.sh.tftpl))
+   instala Docker y el Ops Agent la primera vez.
+2. En cada arranque escribe desde los metadatos de la instancia su rol, su
+   `.env` (sin secretos: solo los nombres en Secret Manager), su
+   `docker-compose.yml` ([`../api`](../api), [`../worker`](../worker),
+   [`../redis`](../redis)) y `en-vm.sh`.
+3. `en-vm.sh` lee los secretos con la cuenta de servicio de la instancia,
+   baja las imágenes con la etiqueta `desplegada` y levanta los contenedores.
+
+Una instancia nueva tarda unos 3-4 minutos en atender. Desplegar un commit
+no toca Terraform: `desplegar-vm.sh` mueve la etiqueta `desplegada` a ese
+commit en Artifact Registry y reemplaza las instancias de forma gradual (una
+nueva antes de retirar cada vieja).
 
 ## Paso a paso desde un portátil
 
@@ -116,68 +145,64 @@ Requisitos locales: `gcloud`, `terraform` >= 1.7, `docker` con buildx, `git`,
    ```bash
    deploy/gcp/desplegar-infra.sh
    ```
-5. **Imágenes** (desde el portátil o CI, nunca en las e2-small):
+5. **Imágenes** (desde el portátil o CI, nunca en las e2-small). La del
+   frontend lleva incrustada la URL del balanceador, así que va después del
+   paso 4:
    ```bash
-   deploy/gcp/publicar.sh            # api, worker, seed y frontend
+   deploy/gcp/publicar.sh            # api, migrate, seed, worker y frontend
    ```
-6. **Configuración de cada VM:**
+6. **Despliegue**: mueve la etiqueta `desplegada` al commit publicado y
+   reemplaza las instancias, primero los workers. Espera a que cada MIG esté
+   estable (en la primera creación, 3-5 minutos por instancia).
    ```bash
-   TLS_EMAIL=equipo@ejemplo.co deploy/gcp/generar-env.sh
-   # opcional: ADMIN_EMAIL=... en deploy/web/.env para el administrador inicial
-   ```
-7. **Despliegue**, primero el Worker (la API conecta con Redis al arrancar).
-   El script comprueba que el arranque de la VM (Docker, Ops Agent) haya
-   terminado; en la primera creación puede tardar 3-5 minutos.
-   ```bash
-   deploy/gcp/desplegar-vm.sh worker
-   deploy/gcp/desplegar-vm.sh web
+   deploy/gcp/desplegar-vm.sh
    deploy/gcp/migrar.sh      # la API también migra al arrancar; esto da un código de salida
    ```
    Datos sintéticos para las pruebas de carga. Cloud SQL solo es alcanzable
-   desde las VM, así que el sembrador corre en el Web Server, y el escenario
-   (ids y sesiones) se trae a la máquina del generador de carga:
+   desde las instancias, así que el sembrador corre en una de mig-api (con el
+   MIG en 1 instancia, para traer el escenario de la misma):
    ```bash
-   deploy/gcp/remoto.sh web 'sudo /opt/mooc/actual/deploy/gcp/en-vm.sh sembrar'
-   deploy/gcp/remoto.sh web 'sudo cat /opt/mooc/salida/escenario.json' > load/salida/escenario.json
+   deploy/gcp/remoto.sh api 'sudo /opt/mooc/bin/en-vm.sh sembrar'
+   deploy/gcp/remoto.sh api 'sudo cat /opt/mooc/salida/escenario.json' > load/salida/escenario.json
    ```
    **Las cuentas sintéticas tienen contraseña pública** (está en
    `backend/cmd/seed/main.go`, a propósito) y la URL del entorno también lo
    es. Tras las pruebas hay que neutralizarlas: ver [Cuentas
    sintéticas](#cuentas-sintéticas-después-de-las-pruebas).
-8. **Certificado real** (sustituye al autofirmado provisional):
+7. **Certificado**: lo emite Google cuando el nombre resuelve a la IP del
+   balanceador, entre 15 y 60 minutos después del primer apply. Hasta
+   entonces `https://` falla con error de TLS.
    ```bash
-   deploy/gcp/remoto.sh web 'sudo /opt/mooc/actual/deploy/web/certificado.sh letsencrypt'
-   curl -s "$(terraform -chdir=deploy/gcp/terraform output -raw url_publica)/api/v1/health"
+   gcloud compute ssl-certificates describe "$(terraform -chdir=deploy/gcp/terraform output -raw certificado)" --global --format 'value(managed.status)'
+   curl -sI "$(terraform -chdir=deploy/gcp/terraform output -raw url_publica)/"
    ```
-9. **Tras el primer arranque**, si se usó `ADMIN_EMAIL`: la contraseña está
-   en `gcloud secrets versions access latest --secret mooc-admin-password`.
-   Vaciar `ADMIN_EMAIL` y volver a desplegar el Web.
-10. **Opcional:** apagar Cloud NAT, que ya no hace falta (el Worker baja su
-    imagen y la de Redis de Artifact Registry por Private Google Access):
-    ```bash
-    deploy/gcp/desplegar-infra.sh -var habilitar_nat=false
-    ```
-    Mejor fijarlo en `terraform.tfvars` para que el siguiente `apply` no la
-    vuelva a crear. Hay que volver a encenderla para recrear el Worker.
+8. **Administrador inicial**: con `admin_email = "..."` en `terraform.tfvars`
+   se crea en el primer arranque; la contraseña está en
+   `gcloud secrets versions access latest --secret mooc-admin-password`.
+   Después vaciar `admin_email` y aplicar.
 
 Operación diaria. `energia.sh` y `bd.sh eliminar`/`recrear` añaden sola la
 fila en `capacity-planning/bitacora-costos.md`; solo falta completar el
 «Propósito»:
 
 ```bash
-deploy/gcp/energia.sh detener --con-bd      # fin de la sesión de trabajo
+deploy/gcp/energia.sh detener --con-bd      # fin de la sesión: MIGs a 0, Redis detenida
 deploy/gcp/energia.sh iniciar --con-bd
-deploy/gcp/remoto.sh web 'sudo /opt/mooc/actual/deploy/gcp/en-vm.sh estado'
-deploy/gcp/remoto.sh worker 'sudo docker compose -f /opt/mooc/actual/deploy/worker/docker-compose.yml logs --tail 100 worker'
-deploy/gcp/remoto.sh web -- -L 8025:127.0.0.1:8025 -N   # Mailpit en http://localhost:8025
-deploy/gcp/desplegar-vm.sh web <tag-anterior>           # volver atrás
+deploy/gcp/energia.sh estado
+deploy/gcp/remoto.sh api 'sudo /opt/mooc/bin/en-vm.sh estado'
+deploy/gcp/remoto.sh worker 'sudo docker logs --tail 100 mooc-worker-worker-1'
+deploy/gcp/remoto.sh redis -- -L 8025:127.0.0.1:8025 -N   # Mailpit en http://localhost:8025
+deploy/gcp/desplegar-vm.sh <tag-anterior>                 # volver atrás
 ```
 
-Para entrar a psql, desde el Web (Cloud SQL no es alcanzable desde fuera de
-la VPC):
+`energia.sh detener` apaga el autoscaler de cada MIG (modo off) y lo deja en
+0 instancias; un `terraform apply` posterior lo vuelve a encender.
+
+Para entrar a psql, desde una instancia de API (Cloud SQL no es alcanzable
+desde fuera de la VPC):
 
 ```bash
-deploy/gcp/remoto.sh web
+deploy/gcp/remoto.sh api
 sudo docker run --rm -it postgres:16-alpine psql "host=<DB_HOST> user=mooc dbname=mooc sslmode=require"
 ```
 
@@ -255,12 +280,11 @@ credenciales de 1 hora de mooc-deployer --> Terraform (estado en gs://<proyecto>
    | `GCP_DEPLOYER_SA` | sí | `mooc-deployer@<proyecto>.iam.gserviceaccount.com` | autenticación |
    | `TF_STATE_BUCKET` | sí | `<proyecto>-tfstate` | backend de Terraform |
    | `GCP_REGION`, `GCP_ZONE` | no | `us-central1`, `us-central1-a` | región y zona |
-   | `TLS_EMAIL` | recomendada | correo del equipo | avisos de Let's Encrypt |
    | `CUENTA_FACTURACION` | no | `XXXXXX-XXXXXX-XXXXXX` | presupuesto (solo si el bootstrap pudo dar `billing.costsManager`) |
    | `PRESUPUESTO_MONTO`, `PRESUPUESTO_MONEDA` | no | `50`, `USD` | presupuesto |
    | `TIPO_MAQUINA`, `BD_TIER` | no | `e2-small`, `db-custom-1-3840` | configuración de la corrida |
    | `CREAR_BD` | **sí** | `true` | `false` tras `bd.sh eliminar`; sin valor el plan falla a propósito |
-   | `HABILITAR_NAT` | no | `true` / `false` | NAT del Worker |
+   | `HABILITAR_NAT` | no | `true` | NAT de las VM; los MIG la necesitan para crear instancias |
    | `DOMINIO_WEB` | no | vacío (sslip.io) | nombre del certificado |
    | `WORKER_CONCURRENCY`, `AUTH_RATE_LIMIT_PER_MINUTE` | no | `2`, vacío | parámetros del experimento |
    | `ADMIN_EMAIL` | no | correo | administrador inicial; quitarla tras el primer despliegue |
@@ -327,22 +351,19 @@ En Actions > *Desplegar en GCP* > *Run workflow*, o con `gh`, en este orden:
 |---|---|---|---|
 | 1 | `plan` | Opcional: ver qué se va a crear, sin tocar nada | 2 min |
 | 2 | `infra` | Plan, aprobación (si `gcp` la exige) y apply de ese plan | 15-20 min (Cloud SQL) |
-| 3 | `publicar` | Construye api, migrate, seed y worker en el runner y las sube con el commit como etiqueta | 10-15 min la primera, menos con caché |
-| 4 | `desplegar` | `generar-env.sh`, Worker, Web y migraciones | 5-10 min |
-| 5 | `certificado` | Let's Encrypt en el Web Server (una vez) | 1 min |
+| 3 | `publicar` | Construye api, migrate, seed, worker y frontend en el runner y las sube con el commit como etiqueta | 10-15 min la primera, menos con caché |
+| 4 | `desplegar` | Mueve `desplegada` al commit, reemplaza las instancias de los dos MIG y migra | 10-15 min |
 
 ```bash
 gh workflow run desplegar-gcp.yml -f accion=infra
 gh run watch
 gh workflow run desplegar-gcp.yml -f accion=publicar
 gh workflow run desplegar-gcp.yml -f accion=desplegar
-gh workflow run desplegar-gcp.yml -f accion=certificado
 ```
 
 `todo` encadena 2, 3 y 4 en una ejecución (con dos aprobaciones si `gcp`
-tiene revisores: la del apply y la del despliegue). Tras el paso 2 las VM
-tardan 3-5 minutos en instalar Docker; si `desplegar` llega antes, falla con
-"el arranque de la VM no terminó" y basta con repetirlo.
+tiene revisores: la del apply y la del despliegue). El certificado del
+balanceador lo emite Google solo, sin acción.
 
 Si el primer despliegue se hace con `ADMIN_EMAIL`, la contraseña está en
 Secret Manager (`mooc-admin-password`); después borrar la variable y volver a
@@ -355,8 +376,10 @@ desplegar.
   infraestructura y no aplica nada si no hay cambios). Un push que solo
   toca Markdown o `docs/` no dispara el workflow.
 - **Volver atrás:** `desplegar` con `tag` = un commit o un tag de git ya
-  publicado (p. ej. `entrega-2`). Se despliega `deploy/` de ese commit con sus
-  imágenes; si no se publicaron, el trabajo falla antes de tocar las VM.
+  publicado. Se mueve `desplegada` a sus imágenes y se reemplazan las
+  instancias; si no se publicaron, el trabajo falla antes de tocar nada. Los
+  compose y el `.env` son los de la plantilla vigente (Terraform), no los
+  del commit.
 - **Cambio de infraestructura:** editar `terraform/` o las variables del
   repositorio y `infra`. El plan queda en el resumen de la ejecución; si el
   estado cambia entre el plan y la aprobación, el apply se rechaza por
@@ -380,10 +403,10 @@ desplegar.
   no lo retiene. GitHub desactiva los programados de un repositorio público
   tras 60 días sin actividad.
 - **Evidencia:** cada ejecución que despliega termina con
-  [`resumen.sh`](resumen.sh): URL, salud de la API (y si el certificado es
-  el autofirmado), commit desplegado en cada VM leído de la propia VM, tipo
-  de máquina y disco, tier, edición y estado de Cloud SQL,
-  `WORKER_CONCURRENCY` y el límite de autenticación efectivos. `estado` lo
+  [`resumen.sh`](resumen.sh): URL e IP del balanceador, salud de la API (y
+  si el certificado aún no está activo), commit al que apunta `desplegada`,
+  tipo de máquina, instancias en marcha y política del autoscaler de cada
+  MIG, la VM de Redis, y tier, edición y estado de Cloud SQL. `estado` lo
   da sin cambiar nada. En local: `deploy/gcp/resumen.sh`.
 - Lo que no tiene acción (`bd.sh`, `destruir.sh`, túneles a Mailpit, psql)
   se sigue haciendo desde un portátil con permisos de dueño.
@@ -393,16 +416,14 @@ desplegar.
 Los registros y los resúmenes de un repositorio público los ve cualquiera.
 No llevan secretos:
 
-- Los `.env` que genera CI solo llevan nombres de secretos, IDs e IPs
-  privadas; los valores los lee cada VM de Secret Manager con su propia
-  cuenta de servicio (`en-vm.sh`) y no pasan por el runner.
+- Los `.env` de las plantillas solo llevan nombres de secretos, IDs e IPs
+  privadas; los valores los lee cada instancia de Secret Manager con su
+  propia cuenta de servicio (`en-vm.sh`) y no pasan por el runner.
 - `terraform plan` enmascara los valores sensibles (`(sensitive value)`); el
   JSON del plan, que no los enmascara, solo se filtra con `jq` para listar
   recursos y nunca se imprime ni se guarda. El plan binario va al bucket del
   estado, no a un artefacto.
-- `generar-env.sh` comprueba que cada secreto tenga versión activa sin
-  leer su valor; `resumen.sh` solo lee dos parámetros no secretos de los
-  `.env` de las VM.
+- `resumen.sh` no entra en las VM: lee la API de Compute Engine.
 - La clave de insignias se genera en `bootstrap-ci.sh` o `desplegar-infra.sh`
   y va directa a Secret Manager desde un archivo temporal.
 
@@ -499,12 +520,12 @@ en el código. Al terminar las pruebas, suspenderlas y revocar sus sesiones.
 No se borran: el curso de carga las referencia (`teacher_id` es `ON DELETE
 RESTRICT`) y sus intentos y progreso son parte de la evidencia. Suspender es
 lo mismo que hace la API de administración (la cuenta no puede iniciar
-sesión y sus sesiones quedan revocadas). Desde el Web Server, con la
+sesión y sus sesiones quedan revocadas). Desde una instancia de API, con la
 contraseña de la base de Secret Manager:
 
 ```bash
-deploy/gcp/remoto.sh web
-# En la VM. La contraseña la lee la cuenta del Web; -e PGPASSWORD pasa la
+deploy/gcp/remoto.sh api
+# En la VM. La contraseña la lee la cuenta de la API; -e PGPASSWORD pasa la
 # variable por nombre, sin que el valor aparezca en la línea de órdenes.
 export PGPASSWORD="$(gcloud secrets versions access latest --secret mooc-bd-password)"
 sudo -E docker run --rm -i -e PGPASSWORD \
@@ -585,46 +606,46 @@ otra configuración.
 Container-Optimized OS trae Docker, pero no el plugin compose, no tiene
 gestor de paquetes (el Ops Agent no se instala ahí), su sistema de archivos
 raíz es de solo lectura y `gcloud` solo está dentro de `toolbox`. Habría que
-correr compose como contenedor y reescribir `en-vm.sh` y `certificado.sh`.
+correr compose como contenedor y reescribir `en-vm.sh`.
 Debian 12 trae `google-cloud-cli`, admite el Ops Agent y el repositorio
 oficial de Docker da Engine y compose v2 (el `docker.io` de Debian no trae
-compose v2). El precio es depender de Internet en el primer arranque, que es
-lo que motiva Cloud NAT.
+compose v2). El precio es depender de Internet en el arranque de cada
+instancia, que es lo que motiva Cloud NAT.
 
-El script de arranque (`terraform/arranque.sh.tftpl`) solo instala: los
-metadatos de la VM los lee cualquiera con `compute.instances.get`, así que no
-lleva configuración ni secretos. Deja `/var/log/mooc-arranque.log` y la marca
-`/var/lib/mooc-arranque-ok`, que `desplegar-vm.sh` comprueba.
+El script de arranque (`terraform/arranque.sh.tftpl`) no lleva secretos: los
+metadatos de la VM los lee cualquiera con `compute.instances.get`. Sí lleva
+la configuración no secreta (el `.env` con los nombres de los secretos y el
+compose del rol), que es lo que permite que el autoscaler cree instancias
+sin intervención. Deja `/var/log/mooc-arranque.log` y la marca
+`/var/lib/mooc-arranque-ok`.
 
-### Salida del Worker: Cloud NAT apagable
+### Salida a Internet: Cloud NAT
 
-El Worker no tiene IP externa. Casi todo lo que necesita es de Google
-(Cloud Storage, Artifact Registry, Secret Manager, Logging y Monitoring) y le
+Ninguna VM tiene IP externa. Casi todo lo que necesitan es de Google (Cloud
+Storage, Artifact Registry, Secret Manager, Logging y Monitoring) y les
 llega por **Private Google Access**, sin NAT y sin salir de la red de Google.
-Lo que no es de Google son el repositorio de Docker, los paquetes de Debian y
-el del Ops Agent, que solo se usan en el primer arranque. Redis se replica en
-Artifact Registry (`publicar.sh`) para que tampoco dependa de Docker Hub.
+Lo que no es de Google son el repositorio de Docker, los paquetes de Debian,
+el del Ops Agent y las imágenes de Redis y Mailpit de Docker Hub.
 
-Por eso Cloud NAT existe para el aprovisionamiento y se puede quitar después
-(`habilitar_nat=false`). Cuesta poco (ver costos) y no toca el tráfico
-pesado: con Private Google Access, las peticiones a las APIs de Google no
-pasan por la NAT.
+En la Entrega 2 la NAT solo hacía falta en el primer arranque y se podía
+quitar. Con los MIG ya no: cada instancia que crea el autoscaler instala
+Docker al nacer, y sin NAT el scale-out falla. Cuesta poco (ver costos) y no
+toca el tráfico pesado: con Private Google Access, las peticiones a las APIs
+de Google no pasan por la NAT.
 
 Alternativas descartadas:
 
 - **Sin NAT y con Container-Optimized OS** (Docker de serie, todo desde
   Artifact Registry): los problemas de COS de arriba, y sin Ops Agent.
 - **Imagen propia con Docker preinstalado** (Packer o una imagen de disco):
-  otra herramienta y otro artefacto que mantener para ahorrar unos
-  dólares al mes.
-- **Proxy HTTP en el Web Server**: convierte al Web en ruta de salida del
-  Worker, más configuración y un punto único más.
-- **IP externa en el Worker con el firewall cerrado**: incumple que el
-  Worker no se exponga a Internet, aunque ninguna regla lo abra.
+  quitaría la NAT y bajaría el tiempo de scale-out de unos 3-4 minutos a
+  menos de uno, a cambio de otro artefacto que mantener. Es la mejora más
+  directa si el tiempo de arranque pesa en las pruebas de autoescalado.
+- **IP externa en las instancias con el firewall cerrado**: incumple que
+  solo el balanceador se exponga a Internet, aunque ninguna regla lo abra.
 
 La ruta por defecto `0.0.0.0/0 -> default-internet-gateway` se conserva: la
-necesitan la IP pública del Web, la NAT y Private Google Access con el dominio
-por defecto. minio-go solo reconoce GCS si el endpoint es exactamente
+necesitan la NAT y Private Google Access con el dominio por defecto. minio-go solo reconoce GCS si el endpoint es exactamente
 `storage.googleapis.com` (rechaza `private.googleapis.com` y los endpoints
 regionales), así que no se usan los VIP privados.
 
@@ -783,13 +804,18 @@ mínimo es pedir la excepción para el proyecto; si no se concede, la única
 salida que no abre nada es la opción (c), que habría que implementar. En
 ningún caso se abre el bucket privado.
 
-### HTTPS
+### HTTPS e IP del cliente
 
-nginx termina TLS en el Web con Let's Encrypt sobre `<IP estática>.sslip.io`
-(o `dominio_web`), redirige 80 a 443, sobrescribe `X-Forwarded-For` con la
-IP real (la API la usa para el límite de tasa) y fija
-`X-Forwarded-Proto https`. `COOKIE_SECURE=true`. Hasta que se emite el
-certificado real sirve uno autofirmado de 30 días.
+El balanceador termina TLS con un certificado administrado por Google sobre
+`<IP del balanceador>.sslip.io` (o `dominio_web`) y una política SSL con
+TLS 1.2 como mínimo, y redirige 80 a 443. `COOKIE_SECURE=true`.
+
+A diferencia del Nginx de la Entrega 2, que sobrescribía `X-Forwarded-For`,
+el balanceador **añade** `<IP del cliente>, <IP del balanceador>` detrás de
+lo que mande el cliente. La API toma la IP del límite de tasa contando desde
+el final (`TRUSTED_PROXY_HOPS=2` en [`../api/docker-compose.yml`](../api/docker-compose.yml)):
+tomar el primer elemento dejaría saltarse el límite de login inventando una
+IP en cada intento.
 
 ## Costos
 
@@ -800,10 +826,11 @@ filtrando por la etiqueta `proyecto=mooc`.
 
 | Recurso | Supuesto | USD/hora | USD/mes (730 h) |
 |---|---|---|---|
-| 2 x e2-small | encendidas | 2 x 0,0168 | 24,5 |
-| 2 x disco pd-balanced 30 GB | siempre (también detenidas) | | 6,0 |
-| IP externa estática del Web | en uso (0,005/h); **sin uso, 0,01/h** | 0,005 | 3,7 |
-| Cloud NAT | 1 VM (0,0014/h) + su IP (0,005/h) + 0,045/GB procesado | 0,0064 | 4,7 + tráfico |
+| 3 x e2-small (mínimo: 1 API, 1 worker, Redis) | encendidas; cada instancia extra del autoscaler suma 0,0168/h | 3 x 0,0168 | 36,8 |
+| 3 x disco pd-balanced 30 GB | los de los MIG se borran con sus instancias | | 9,0 |
+| Balanceador: reglas de reenvío | 2 reglas (80 y 443), las 5 primeras a 0,025/h en total | 0,025 | 18,3 |
+| Balanceador: datos procesados | 0,008/GB | | depende de las pruebas |
+| Cloud NAT | 0,0014/h por VM + IP (0,005/h) + 0,045/GB procesado | ~0,01 | ~7 + tráfico |
 | Cloud SQL db-custom-1-3840 | encendida | 0,0676 | 49,3 |
 | Cloud SQL almacenamiento | 10 GB SSD, 0,17/GB-mes (también detenida) | | 1,7 |
 | Cloud SQL backups | ~3 x tamaño de la base, 0,08/GB-mes | | < 1 |
@@ -815,11 +842,12 @@ filtrando por la etiqueta `proyecto=mooc`.
 | Ops Agent / Logging | dentro de las cuotas gratuitas para 2 VM | | ~0 |
 | IAP TCP forwarding | | | 0 |
 
-Todo encendido: unos **0,12 USD/hora**, ~90 USD/mes. Con Cloud SQL
+Todo encendido con el mínimo de instancias: unos **0,16 USD/hora**, ~120
+USD/mes; cada instancia que añade el autoscaler, 0,0168 USD/hora. Con Cloud SQL
 `db-g1-small` baja a ~0,09 USD/hora. Lo que no se va con `energia.sh
-detener --con-bd` (~15 USD/mes): discos, la IP estática (sube a la tarifa de
-IP reservada sin uso), la NAT si sigue habilitada, el almacenamiento y los
-backups de Cloud SQL, los buckets y el registro.
+detener --con-bd` (~30 USD/mes): las reglas de reenvío del balanceador, el
+disco de Redis, la NAT si sigue habilitada, el almacenamiento y los backups
+de Cloud SQL, los buckets y el registro.
 
 - **Cloud SQL detenida** (`activation-policy NEVER`) no se vuelve a encender
   sola y deja de cobrar CPU y memoria, pero sigue cobrando almacenamiento y
@@ -844,20 +872,19 @@ Tras registrar las evidencias:
 
 ```bash
 deploy/gcp/bd.sh eliminar        # export a gs://...-respaldos y a deploy/gcp/respaldos/, borra Cloud SQL
-deploy/gcp/energia.sh detener    # VM detenidas: quedan discos, IP y buckets
+deploy/gcp/energia.sh detener    # MIGs a 0 y Redis detenida: quedan el balanceador, el disco de Redis y los buckets
 ```
 
 Para la sustentación:
 
 ```bash
 deploy/gcp/bd.sh recrear gs://<bucket_respaldos>/exports/<export>.sql.gz
-deploy/gcp/generar-env.sh -f     # la IP privada de la base cambió
+deploy/gcp/desplegar-infra.sh    # la IP privada de la base cambió: plantillas nuevas con el DB_HOST nuevo
 deploy/gcp/energia.sh iniciar
-deploy/gcp/desplegar-vm.sh worker && deploy/gcp/desplegar-vm.sh web
 ```
 
-La importación va antes de desplegar la API: si arrancara contra la base
-vacía, migraría y la importación chocaría con las tablas creadas.
+La importación va antes de encender los MIG: si la API arrancara contra la
+base vacía, migraría y la importación chocaría con las tablas creadas.
 
 `bd.sh` y `destruir.sh` se corren desde un portátil (dueño del proyecto),
 sobre el mismo estado remoto que usa GitHub Actions. Si el equipo despliega

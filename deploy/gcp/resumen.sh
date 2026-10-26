@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Imprime en Markdown la configuración efectiva del entorno: lo que de verdad
-# está corriendo, leído de GCP y de las VM, no lo que dicen las variables.
-# Es la evidencia que el informe de capacidad pide registrar en cada corrida
-# (tipo de VM, tier de la base, concurrencia de los workers, commit).
+# está corriendo, leído de GCP, no lo que dicen las variables. Es la
+# evidencia que el informe de capacidad pide registrar en cada corrida (tipo
+# de VM, tamaño de los MIG, tier de la base, commit).
 #
 #   deploy/gcp/resumen.sh                   # a la terminal
 #   deploy/gcp/resumen.sh >> "$GITHUB_STEP_SUMMARY"
 #
-# Lee las VM por IAP solo si están encendidas. No imprime secretos: de los
-# .env de las VM solo toma WORKER_CONCURRENCY y AUTH_RATE_LIMIT_PER_MINUTE.
+# No entra en las VM: lee la API de Compute Engine y las salidas de
+# Terraform. No imprime secretos.
 source "$(dirname "$0")/lib.sh"
 requiere terraform curl
 comprobar_gcloud
@@ -17,42 +17,48 @@ requiere_infra
 ZONA="$(salida zona)"
 URL="$(salida url_publica)"
 BD="$(salida bd_instancia)"
+REGISTRO="$(salida registro)"
+ETIQUETA="$(salida imagen_tag)"
 
-# vm <nombre>: tipo, estado y disco de arranque (se llama igual que la VM).
+# mig <nombre>: tipo de máquina de la plantilla vigente, instancias en marcha
+# y política del autoscaler.
+mig() {
+  local plantilla tipo en_marcha autoscaler politica
+  plantilla="$(gc compute instance-groups managed describe "$1" --zone "$ZONA" \
+                 --format 'value(versions[0].instanceTemplate.basename())' 2>/dev/null || true)"
+  [[ -n "$plantilla" ]] || { echo "no existe"; return; }
+  tipo="$(gc compute instance-templates describe "$plantilla" \
+            --format 'value(properties.machineType)' 2>/dev/null || true)"
+  en_marcha="$(gc compute instance-groups managed list-instances "$1" --zone "$ZONA" \
+                 --filter 'instanceStatus=RUNNING' --format 'value(name)' 2>/dev/null | wc -l | tr -d ' ')"
+  autoscaler="$(gc compute instance-groups managed describe "$1" --zone "$ZONA" \
+                  --format 'value(status.autoscaler.basename())' 2>/dev/null || true)"
+  politica="sin autoscaler"
+  if [[ -n "$autoscaler" ]]; then
+    politica="$(gc compute autoscalers describe "$autoscaler" --zone "$ZONA" \
+                  --format 'value(autoscalingPolicy.mode,autoscalingPolicy.minNumReplicas,autoscalingPolicy.maxNumReplicas,autoscalingPolicy.cpuUtilization.utilizationTarget,autoscalingPolicy.coolDownPeriodSec)' 2>/dev/null \
+                | awk -F'\t' '{printf "autoscaler %s, %s-%s instancias, CPU %s, cooldown %s s", $1, $2, $3, $4, $5}')"
+  fi
+  printf '%s, %s en marcha, %s' "${tipo:-?}" "$en_marcha" "$politica"
+}
+
 vm() {
-  local datos disco
+  local datos
   datos="$(gc compute instances describe "$1" --zone "$ZONA" \
-             --format 'value(machineType.basename(),status)' 2>/dev/null || true)"
-  disco="$(gc compute disks describe "$1" --zone "$ZONA" \
-             --format 'value(sizeGb,type.basename())' 2>/dev/null || true)"
+             --format 'value(machineType.basename(),status,networkInterfaces[0].networkIP)' 2>/dev/null || true)"
   [[ -n "$datos" ]] || { echo "no existe"; return; }
-  # value() separa con tabuladores.
-  printf '%s, %s, disco %s GB %s' "${datos%%$'\t'*}" "${datos##*$'\t'}" "${disco%%$'\t'*}" "${disco##*$'\t'}"
+  awk -F'\t' '{printf "%s, %s, IP interna %s", $1, $2, $3}' <<<"$datos"
 }
 
-encendida() {
-  [[ "$(gc compute instances describe "$(vm_de "$1")" --zone "$ZONA" --format 'value(status)' 2>/dev/null)" == RUNNING ]]
+# Commit al que apunta la etiqueta móvil: el otro tag con el mismo digest.
+commit_desplegado() {
+  local digest
+  digest="$(gc artifacts docker images describe "$REGISTRO/mooc-api:$ETIQUETA" \
+              --format 'value(image_summary.digest)' 2>/dev/null || true)"
+  [[ -n "$digest" ]] || { echo "?"; return; }
+  gc artifacts docker tags list "$REGISTRO/mooc-api" --format 'value(tag.basename(),version.basename())' 2>/dev/null \
+    | awk -F'\t' -v d="$digest" -v e="$ETIQUETA" '$2 == d && $1 != e {print $1; exit}'
 }
-
-# en_vm <rol> <comando>: salida del comando en la VM, o vacío si no se pudo.
-en_vm() {
-  encendida "$1" || return 0
-  ssh_vm "$1" "$2" 2>/dev/null || true
-}
-
-version_web="$(en_vm web 'cat /opt/mooc/actual/VERSION 2>/dev/null')"
-version_worker="$(en_vm worker 'cat /opt/mooc/actual/VERSION 2>/dev/null')"
-# Solo esas dos claves: el resto del .env no es secreto, pero tampoco hace
-# falta en un resumen que puede quedar público.
-params_worker="$(en_vm worker "sudo grep -h '^WORKER_CONCURRENCY=' /opt/mooc/config/worker.env 2>/dev/null")"
-params_web="$(en_vm web "sudo grep -h '^AUTH_RATE_LIMIT_PER_MINUTE=' /opt/mooc/config/web.env 2>/dev/null")"
-concurrencia="${params_worker#WORKER_CONCURRENCY=}"
-if [[ -z "$params_web" ]]; then
-  limite="? (Web detenido o sin desplegar)"
-else
-  limite="${params_web#AUTH_RATE_LIMIT_PER_MINUTE=}"
-  limite="${limite:-10 (valor por defecto)}"
-fi
 
 if [[ -n "$BD" ]]; then
   bd="$(gc sql instances describe "$BD" \
@@ -64,16 +70,12 @@ else
 fi
 
 # Salud: primero con verificación de certificado; si solo responde sin
-# verificar, el certificado es el autofirmado provisional.
+# verificar, el certificado administrado aún no está activo.
 salud="sin respuesta"
-if encendida web; then
-  if codigo="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/api/v1/health")" && [[ "$codigo" != 000 ]]; then
-    salud="HTTP $codigo, certificado válido"
-  elif codigo="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "$URL/api/v1/health")" && [[ "$codigo" != 000 ]]; then
-    salud="HTTP $codigo, certificado autofirmado (falta deploy/web/certificado.sh letsencrypt)"
-  fi
-else
-  salud="Web Server detenido"
+if codigo="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/api/v1/health")" && [[ "$codigo" != 000 ]]; then
+  salud="HTTP $codigo, certificado válido"
+elif codigo="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "$URL/api/v1/health")" && [[ "$codigo" != 000 ]]; then
+  salud="HTTP $codigo, certificado aún no activo ($(salida certificado))"
 fi
 
 cat <<EOF
@@ -81,17 +83,16 @@ cat <<EOF
 
 | | |
 |---|---|
-| URL pública | $URL |
+| URL pública | $URL (IP del balanceador $(salida ip_lb)) |
 | Salud de la API | $salud |
-| Commit desplegado | Web: \`${version_web:-?}\` · Worker: \`${version_worker:-?}\` |
+| Commit desplegado | \`$(commit_desplegado)\` (etiqueta \`$ETIQUETA\`) |
 | Proyecto, región y zona | $(salida proyecto), $(salida region), $ZONA |
-| Web Server | $(vm "$(salida vm_web)") |
-| Worker Server | $(vm "$(salida vm_worker)") |
+| $(salida mig_api) | $(mig "$(salida mig_api)") |
+| $(salida mig_workers) | $(mig "$(salida mig_workers)") |
+| $(salida vm_redis) | $(vm "$(salida vm_redis)") |
 | Cloud SQL (tier, edición, estado, activación, GB) | $bd |
-| WORKER_CONCURRENCY | ${concurrencia:-? (Worker detenido o sin desplegar)} |
-| AUTH_RATE_LIMIT_PER_MINUTE | $limite |
 | Cloud NAT | $(salida nat_activa) |
-| Registro de imágenes | $(salida registro) |
+| Registro de imágenes | $REGISTRO |
 
 Leído el $(TZ=America/Bogota date '+%Y-%m-%d %H:%M') hora de Colombia ($(date -u '+%H:%M') UTC).
 EOF

@@ -1,14 +1,16 @@
-# Infraestructura de la Entrega 2 en GCP: dos VM (Web y Worker) en una VPC
-# propia, Cloud SQL for PostgreSQL por IP privada, Cloud Storage por su API
-# XML compatible con S3 y Artifact Registry para las imágenes.
+# Infraestructura de la Entrega 3 en GCP: un balanceador de aplicaciones
+# externo delante de un grupo administrado (MIG) de API, otro MIG de workers,
+# una VM fija con Redis (la cola), Cloud SQL for PostgreSQL por IP privada,
+# Cloud Storage por su API XML compatible con S3 y Artifact Registry.
 #
 # Este archivo tiene lo común y la red; el resto está repartido por tema:
-# computo.tf, basedatos.tf, almacenamiento.tf, identidades.tf, costos.tf.
+# computo.tf (VM de Redis, y plantillas, MIGs y autoscalers), balanceador.tf,
+# basedatos.tf, almacenamiento.tf, identidades.tf, costos.tf.
 
 data "google_project" "actual" {}
 
 locals {
-  host_web    = var.dominio_web != "" ? var.dominio_web : "${google_compute_address.web.address}.sslip.io"
+  host_web    = var.dominio_web != "" ? var.dominio_web : "${google_compute_global_address.lb.address}.sslip.io"
   url_publica = "https://${local.host_web}"
 
   # Nombres de bucket sin puntos: minio-go firma en estilo virtual-host
@@ -34,40 +36,53 @@ resource "google_compute_network" "vpc" {
   routing_mode            = "REGIONAL"
 }
 
-# La ruta por defecto a Internet (0.0.0.0/0 -> default-internet-gateway) que
-# crea GCP se conserva a propósito: la usan la IP pública del Web, Cloud NAT
-# y también Private Google Access, que con el dominio por defecto
-# (storage.googleapis.com, el único que minio-go reconoce como GCS) sale por
-# esa ruta aunque el tráfico no deje la red de Google.
+# Tres subredes, una por capa. Ninguna VM tiene IP externa: lo único público
+# es la IP del balanceador, que vive en los Google Front Ends y no en la VPC.
+# Separarlas permite escribir el firewall por capa y leer en los registros de
+# flujo de dónde viene cada conexión. Las tres tienen Private Google Access:
+# Cloud Storage, Artifact Registry, Secret Manager y Logging/Monitoring se
+# alcanzan sin NAT y sin salir a Internet.
 
-resource "google_compute_subnetwork" "web" {
-  name          = "${var.prefijo}-web"
-  region        = var.region
-  network       = google_compute_network.vpc.id
-  ip_cidr_range = var.cidr_web
-  # El Web tiene IP externa, así que Private Google Access no le aplica; se
-  # deja apagado para que la subred diga lo que hace.
-  private_ip_google_access = false
-}
-
-resource "google_compute_subnetwork" "worker" {
-  name          = "${var.prefijo}-worker"
-  region        = var.region
-  network       = google_compute_network.vpc.id
-  ip_cidr_range = var.cidr_worker
-  # El Worker no tiene IP externa. Con esto alcanza Cloud Storage, Artifact
-  # Registry, Secret Manager y Logging/Monitoring sin NAT y sin salir a
-  # Internet: es el tráfico pesado (originales, segmentos HLS, imágenes).
+resource "google_compute_subnetwork" "api" {
+  name                     = "${var.prefijo}-api"
+  region                   = var.region
+  network                  = google_compute_network.vpc.id
+  ip_cidr_range            = var.cidr_api
   private_ip_google_access = true
 }
 
-# --- Cloud NAT (solo subred del Worker) ----------------------------------------
+# Capa de datos privada: la VM de Redis (cola asynq, sesiones, caché, límites)
+# y el SMTP de pruebas. Fuera de los MIG a propósito: un scale-down nunca
+# borra la VM que tiene la cola.
+resource "google_compute_subnetwork" "datos" {
+  name                     = "${var.prefijo}-datos"
+  region                   = var.region
+  network                  = google_compute_network.vpc.id
+  ip_cidr_range            = var.cidr_datos
+  private_ip_google_access = true
+}
+
+resource "google_compute_subnetwork" "workers" {
+  name                     = "${var.prefijo}-workers"
+  region                   = var.region
+  network                  = google_compute_network.vpc.id
+  ip_cidr_range            = var.cidr_workers
+  private_ip_google_access = true
+}
+
+# La ruta por defecto a Internet (0.0.0.0/0 -> default-internet-gateway) que
+# crea GCP se conserva a propósito: la usan Cloud NAT y también Private
+# Google Access, que con el dominio por defecto (storage.googleapis.com, el
+# único que minio-go reconoce como GCS) sale por esa ruta aunque el tráfico
+# no deje la red de Google.
+
+# --- Cloud NAT -----------------------------------------------------------------
 #
-# El Worker necesita salir a Internet para lo que no es de Google: el
-# repositorio de Docker y el del Ops Agent en el primer arranque, y los
-# paquetes de Debian. Con habilitar_nat=false se elimina: las imágenes
-# (incluido Redis, que publicar.sh replica) salen de Artifact Registry por
-# Private Google Access.
+# Salida a Internet para lo que no es de Google: el repositorio de Docker y
+# el del Ops Agent en el primer arranque de cada VM, los paquetes de Debian y
+# las imágenes de Redis y Mailpit de Docker Hub. Con los MIG ya no es solo el
+# primer despliegue: cada instancia que crea el autoscaler instala Docker al
+# nacer, así que sin NAT el scale-out falla. Solo salida: nada entra por aquí.
 
 resource "google_compute_router" "router" {
   count   = var.habilitar_nat ? 1 : 0
@@ -82,12 +97,7 @@ resource "google_compute_router_nat" "nat" {
   router                             = google_compute_router.router[0].name
   region                             = var.region
   nat_ip_allocate_option             = "AUTO_ONLY"
-  source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
-
-  subnetwork {
-    name                    = google_compute_subnetwork.worker.id
-    source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
-  }
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 
   log_config {
     enable = true
@@ -97,22 +107,24 @@ resource "google_compute_router_nat" "nat" {
 
 # --- Direcciones ---------------------------------------------------------------
 
-# IP externa estática del Web: el nombre sslip.io, el certificado, el CORS de
-# los buckets y NEXT_PUBLIC_API_URL dependen de ella, y una efímera cambia al
-# detener la VM.
-resource "google_compute_address" "web" {
-  name         = "${var.prefijo}-web-ip"
-  region       = var.region
+# IP pública fija del balanceador (balanceador.tf). Global, no regional: el
+# balanceador de aplicaciones externo atiende desde los Google Front Ends. El
+# nombre sslip.io, el certificado, el CORS de los buckets y
+# NEXT_PUBLIC_API_URL dependen de ella.
+resource "google_compute_global_address" "lb" {
+  name         = "${var.prefijo}-lb-ip"
   address_type = "EXTERNAL"
-  network_tier = "PREMIUM"
+  ip_version   = "IPV4"
 }
 
-resource "google_compute_address" "worker_interna" {
-  name         = "${var.prefijo}-worker-ip"
+# IP interna fija de Redis: REDIS_ADDR de la API y de los workers está en sus
+# plantillas, y cambiarla obligaría a reemplazar todas las instancias.
+resource "google_compute_address" "redis_interna" {
+  name         = "${var.prefijo}-redis-ip"
   region       = var.region
   address_type = "INTERNAL"
-  subnetwork   = google_compute_subnetwork.worker.id
-  address      = var.ip_worker
+  subnetwork   = google_compute_subnetwork.datos.id
+  address      = var.ip_redis
 }
 
 # --- Firewall ----------------------------------------------------------------
@@ -123,36 +135,39 @@ resource "google_compute_address" "worker_interna" {
 # nueva. La regla sigue a la identidad de la máquina, no a una etiqueta.
 #
 # Todo lo que no está aquí queda cerrado por la regla implícita de denegar la
-# entrada. La salida está abierta salvo hacia Cloud SQL (abajo).
+# entrada. La salida está abierta salvo hacia Cloud SQL (abajo). La regla que
+# deja entrar al balanceador y a los health checks está en computo.tf, junto
+# al MIG de API.
 
-resource "google_compute_firewall" "web_publico" {
-  name                    = "${var.prefijo}-permitir-web-https"
+resource "google_compute_firewall" "redis" {
+  name                    = "${var.prefijo}-permitir-redis"
   network                 = google_compute_network.vpc.id
   direction               = "INGRESS"
   priority                = 1000
-  source_ranges           = ["0.0.0.0/0"]
-  target_service_accounts = [data.google_service_account.web.email]
+  source_service_accounts = [data.google_service_account.web.email, data.google_service_account.worker.email]
+  target_service_accounts = [data.google_service_account.redis.email]
 
-  # 80 solo para el reto HTTP-01 de Let's Encrypt y la redirección a 443.
+  # Redis no tiene contraseña (la API y el worker no la soportan): lo
+  # protegen esta regla, que la VM no tiene IP externa y que el contenedor
+  # solo escucha en la IP interna.
   allow {
     protocol = "tcp"
-    ports    = ["80", "443"]
+    ports    = ["6379"]
   }
 }
 
-resource "google_compute_firewall" "redis" {
-  name                    = "${var.prefijo}-permitir-redis-desde-web"
+# SMTP de pruebas (Mailpit) en la VM de Redis: solo la API envía correo.
+resource "google_compute_firewall" "smtp" {
+  name                    = "${var.prefijo}-permitir-smtp-desde-api"
   network                 = google_compute_network.vpc.id
   direction               = "INGRESS"
   priority                = 1000
   source_service_accounts = [data.google_service_account.web.email]
-  target_service_accounts = [data.google_service_account.worker.email]
+  target_service_accounts = [data.google_service_account.redis.email]
 
-  # Redis no tiene contraseña (la API y el worker no la soportan): lo
-  # protegen esta regla y que el contenedor solo escuche en la IP interna.
   allow {
     protocol = "tcp"
-    ports    = ["6379"]
+    ports    = ["1025"]
   }
 }
 
@@ -165,8 +180,12 @@ resource "google_compute_firewall" "ssh_iap" {
   # `gcloud compute ssh --tunnel-through-iap`: el puerto 22 no está abierto a
   # Internet y quién entra lo decide IAM (roles/iap.tunnelResourceAccessor y
   # OS Login), no una llave repartida.
-  source_ranges           = ["35.235.240.0/20"]
-  target_service_accounts = [data.google_service_account.web.email, data.google_service_account.worker.email]
+  source_ranges = ["35.235.240.0/20"]
+  target_service_accounts = [
+    data.google_service_account.web.email,
+    data.google_service_account.worker.email,
+    data.google_service_account.redis.email,
+  ]
 
   allow {
     protocol = "tcp"
@@ -176,9 +195,9 @@ resource "google_compute_firewall" "ssh_iap" {
 
 # Cloud SQL vive en la red del productor (peering de servicenetworking) y los
 # firewalls de esta VPC no filtran su entrada. Lo que sí se controla es la
-# salida desde aquí: solo las cuentas de servicio del Web y del Worker llegan
-# al rango de Private Service Access, y solo al 5432. Cualquier otra VM que
-# se cree en la VPC queda fuera.
+# salida desde aquí: solo las cuentas de servicio de la API y de los workers
+# llegan al rango de Private Service Access, y solo al 5432. La VM de Redis y
+# cualquier otra que se cree en la VPC quedan fuera.
 resource "google_compute_firewall" "sql_permitir" {
   name                    = "${var.prefijo}-permitir-egress-sql"
   network                 = google_compute_network.vpc.id

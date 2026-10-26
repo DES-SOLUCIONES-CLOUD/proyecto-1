@@ -1,71 +1,57 @@
 #!/usr/bin/env bash
-# Despliega en el Web o el Worker Server un commit publicado con publicar.sh:
-# copia por IAP los archivos de deploy/ de ese commit y el .env del rol, y
-# arranca los contenedores con en-vm.sh, que hace pull de Artifact Registry.
+# Despliega en los dos MIG un commit publicado con publicar.sh.
 #
-#   deploy/gcp/desplegar-vm.sh worker         # primero el Worker (Redis)
-#   deploy/gcp/desplegar-vm.sh web
-#   deploy/gcp/desplegar-vm.sh web <tag>      # un commit publicado concreto
+#   deploy/gcp/desplegar-vm.sh            # el último publicado desde aquí
+#   deploy/gcp/desplegar-vm.sh <tag>      # un commit publicado concreto
 #
-# Las versiones quedan en /opt/mooc/releases/<tag> y /opt/mooc/actual apunta
-# a la activa: volver atrás es desplegar el tag anterior.
+# Las plantillas arrancan las imágenes con la etiqueta "desplegada"
+# (variable imagen_tag de Terraform). Desplegar es:
+#
+# 1. mover "desplegada" al commit en Artifact Registry, y
+# 2. reemplazar de forma gradual las instancias de mig-workers y mig-api
+#    (una nueva antes de retirar cada vieja, nunca menos de las que había).
+#
+# Así Terraform no necesita conocer el commit y un `terraform apply` sin
+# argumentos no puede volver atrás una versión. Una instancia que el
+# autoscaler cree después ya nace con el commit nuevo. Volver atrás es
+# desplegar el tag anterior.
 source "$(dirname "$0")/lib.sh"
-requiere git terraform tar
+requiere git terraform
 comprobar_gcloud
 requiere_infra
 
-rol="${1:?uso: desplegar-vm.sh <web|worker> [tag]}"
-[[ "$rol" == web || "$rol" == worker ]] || morir "rol desconocido '$rol'"
-TAG="${2:-$(cat "$ESTADO/ultimo-tag" 2>/dev/null || true)}"
+TAG="${1:-$(cat "$ESTADO/ultimo-tag" 2>/dev/null || true)}"
 [[ -n "$TAG" ]] || morir "sin tag: ejecuta publicar.sh o pásalo como argumento"
 git -C "$RAIZ" cat-file -e "$TAG^{commit}" 2>/dev/null || morir "el tag $TAG no es un commit de este repositorio"
-ENV_LOCAL="$RAIZ/deploy/$rol/.env"
-[[ -f "$ENV_LOCAL" ]] || morir "falta $ENV_LOCAL (deploy/gcp/generar-env.sh)"
+REGISTRO="$(salida registro)"
+ETIQUETA="$(salida imagen_tag)"
+ZONA="$(salida zona)"
+[[ "$ETIQUETA" != "$TAG" ]] || morir "imagen_tag de Terraform es el propio commit; este script solo sirve con una etiqueta móvil (desplegada)"
 
 # Que el commit exista en git no quiere decir que se haya publicado. Sin
-# esta comprobación el fallo llega después, como un `compose pull` roto en
-# la VM a medio desplegar.
-case "$rol" in
-  web) imagenes=(mooc-api mooc-migrate mooc-frontend) ;;
-  worker) imagenes=(mooc-worker redis) ;;
-esac
+# esta comprobación el fallo llega después, en instancias que no arrancan.
+imagenes=(mooc-api mooc-migrate mooc-seed mooc-frontend mooc-worker)
 for img in "${imagenes[@]}"; do
-  etiqueta="$TAG"
-  [[ "$img" == redis ]] && etiqueta=7.4-alpine
-  gc artifacts docker images describe "$(salida registro)/$img:$etiqueta" >/dev/null 2>&1 \
-    || morir "no está publicada $(salida registro)/$img:$etiqueta: ejecuta deploy/gcp/publicar.sh en ese commit"
+  gc artifacts docker images describe "$REGISTRO/$img:$TAG" >/dev/null 2>&1 \
+    || morir "no está publicada $REGISTRO/$img:$TAG: ejecuta deploy/gcp/publicar.sh en ese commit"
 done
 
-TMP="$(mktemp -d)"
-trap 'rm -rf "${TMP:?}"' EXIT
-mkdir -p "$TMP/paquete"
-# deploy/ del commit publicado, no del árbol de trabajo: los compose y los
-# scripts tienen que ser los que corresponden a las imágenes.
-git -C "$RAIZ" archive --format=tar "$TAG" deploy | tar -x -C "$TMP/paquete"
-echo "$TAG" > "$TMP/paquete/VERSION"
-cp "$ENV_LOCAL" "$TMP/paquete/$rol.env"
-tar -czf "$TMP/paquete.tgz" -C "$TMP/paquete" .
+aviso "moviendo :$ETIQUETA a $TAG"
+for img in "${imagenes[@]}"; do
+  gc artifacts docker tags add "$REGISTRO/$img:$TAG" "$REGISTRO/$img:$ETIQUETA" --quiet >/dev/null
+done
 
-aviso "copiando el paquete $TAG a $rol"
-scp_vm "$rol" "$TMP/paquete.tgz" "/tmp/mooc-$TAG.tgz"
+# Primero los workers: una API nueva puede encolar trabajos con un formato
+# que un worker viejo no entienda; al revés no pasa.
+for mig in "$(salida mig_workers)" "$(salida mig_api)"; do
+  aviso "reemplazando las instancias de $mig"
+  gc compute instance-groups managed rolling-action replace "$mig" --zone "$ZONA" \
+    --max-surge 1 --max-unavailable 0 --quiet >/dev/null
+  # Estable = todas las instancias con la plantilla vigente y en marcha. Con
+  # el arranque (Docker, imágenes) cada reemplazo tarda unos minutos.
+  gc compute instance-groups managed wait-until "$mig" --zone "$ZONA" --stable --timeout 1800
+done
 
-aviso "desplegando $TAG en $rol"
-ssh_vm "$rol" "sudo bash -s -- '$TAG' '$rol'" <<'REMOTO'
-set -euo pipefail
-TAG="${1:?}" ROL="${2:?}"
-if [[ ! -f /var/lib/mooc-arranque-ok ]]; then
-  echo "el arranque de la VM no terminó: sudo tail -50 /var/log/mooc-arranque.log" >&2
-  exit 1
-fi
-REL="/opt/mooc/releases/$TAG"
-rm -rf "${REL:?}"
-mkdir -p "$REL"
-tar -xzf "/tmp/mooc-$TAG.tgz" -C "$REL"
-# La configuración vive fuera de las versiones, con permisos de root.
-install -m 600 "$REL/$ROL.env" "/opt/mooc/config/$ROL.env"
-rm -f "${REL:?}/${ROL:?}.env" "/tmp/mooc-${TAG:?}.tgz"
-ln -sfn "$REL" /opt/mooc/actual
-bash /opt/mooc/actual/deploy/gcp/en-vm.sh "$ROL"
-# Se conservan las 5 versiones más recientes para poder volver atrás.
-ls -1dt /opt/mooc/releases/*/ | tail -n +6 | xargs -r rm -rf
-REMOTO
+mkdir -p "$ESTADO"
+echo "$TAG" > "$ESTADO/ultimo-desplegado"
+aviso "desplegado $TAG. Comprobar: curl -sI $(salida url_publica)/"

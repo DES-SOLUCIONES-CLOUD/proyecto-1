@@ -45,6 +45,7 @@ const (
 	ctxUser ctxKey = iota
 	ctxRequestID
 	ctxKeySession
+	ctxIPCliente
 )
 
 // SessionCookieName es el nombre de la cookie httpOnly que transporta el
@@ -234,15 +235,48 @@ func RateLimit(rdb *redis.Client, keyPrefix string, limit int, window time.Durat
 	}
 }
 
+// IPDelCliente fija una vez por petición la dirección del cliente que usan el
+// límite de tasa, las sesiones y la bitácora.
+//
+// saltos es cuántos proxies de confianza AÑADEN un elemento al final de
+// X-Forwarded-For. La dirección del cliente es el elemento que está saltos
+// posiciones desde el final; lo que haya antes lo escribió el propio cliente
+// y no vale nada. Con 1, el último (el Nginx local sobrescribe la cabecera
+// con un solo elemento). Con 2, el penúltimo: el balanceador de GCP envía
+// "<lo que mandó el cliente>, <IP del cliente>, <IP del balanceador>". Tomar
+// el primero, como antes, dejaba saltarse el límite de login inventando una
+// IP en cada intento.
+func IPDelCliente(saltos int) func(http.Handler) http.Handler {
+	if saltos < 1 {
+		saltos = 1
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), ctxIPCliente, ipDesdeCabeceras(r, saltos))
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
 // clientIP devuelve la dirección del cliente, sin el puerto.
+func clientIP(r *http.Request) string {
+	if ip, ok := r.Context().Value(ctxIPCliente).(string); ok {
+		return ip
+	}
+	return ipDesdeCabeceras(r, 1)
+}
+
+// ipDesdeCabeceras aplica la regla de IPDelCliente.
 //
 // RemoteAddr viene como "host:puerto", y el puerto es efímero: guardarlo en la
 // bitácora y en las sesiones ensucia el dato y además impide agrupar por
 // dirección, que es justo para lo que sirve.
-func clientIP(r *http.Request) string {
+func ipDesdeCabeceras(r *http.Request, saltos int) string {
 	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		// El primer elemento es el cliente original; el resto son proxies.
-		return strings.TrimSpace(strings.Split(fwd, ",")[0])
+		partes := strings.Split(fwd, ",")
+		if len(partes) >= saltos {
+			return strings.TrimSpace(partes[len(partes)-saltos])
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

@@ -14,7 +14,7 @@
 #   emitidas sigan verificándose en el entorno recreado.
 #
 # Para reconstruir: desplegar-infra.sh, bd.sh recrear <export local>,
-# publicar.sh, generar-env.sh -f, desplegar-vm.sh worker y web, y subir los
+# publicar.sh, desplegar-vm.sh, y subir los
 # objetos respaldados con `gcloud storage rsync`.
 source "$(dirname "$0")/lib.sh"
 requiere terraform

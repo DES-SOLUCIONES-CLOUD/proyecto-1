@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Corre las migraciones contra Cloud SQL desde el Web Server. Cloud SQL solo
-# tiene IP privada y el egress hacia ella solo se permite a las cuentas de
-# servicio de las VM, así que no se puede migrar desde fuera de la VPC.
+# Corre las migraciones contra Cloud SQL desde una instancia de mig-api.
+# Cloud SQL solo tiene IP privada y el egress hacia ella solo se permite a
+# las cuentas de servicio de la API y de los workers, así que no se puede
+# migrar desde fuera de la VPC.
 #
 #   deploy/gcp/migrar.sh
 #
@@ -12,4 +13,4 @@ requiere terraform
 comprobar_gcloud
 requiere_infra
 
-ssh_vm web "sudo bash /opt/mooc/actual/deploy/gcp/en-vm.sh migrar"
+ssh_vm api "sudo /opt/mooc/bin/en-vm.sh migrar"
