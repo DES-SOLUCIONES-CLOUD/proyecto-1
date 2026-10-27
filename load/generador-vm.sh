@@ -30,7 +30,7 @@ crear() {
     --boot-disk-size 30GB \
     --boot-disk-type pd-balanced \
     --tags mooc-generador \
-    --labels entrega=2,rol=generador,proyecto=mooc \
+    --labels entrega=3,rol=generador,proyecto=mooc \
     --metadata=enable-oslogin=TRUE \
     --metadata-from-file startup-script=<(cat <<'ARR'
 #!/bin/bash
