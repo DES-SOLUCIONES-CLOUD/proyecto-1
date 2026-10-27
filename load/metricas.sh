@@ -73,7 +73,7 @@ echo null >"$tmp/cola.json"
 if [[ -x "$RAIZ/deploy/gcp/remoto.sh" ]]; then
   # Snapshot de asynq al cerrar. No es una serie: profundidad y trabajos
   # reintentados/archivados en ese instante.
-  if cola_raw="$("$RAIZ/deploy/gcp/remoto.sh" worker \
+  if cola_raw="$("$RAIZ/deploy/gcp/remoto.sh" redis \
       'c=$(sudo docker ps -qf name=redis | head -1); sudo docker exec "$c" redis-cli LLEN "asynq:{default}:pending"; sudo docker exec "$c" redis-cli ZCARD "asynq:{default}:active"; sudo docker exec "$c" redis-cli ZCARD "asynq:{default}:scheduled"; sudo docker exec "$c" redis-cli ZCARD "asynq:{default}:retry"; sudo docker exec "$c" redis-cli ZCARD "asynq:{default}:archived"' \
       2>/dev/null)"; then
     printf '%s\n' "$cola_raw" | python3 -c '
