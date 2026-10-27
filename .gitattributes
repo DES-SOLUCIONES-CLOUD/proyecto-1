@@ -1,0 +1,5 @@
+# Los scripts y plantillas que corren en Linux (VM de GCP, CI) siempre con
+# LF, aunque se clonen en Windows con core.autocrlf: bash no ejecuta un
+# script con finales CRLF.
+*.sh text eol=lf
+*.tftpl text eol=lf

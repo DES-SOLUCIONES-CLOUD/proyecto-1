@@ -70,6 +70,9 @@ type Deps struct {
 	// AuthRateLimitPerMinute acota los intentos de autenticación por IP. Cero
 	// deja el valor por defecto seguro.
 	AuthRateLimitPerMinute int
+	// ProxiesDeConfianza es cuántos proxies añaden un elemento a
+	// X-Forwarded-For delante de la API (ver IPDelCliente). Cero equivale a 1.
+	ProxiesDeConfianza int
 }
 
 func NewRouter(d Deps) http.Handler {
@@ -96,6 +99,7 @@ func NewRouter(d Deps) http.Handler {
 
 	return Chain(mux,
 		RequestID,
+		IPDelCliente(d.ProxiesDeConfianza),
 		Recover,
 		Logging,
 		SecurityHeaders,

@@ -83,6 +83,11 @@ type Config struct {
 	// acabaría midiendo el limitador en vez del producto. El valor por defecto
 	// es el de producción; subirlo es una decisión explícita del entorno.
 	AuthRateLimitPerMinute int
+	// TrustedProxyHops es cuántos proxies de confianza añaden un elemento al
+	// final de X-Forwarded-For: 1 detrás del Nginx local, que la sobrescribe;
+	// 2 detrás del balanceador de GCP, que añade la IP del cliente y la suya.
+	// De él depende qué dirección cuenta para el límite de tasa.
+	TrustedProxyHops int
 
 	// WorkerConcurrency es el número de trabajos que un worker procesa a la
 	// vez. Cada uno puede ser un FFmpeg o un LibreOffice, así que el valor
@@ -134,6 +139,7 @@ func Load() Config {
 		PublicBaseURL:          getEnv("PUBLIC_BASE_URL", "http://localhost:3000"),
 		CookieSecure:           getBool("COOKIE_SECURE", false),
 		AuthRateLimitPerMinute: getInt("AUTH_RATE_LIMIT_PER_MINUTE", 10),
+		TrustedProxyHops:       getInt("TRUSTED_PROXY_HOPS", 1),
 		WorkerConcurrency:      getInt("WORKER_CONCURRENCY", 5),
 	}
 }

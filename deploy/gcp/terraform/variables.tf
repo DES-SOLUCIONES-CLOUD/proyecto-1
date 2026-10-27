@@ -29,7 +29,13 @@ variable "prefijo" {
 # --- Cómputo -----------------------------------------------------------------
 
 variable "tipo_maquina" {
-  description = "Tipo de las dos VM. e2-small = 2 vCPU compartidas (0,5 vCPU sostenida con ráfaga) y 2 GB. e2-custom-2-2048 da 2 vCPU dedicadas con los mismos 2 GB (ver README)."
+  description = "Tipo de las instancias de los MIG. e2-small = 2 vCPU compartidas (0,5 vCPU sostenida con ráfaga) y 2 GB, dentro del límite de referencia (2 vCPU / 2 GiB / 30 GiB)."
+  type        = string
+  default     = "e2-small"
+}
+
+variable "tipo_maquina_redis" {
+  description = "Tipo de la VM fija de Redis."
   type        = string
   default     = "e2-small"
 }
@@ -52,24 +58,123 @@ variable "instalar_ops_agent" {
   default     = true
 }
 
+variable "imagen_tag" {
+  description = "Etiqueta de las imágenes de Artifact Registry que arrancan las instancias. desplegar-vm.sh mueve 'desplegada' al commit que se despliega y reemplaza las instancias; Terraform no necesita conocer el commit."
+  type        = string
+  default     = "desplegada"
+}
+
+# --- Autoescalado ----------------------------------------------------------------
+
+variable "mig_api_min" {
+  description = "Instancias mínimas de mig-api."
+  type        = number
+  default     = 1
+}
+
+variable "mig_api_max" {
+  description = "Instancias máximas de mig-api."
+  type        = number
+  default     = 3
+}
+
+variable "mig_workers_min" {
+  description = "Instancias mínimas de mig-workers."
+  type        = number
+  default     = 1
+}
+
+variable "mig_workers_max" {
+  description = "Instancias máximas de mig-workers."
+  type        = number
+  default     = 3
+}
+
+variable "mig_cpu_objetivo" {
+  description = "Utilización de CPU media que el autoscaler intenta mantener en cada MIG (0-1)."
+  type        = number
+  default     = 0.6
+
+  validation {
+    condition     = var.mig_cpu_objetivo > 0 && var.mig_cpu_objetivo < 1
+    error_message = "mig_cpu_objetivo va entre 0 y 1 (0.6 = 60 %)."
+  }
+}
+
+variable "mig_cooldown" {
+  description = "Segundos que el autoscaler ignora la CPU de una instancia recién creada (cooldown_period / periodo de inicialización)."
+  type        = number
+  default     = 120
+}
+
+variable "mig_retraso_inicial" {
+  description = "Segundos antes de que el autohealing empiece a juzgar una instancia nueva de mig-api: lo que tarda en instalar Docker y bajar las imágenes."
+  type        = number
+  default     = 300
+}
+
+# --- Parámetros de la aplicación -----------------------------------------------------
+
+variable "worker_concurrency" {
+  description = "Trabajos simultáneos por instancia de worker. 2 en una e2-small: dos FFmpeg ya rondan los 2 GB."
+  type        = number
+  default     = 2
+}
+
+variable "api_db_max_conns" {
+  description = "Pool de conexiones a Cloud SQL por instancia de API. Con el máximo de instancias de los dos MIG: 3 x API + 3 x worker tiene que caber en max_connections (100 en db-custom-1-3840)."
+  type        = number
+  default     = 20
+}
+
+variable "worker_db_max_conns" {
+  description = "Pool de conexiones a Cloud SQL por instancia de worker."
+  type        = number
+  default     = 5
+}
+
+variable "auth_rate_limit_per_minute" {
+  description = "Intentos de autenticación por IP y minuto. Vacío = 10, el valor de producción. Subirlo solo para una corrida de carga concreta, y registrarlo en el informe."
+  type        = string
+  default     = ""
+}
+
+variable "admin_email" {
+  description = "Correo del administrador inicial: se crea en el primer arranque si no existe ninguno, con la contraseña del secreto <prefijo>-admin-password. Vaciarlo después."
+  type        = string
+  default     = ""
+}
+
+variable "lb_muestreo_logs" {
+  description = "Fracción de peticiones a la API que el balanceador registra en Cloud Logging (0-1). Las métricas del balanceador no dependen de esto."
+  type        = number
+  default     = 0.1
+}
+
 # --- Red ---------------------------------------------------------------------
 
-variable "cidr_web" {
-  description = "Subred del Web Server."
+variable "cidr_api" {
+  description = "Subred de las instancias de mig-api."
   type        = string
-  default     = "10.10.1.0/24"
+  default     = "10.0.0.0/24"
 }
 
-variable "cidr_worker" {
-  description = "Subred privada del Worker Server."
+variable "cidr_datos" {
+  description = "Subred privada de la VM de Redis."
   type        = string
-  default     = "10.10.2.0/24"
+  default     = "10.0.1.0/24"
 }
 
-variable "ip_worker" {
-  description = "IP interna fija del Worker (Redis). Fija para que REDIS_ADDR del Web no cambie al recrear la VM."
+variable "cidr_workers" {
+  description = "Subred de las instancias de mig-workers."
   type        = string
-  default     = "10.10.2.10"
+  default     = "10.0.2.0/24"
+}
+
+variable "ip_redis" {
+  description = "IP interna fija de la VM de Redis, dentro de cidr_datos. Fija porque REDIS_ADDR va en las plantillas."
+  type        = string
+  default     = "10.0.1.5"
 }
 
 variable "psa_direccion" {
@@ -85,13 +190,13 @@ variable "psa_prefijo" {
 }
 
 variable "habilitar_nat" {
-  description = "Cloud NAT para la salida del Worker. Hace falta en el primer arranque (Docker, Ops Agent); después el Worker solo habla con APIs de Google por Private Google Access y se puede apagar."
+  description = "Cloud NAT para la salida de las VM. Cada instancia nueva de un MIG instala Docker desde Internet al arrancar: sin NAT el scale-out falla."
   type        = bool
   default     = true
 }
 
 variable "dominio_web" {
-  description = "Nombre del Web Server para TLS. Vacío: <IP estática>.sslip.io."
+  description = "Nombre público para el certificado del balanceador. Vacío: <IP del balanceador>.sslip.io."
   type        = string
   default     = ""
 }

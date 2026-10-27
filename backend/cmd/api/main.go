@@ -117,6 +117,7 @@ func main() {
 		Inspector:  queue.NewInspector(cfg.RedisAddr),
 		CORSOrigin: cfg.PublicBaseURL, CookieSecure: cfg.CookieSecure,
 		AuthRateLimitPerMinute: cfg.AuthRateLimitPerMinute,
+		ProxiesDeConfianza:     cfg.TrustedProxyHops,
 	})
 
 	srv := &http.Server{

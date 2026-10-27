@@ -99,7 +99,7 @@ resource "google_sql_database_instance" "bd" {
 
     user_labels = {
       proyecto = var.prefijo
-      entrega  = "2"
+      entrega  = "3"
     }
   }
 
