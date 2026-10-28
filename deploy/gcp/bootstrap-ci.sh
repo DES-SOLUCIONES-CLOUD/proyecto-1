@@ -449,7 +449,6 @@ Secret Manager.
   TF_STATE_BUCKET    = $BUCKET
   GCP_REGION         = $REGION
   GCP_ZONE           = $ZONA
-  TLS_EMAIL          = <correo del equipo para Let's Encrypt>
   CREAR_BD           = true   (obligatoria; false tras bd.sh eliminar)
 EOF
 if [[ "$PRESUPUESTO_OK" == true ]]; then
@@ -461,10 +460,10 @@ EOF
 fi
 cat <<EOF
 
-Opcionales (vacías: el valor por defecto de variables.tf o del .env.example):
+Opcionales (vacías: el valor por defecto de variables.tf):
   TIPO_MAQUINA, BD_TIER, HABILITAR_NAT, DOMINIO_WEB,
   WORKER_CONCURRENCY, AUTH_RATE_LIMIT_PER_MINUTE, ADMIN_EMAIL,
-  APAGADO_NOCTURNO=true (apaga VM y Cloud SQL cada noche)
+  APAGADO_NOCTURNO=true (cada noche: MIGs a 0, Redis y Cloud SQL detenidas)
 
 Con la CLI de GitHub (gh auth login antes):
 
