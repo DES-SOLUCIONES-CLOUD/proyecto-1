@@ -116,12 +116,18 @@ resource "google_compute_url_map" "https" {
     default_service = google_compute_backend_service.frontend.id
 
     # Confirmar una carga verifica el archivo entero en el servidor y puede
-    # tardar minutos con un video grande.
+    # tardar minutos con un video grande. Plantillas de ruta y no regex: el
+    # balanceador solo admite un subconjunto de RE2 (sin clases negadas como
+    # [^/]), y {x=*} ya coincide con exactamente un segmento. Varias
+    # match_rules en la misma regla equivalen a un O.
     route_rules {
       priority = 1
       service  = google_compute_backend_service.api.id
       match_rules {
-        regex_match = "^/api/v1/courses/versions/[^/]+/resources/[^/]+/(confirm-upload|multipart/complete)$"
+        path_template_match = "/api/v1/courses/versions/{version=*}/resources/{recurso=*}/confirm-upload"
+      }
+      match_rules {
+        path_template_match = "/api/v1/courses/versions/{version=*}/resources/{recurso=*}/multipart/complete"
       }
       route_action {
         timeout {
