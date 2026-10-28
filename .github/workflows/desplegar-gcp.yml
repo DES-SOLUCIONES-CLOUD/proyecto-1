@@ -270,8 +270,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Todo el historial: desplegar un commit o un tag anterior, y
-          # desplegar-vm.sh empaqueta deploy/ de ese commit con git archive.
+          # Todo el historial: desplegar un commit o un tag anterior
+          # (desplegar-vm.sh comprueba que el commit exista en git).
           fetch-depth: 0
 
       - uses: ./.github/actions/preparar-gcp

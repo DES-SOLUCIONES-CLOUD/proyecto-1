@@ -10,7 +10,7 @@
 # No vive en Terraform: si se olvida, sigue cobrando (~0,07 USD/h).
 set -euo pipefail
 
-PROYECTO="${GCP_PROJECT_ID:-totemic-gravity-509902-u2}"
+PROYECTO="${GCP_PROJECT_ID:-plasma-sol-513002-k6}"
 ZONA="${GCP_ZONE:-us-central1-a}"
 NOMBRE="${GENERADOR_VM:-mooc-k6}"
 TIPO="${GENERADOR_TIPO:-e2-standard-2}"
