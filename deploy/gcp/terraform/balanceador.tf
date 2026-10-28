@@ -164,11 +164,14 @@ resource "google_compute_url_map" "redireccion" {
 # Certificado administrado por Google para el nombre público (por defecto
 # <IP del balanceador>.sslip.io). Google lo emite cuando el nombre resuelve a
 # la IP del balanceador: entre 15 y 60 minutos después del primer apply. El
-# sufijo cambia con el nombre para poder crear el nuevo antes de borrar el
-# viejo (un proxy no puede quedarse sin certificado).
+# sufijo cambia con el nombre y con certificado_revision para poder crear el
+# nuevo antes de borrar el viejo (un proxy no puede quedarse sin
+# certificado). Subir certificado_revision fuerza un certificado nuevo para
+# el mismo nombre: Google puede dejar de reintentar uno que quedó en
+# FAILED_NOT_VISIBLE, por ejemplo si se creó antes que el balanceador.
 
 resource "google_compute_managed_ssl_certificate" "web" {
-  name = "${var.prefijo}-cert-${substr(md5(local.host_web), 0, 8)}"
+  name = "${var.prefijo}-cert-${substr(md5("${local.host_web}#${var.certificado_revision}"), 0, 8)}"
 
   managed {
     domains = [local.host_web]

@@ -201,6 +201,12 @@ variable "dominio_web" {
   default     = ""
 }
 
+variable "certificado_revision" {
+  description = "Revisión del certificado administrado. Subirla crea un certificado nuevo para el mismo nombre y retira el anterior (si uno se queda en FAILED_NOT_VISIBLE con el DNS correcto)."
+  type        = number
+  default     = 2
+}
+
 # --- Cloud SQL ---------------------------------------------------------------
 
 variable "crear_bd" {
