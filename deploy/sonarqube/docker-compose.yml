@@ -3,7 +3,8 @@
 #   bash deploy/sonarqube/analizar.sh
 #
 # el panel queda en http://localhost:9000 (usuario admin, clave de
-# SONAR_ADMIN_PASSWORD), es el que se muestra en el video
+# SONAR_ADMIN_PASSWORD o de deploy/sonarqube/.clave-admin), es el que se
+# muestra en el video
 
 name: mooc-sonarqube
 

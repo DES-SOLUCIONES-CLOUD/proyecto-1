@@ -95,15 +95,35 @@ func Retirable(retiro context.Context) asynq.MiddlewareFunc {
 	}
 }
 
-// EsFallo es el IsFailure de asynq: un retiro vuelve a la cola sin contar
-// como reintento.
-func EsFallo(err error) bool {
-	return !errors.Is(err, ErrRetiro)
+// Arrendado marca una entrega que llego con el activo todavia arrendado a otro
+// intento. puede ser una entrega duplicada o la de un worker que murio sin
+// sigterm (vm caida, sigkill): desde aqui no se distinguen, asi que no se puede
+// descartar. se reprograma para cuando venza el arrendamiento: si el otro
+// intento termino, el activo estara listo y ahi si se descarta; si murio, este
+// lo toma
+type Arrendado struct {
+	Espera time.Duration
 }
 
-// EsperaAntesDeReintentar devuelve un trabajo retirado a la cola de una vez
-// y deja el backoff normal de asynq para los fallos de verdad.
+func (e *Arrendado) Error() string {
+	return fmt.Sprintf("activo arrendado por otro intento, se reprograma en %v", e.Espera)
+}
+
+// EsFallo es el IsFailure de asynq: un retiro o un activo arrendado vuelven a
+// la cola sin contar como reintento.
+func EsFallo(err error) bool {
+	var arrendado *Arrendado
+	return !errors.Is(err, ErrRetiro) && !errors.As(err, &arrendado)
+}
+
+// EsperaAntesDeReintentar devuelve un trabajo retirado a la cola de una vez,
+// aplaza uno arrendado hasta que venza el arrendamiento y deja el backoff
+// normal de asynq para los fallos de verdad.
 func EsperaAntesDeReintentar(n int, err error, t *asynq.Task) time.Duration {
+	var arrendado *Arrendado
+	if errors.As(err, &arrendado) {
+		return arrendado.Espera
+	}
 	if errors.Is(err, ErrRetiro) {
 		return 0
 	}
@@ -136,6 +156,11 @@ const AccionAgotado = "queue.task_dead_letter"
 // AccionRetiro aparece en el log cuando un trabajo vuelve a la cola porque su
 // worker se apago. es la linea que se busca en la demo de retiro seguro.
 const AccionRetiro = "queue.task_requeued_on_shutdown"
+
+// AccionArrendado aparece cuando una entrega se aplaza porque el activo sigue
+// arrendado. es la linea que se busca al verificar la recuperacion tras una
+// caida abrupta del worker.
+const AccionArrendado = "queue.task_postponed_by_lease"
 
 // NuevoManejadorDeErrores devuelve el asynq.ErrorHandler que registra cada
 // intento fallido y distingue el último.
@@ -171,10 +196,12 @@ type IntentoFallido struct {
 
 // Agotado informa si este era el último intento y, por tanto, el trabajo pasa
 // a la dead-letter queue.
+//
+// asynq compara el contador antes de consultar IsFailure, así que un retiro o
+// un aplazamiento en el último intento también se archivan. El contador no
+// subió por ellos, pero el trabajo ya venía con todos los intentos gastados:
+// hay que alertar, y desde la DLQ se puede relanzar.
 func (f IntentoFallido) Agotado() bool {
-	if errors.Is(f.Err, ErrRetiro) {
-		return false
-	}
 	return f.Intento >= f.Maximo || errors.Is(f.Err, asynq.SkipRetry)
 }
 
@@ -189,11 +216,6 @@ func RegistrarIntentoFallido(ctx context.Context, log *slog.Logger, f IntentoFal
 		"tarea", f.Tarea, "id", f.ID, "cola", f.Cola,
 		"intento", f.Intento, "maximo", f.Maximo, "error", f.Err,
 	}
-	if errors.Is(f.Err, ErrRetiro) {
-		log.WarnContext(ctx, "worker en retiro: el trabajo vuelve a la cola sin consumir reintento",
-			append([]any{"accion", AccionRetiro}, atributos...)...)
-		return
-	}
 	if errors.Is(f.Err, asynq.SkipRetry) {
 		log.ErrorContext(ctx, "trabajo descartado: no se reintentará",
 			append([]any{"accion", AccionAgotado}, atributos...)...)
@@ -202,6 +224,17 @@ func RegistrarIntentoFallido(ctx context.Context, log *slog.Logger, f IntentoFal
 	if f.Agotado() {
 		log.ErrorContext(ctx, "trabajo agotado: pasa a la dead-letter queue",
 			append([]any{"accion", AccionAgotado}, atributos...)...)
+		return
+	}
+	var arrendado *Arrendado
+	if errors.As(f.Err, &arrendado) {
+		log.InfoContext(ctx, "activo arrendado: la entrega se aplaza hasta que venza el arrendamiento",
+			append([]any{"accion", AccionArrendado, "espera", arrendado.Espera}, atributos...)...)
+		return
+	}
+	if errors.Is(f.Err, ErrRetiro) {
+		log.WarnContext(ctx, "worker en retiro: el trabajo vuelve a la cola sin consumir reintento",
+			append([]any{"accion", AccionRetiro}, atributos...)...)
 		return
 	}
 	log.WarnContext(ctx, "trabajo fallido: se reintentará con backoff", atributos...)

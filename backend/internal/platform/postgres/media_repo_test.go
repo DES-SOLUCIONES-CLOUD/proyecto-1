@@ -2,14 +2,20 @@ package postgres_test
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/documentos"
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/media"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/postgres"
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/queue"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/migrations"
 )
 
@@ -170,6 +176,114 @@ func TestUnFalloLiberaElArrendamientoParaElReintento(t *testing.T) {
 	}
 	if !reclamado {
 		t.Error("tras un fallo, el reintento debería poder tomar el trabajo")
+	}
+}
+
+func TestLaEsperaDeArrendamientoDiceCuandoReclamar(t *testing.T) {
+	pool := baseDePruebas(t)
+	repo := postgres.NewMediaRepo(pool)
+	activoID := activoDePrueba(t, pool, "uploaded")
+	ctx, inicio := context.Background(), time.Now().UTC()
+
+	if _, err := repo.Reclamar(ctx, activoID, inicio); err != nil {
+		t.Fatalf("Reclamar: %v", err)
+	}
+
+	consulta := inicio.Add(10 * time.Minute)
+	espera, listo, err := repo.EsperaDeArrendamiento(ctx, activoID, consulta)
+	if err != nil {
+		t.Fatalf("EsperaDeArrendamiento: %v", err)
+	}
+	if listo {
+		t.Fatal("un activo en processing no está listo")
+	}
+	// lo que devuelve tiene que alcanzar: a esa hora Reclamar debe funcionar
+	reclamado, err := repo.Reclamar(ctx, activoID, consulta.Add(espera))
+	if err != nil {
+		t.Fatalf("Reclamar: %v", err)
+	}
+	if !reclamado {
+		t.Errorf("tras esperar %v el arrendamiento debería haber vencido", espera)
+	}
+
+	if err := repo.MarkReady(ctx, activoID, "hls/x/master.m3u8"); err != nil {
+		t.Fatalf("MarkReady: %v", err)
+	}
+	if _, listo, err = repo.EsperaDeArrendamiento(ctx, activoID, consulta); err != nil || !listo {
+		t.Errorf("un activo listo debería poder descartarse: listo=%v, err=%v", listo, err)
+	}
+}
+
+// caidaAbrupta deja el activo como lo deja un worker que muere sin sigterm:
+// en 'processing', con el arrendamiento vigente y sin nadie trabajando.
+func caidaAbrupta(t *testing.T, repo *postgres.MediaRepo, activoID uuid.UUID) {
+	t.Helper()
+	if _, err := repo.Reclamar(context.Background(), activoID, time.Now().UTC()); err != nil {
+		t.Fatalf("Reclamar: %v", err)
+	}
+}
+
+func TestLaEntregaTrasUnaCaidaAbruptaSeAplazaEnLugarDePerderse(t *testing.T) {
+	pool := baseDePruebas(t)
+	repo := postgres.NewMediaRepo(pool)
+
+	casos := []struct {
+		nombre  string
+		tipo    string
+		manejar func(context.Context, *asynq.Task) error
+		cuerpo  func(activoID uuid.UUID) any
+	}{
+		{"video", queue.TaskProcessMedia, (&media.Processor{Assets: repo}).HandleProcessMedia,
+			func(id uuid.UUID) any { return queue.MediaProcessPayload{MediaAssetID: id} }},
+		{"presentacion", queue.TaskConvertDocument, (&documentos.Procesador{Assets: repo}).HandleConvertDocument,
+			func(id uuid.UUID) any { return queue.DocumentConvertPayload{MediaAssetID: id} }},
+	}
+	for _, c := range casos {
+		t.Run(c.nombre, func(t *testing.T) {
+			activoID := activoDePrueba(t, pool, "uploaded")
+			caidaAbrupta(t, repo, activoID)
+
+			cuerpo, err := json.Marshal(c.cuerpo(activoID))
+			if err != nil {
+				t.Fatalf("payload: %v", err)
+			}
+			err = c.manejar(context.Background(), asynq.NewTask(c.tipo, cuerpo))
+
+			// nil le diria a asynq que termino, y nadie volveria a encolarlo
+			var arrendado *queue.Arrendado
+			if !errors.As(err, &arrendado) {
+				t.Fatalf("la entrega debería aplazarse, devolvió %v", err)
+			}
+			if arrendado.Espera <= 0 || arrendado.Espera > postgres.LeaseProcesamiento+time.Second {
+				t.Errorf("espera fuera de rango: %v", arrendado.Espera)
+			}
+			if queue.EsFallo(err) {
+				t.Error("aplazar no debería gastar reintentos")
+			}
+		})
+	}
+}
+
+func TestUnaEntregaDuplicadaDeUnActivoListoSeDescarta(t *testing.T) {
+	pool := baseDePruebas(t)
+	repo := postgres.NewMediaRepo(pool)
+	activoID := activoDePrueba(t, pool, "uploaded")
+	ctx := context.Background()
+
+	if _, err := repo.Reclamar(ctx, activoID, time.Now().UTC()); err != nil {
+		t.Fatalf("Reclamar: %v", err)
+	}
+	if err := repo.MarkReady(ctx, activoID, "hls/x/master.m3u8"); err != nil {
+		t.Fatalf("MarkReady: %v", err)
+	}
+
+	cuerpo, err := json.Marshal(queue.MediaProcessPayload{MediaAssetID: activoID})
+	if err != nil {
+		t.Fatalf("payload: %v", err)
+	}
+	procesador := &media.Processor{Assets: repo}
+	if err := procesador.HandleProcessMedia(ctx, asynq.NewTask(queue.TaskProcessMedia, cuerpo)); err != nil {
+		t.Errorf("debería descartarse sin error, devolvió %v", err)
 	}
 }
 

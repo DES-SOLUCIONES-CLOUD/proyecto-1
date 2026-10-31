@@ -112,10 +112,9 @@ func TestUnRetiroVuelveALaColaSinConsumirReintento(t *testing.T) {
 
 func TestUnRetiroSeRegistraSinAlertar(t *testing.T) {
 	var reg registroEnMemoria
-	// aunque llegue en el ultimo intento, el retiro no agota el trabajo
 	RegistrarIntentoFallido(context.Background(), reg.logger(), IntentoFallido{
 		Tarea: TaskProcessMedia, ID: "tarea-1", Cola: "default",
-		Intento: 3, Maximo: 3,
+		Intento: 2, Maximo: 3,
 		Err: fmt.Errorf("%w: %w", ErrRetiro, context.Canceled),
 	})
 	salida := reg.b.String()
@@ -124,6 +123,50 @@ func TestUnRetiroSeRegistraSinAlertar(t *testing.T) {
 	}
 	if !strings.Contains(salida, AccionRetiro) || !strings.Contains(salida, "level=WARN") {
 		t.Errorf("se esperaba el aviso de retiro:\n%s", salida)
+	}
+}
+
+func TestUnRetiroEnElUltimoIntentoAlerta(t *testing.T) {
+	var reg registroEnMemoria
+	// asynq compara el contador antes de consultar IsFailure: este trabajo se
+	// archiva aunque no haya fallado, y el registro tiene que decirlo
+	RegistrarIntentoFallido(context.Background(), reg.logger(), IntentoFallido{
+		Tarea: TaskProcessMedia, ID: "tarea-1", Cola: "default",
+		Intento: 3, Maximo: 3,
+		Err: fmt.Errorf("%w: %w", ErrRetiro, context.Canceled),
+	})
+	if salida := reg.b.String(); !strings.Contains(salida, AccionAgotado) {
+		t.Errorf("debería alertar, el trabajo pasa a la DLQ:\n%s", salida)
+	}
+}
+
+func TestUnActivoArrendadoSeAplazaSinConsumirReintento(t *testing.T) {
+	espera := 7 * time.Minute
+	err := &Arrendado{Espera: espera}
+	if EsFallo(err) {
+		t.Error("una entrega aplazada no debería contar como fallo")
+	}
+	if d := EsperaAntesDeReintentar(0, err, asynq.NewTask(TaskProcessMedia, nil)); d != espera {
+		t.Errorf("debería esperar lo que falta del arrendamiento, espera %v", d)
+	}
+
+	// un retiro no le quita el aplazamiento: el activo sigue siendo de otro
+	envuelto := fmt.Errorf("%w: %w", ErrRetiro, err)
+	if d := EsperaAntesDeReintentar(0, envuelto, asynq.NewTask(TaskProcessMedia, nil)); d != espera {
+		t.Errorf("envuelto en un retiro debería seguir esperando, espera %v", d)
+	}
+}
+
+func TestUnAplazamientoSeRegistraSinAlertar(t *testing.T) {
+	var reg registroEnMemoria
+	RegistrarIntentoFallido(context.Background(), reg.logger(), IntentoFallido{
+		Tarea: TaskProcessMedia, ID: "tarea-1", Cola: "default",
+		Intento: 1, Maximo: 3,
+		Err: &Arrendado{Espera: time.Minute},
+	})
+	salida := reg.b.String()
+	if strings.Contains(salida, AccionAgotado) || !strings.Contains(salida, AccionArrendado) {
+		t.Errorf("se esperaba el aviso de aplazamiento, sin alerta:\n%s", salida)
 	}
 }
 

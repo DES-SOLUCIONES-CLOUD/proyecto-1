@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 
 	coursedomain "github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/course"
@@ -58,7 +59,7 @@ func (p *Processor) log() *slog.Logger {
 // queue.TaskProcessMedia. Es idempotente: si el activo ya está en estado
 // "ready", una entrega duplicada del mismo trabajo no reprocesa ni produce
 // salidas repetidas.
-func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error {
+func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) (errFinal error) {
 	inicio := time.Now()
 
 	var payload queue.MediaProcessPayload
@@ -71,20 +72,23 @@ func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error
 		return fmt.Errorf("media: no se encontró el activo %s: %w", payload.MediaAssetID, err)
 	}
 
-	// Tomar el trabajo es un UPDATE condicional: si el activo ya está listo o
-	// si otro worker lo está procesando con el arrendamiento vigente, este
-	// intento se descarta en silencio. Es lo que hace que una doble entrega no
-	// produzca salidas repetidas, incluso si llega mientras el primer intento
-	// sigue corriendo.
+	// Tomar el trabajo es un UPDATE condicional: es lo que hace que una doble
+	// entrega no produzca salidas repetidas, incluso si llega mientras el
+	// primer intento sigue corriendo. Solo se descarta si el activo ya está
+	// listo: si sigue arrendado, el dueño pudo morir sin avisar y esta entrega
+	// se aplaza hasta que el arrendamiento venza.
 	reclamado, err := p.Assets.Reclamar(ctx, asset.ID, time.Now().UTC())
 	if err != nil {
 		return err
 	}
 	if !reclamado {
-		p.log().Info("media: entrega duplicada descartada",
-			"activo", asset.ID, "recurso", payload.ResourceID, "estado", asset.Status)
-		return nil
+		return p.entregaNoReclamada(ctx, asset, payload.ResourceID)
 	}
+
+	// Desde aquí el activo está arrendado a este intento: cualquier salida por
+	// retiro tiene que devolverlo, o el siguiente worker esperaría el
+	// arrendamiento entero.
+	defer p.liberarSiHayRetiro(ctx, asset.ID, &errFinal)
 
 	// El recurso pudo borrarse mientras el trabajo esperaba en la cola.
 	// Transcodificar ahora sería CPU quemada para un resultado que ningún
@@ -112,10 +116,8 @@ func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error
 	hlsKey, err := p.transcode(ctx, log, payload)
 	if err != nil {
 		if queue.Retirado(ctx) {
-			// el contexto del trabajo ya esta cancelado, con el la
-			// actualizacion no llegaria a la base
 			log.Warn("media: worker en retiro, el activo vuelve a la cola", "error", err)
-			return errors.Join(err, p.Assets.Liberar(context.WithoutCancel(ctx), asset.ID))
+			return err
 		}
 		_ = p.Assets.MarkFailed(ctx, asset.ID, err.Error())
 		_ = p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingFailed)
@@ -126,10 +128,14 @@ func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error
 		return err // asynq reintentará con backoff hasta queue.MaxRetry, luego DLQ.
 	}
 
-	if err := p.Assets.MarkReady(ctx, asset.ID, hlsKey); err != nil {
+	// Sin cancelación: con los derivados ya subidos, un retiro que llegue aquí
+	// no debe tirar el trabajo hecho ni dejar el activo listo y el recurso sin
+	// marcar. Son dos escrituras cortas y caben en PlazoDeRetiro.
+	cierre := context.WithoutCancel(ctx)
+	if err := p.Assets.MarkReady(cierre, asset.ID, hlsKey); err != nil {
 		return err
 	}
-	if err := p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingReady); err != nil {
+	if err := p.Courses.SetResourceProcessingStatusInternal(cierre, payload.ResourceID, coursedomain.ProcessingReady); err != nil {
 		return err
 	}
 
@@ -140,6 +146,30 @@ func (p *Processor) HandleProcessMedia(ctx context.Context, t *asynq.Task) error
 		"hls", hlsKey, "estado", coursedomain.ProcessingReady,
 		"duracion_ms", time.Since(inicio).Milliseconds())
 	return nil
+}
+
+// entregaNoReclamada resuelve una entrega que no pudo tomar el activo: la
+// descarta si ya está listo y, si no, la aplaza hasta que venza el
+// arrendamiento.
+func (p *Processor) entregaNoReclamada(ctx context.Context, asset *postgres.MediaAsset, recurso uuid.UUID) error {
+	espera, listo, err := p.Assets.EsperaDeArrendamiento(ctx, asset.ID, time.Now().UTC())
+	if err != nil {
+		return err
+	}
+	if !listo {
+		return &queue.Arrendado{Espera: espera}
+	}
+	p.log().Info("media: entrega duplicada descartada",
+		"activo", asset.ID, "recurso", recurso, "estado", asset.Status)
+	return nil
+}
+
+// liberarSiHayRetiro devuelve el activo si el trabajo salió por un retiro. Con
+// el contexto cancelado la actualización no llegaría a la base.
+func (p *Processor) liberarSiHayRetiro(ctx context.Context, id uuid.UUID, errFinal *error) {
+	if *errFinal != nil && queue.Retirado(ctx) {
+		*errFinal = errors.Join(*errFinal, p.Assets.Liberar(context.WithoutCancel(ctx), id))
+	}
 }
 
 func (p *Processor) transcode(ctx context.Context, log *slog.Logger, payload queue.MediaProcessPayload) (hlsMasterKey string, err error) {

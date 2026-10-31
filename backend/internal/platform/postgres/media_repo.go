@@ -110,6 +110,37 @@ func (r *MediaRepo) Reclamar(ctx context.Context, id uuid.UUID, ahora time.Time)
 	return tag.RowsAffected() == 1, nil
 }
 
+// esperaMinimaDeArrendamiento evita reprogramar en el mismo instante cuando el
+// arrendamiento acaba de vencer o el activo cambio de estado entre las dos
+// consultas.
+const esperaMinimaDeArrendamiento = time.Second
+
+// EsperaDeArrendamiento se consulta cuando Reclamar devuelve false: dice si el
+// activo ya esta listo, y si no, cuanto falta para poder volver a reclamarlo.
+//
+// lo que no este listo no se puede descartar. si el dueño del arrendamiento
+// murio sin sigterm, esta entrega es la unica que queda del trabajo, y darla
+// por terminada dejaria el recurso en 'processing' para siempre
+func (r *MediaRepo) EsperaDeArrendamiento(ctx context.Context, id uuid.UUID, ahora time.Time) (espera time.Duration, listo bool, err error) {
+	var estado string
+	var inicio *time.Time
+	if err := r.pool.QueryRow(ctx,
+		`SELECT status, processing_started_at FROM media_assets WHERE id=$1`, id,
+	).Scan(&estado, &inicio); err != nil {
+		return 0, false, err
+	}
+	if estado == "ready" {
+		return 0, true, nil
+	}
+	if inicio == nil {
+		return esperaMinimaDeArrendamiento, false, nil
+	}
+	// un segundo de mas porque Reclamar exige que el arrendamiento ya haya
+	// vencido, no que venza justo ahora
+	espera = inicio.Add(LeaseProcesamiento).Sub(ahora) + time.Second
+	return max(espera, esperaMinimaDeArrendamiento), false, nil
+}
+
 // Liberar devuelve a la cola un activo cuyo worker se esta apagando.
 //
 // sin esto, cuando asynq reprograma el trabajo, el siguiente worker encuentra

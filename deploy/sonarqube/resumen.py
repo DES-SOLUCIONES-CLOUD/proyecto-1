@@ -95,6 +95,18 @@ def main() -> None:
         print(f"| {NOMBRES[severidad]} | `{regla}` | {ejemplo.get('type', '')} | {len(casos)} "
               f"| `{archivo}:{linea}` | {mensaje} |")
 
+    # el enunciado pide la ubicacion de todo hallazgo mayor o superior que siga
+    # abierto, y arriba solo sale un ejemplo por regla
+    print("\n### Ubicaciones de los hallazgos Mayor o superior\n")
+    print("| Severidad | Regla | Ubicaciones |")
+    print("|---|---|---|")
+    for (severidad, regla), casos in orden:
+        if SEVERIDADES.index(severidad) > SEVERIDADES.index("MAJOR"):
+            continue
+        ubicaciones = sorted(f"{c['component'].split(':', 1)[-1]}:{c.get('line', '')}" for c in casos)
+        lista = "<br>".join(f"`{u}`" for u in ubicaciones)
+        print(f"| {NOMBRES[severidad]} | `{regla}` | {lista} |")
+
 
 if __name__ == "__main__":
     main()

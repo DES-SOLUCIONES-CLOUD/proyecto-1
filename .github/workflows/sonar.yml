@@ -44,6 +44,14 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U mooc"
           --health-interval 5s --health-timeout 5s --health-retries 10
+      # sin redis se omiten las pruebas de integracion de la api, y las
+      # correcciones de la cola tampoco cuentan
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,7 +67,19 @@ jobs:
         working-directory: backend
         env:
           TEST_DATABASE_URL: postgres://mooc:mooc@localhost:5432/mooc_test?sslmode=disable
+          TEST_REDIS_ADDR: localhost:6379
         run: go test ./... -count=1 -coverprofile=coverage.out
+
+      # con las dependencias el analisis de typescript tiene informacion de
+      # tipos. sin ellas cambian los hallazgos: sale S3735 y no sale S6606,
+      # y el reporte no coincide con el de una corrida local
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Dependencias del frontend
+        working-directory: frontend
+        run: npm ci
 
       - name: Analizar con SonarQube
         env:
