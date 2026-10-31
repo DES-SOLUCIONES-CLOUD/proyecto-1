@@ -3,6 +3,9 @@
 #
 #   bash deploy/retiro-seguro/demo-local.sh
 #
+# sirve para ensayar: usa el postgres del compose, y las pruebas evaluadas
+# exigen postgresql administrado. la evidencia sale de demo-gcp.sh
+#
 # 1. deja dos workers corriendo, uno se detiene y el otro sigue el trabajo
 # 2. espera a que se suba un video desde la web y un worker lo tome
 # 3. con ffmpeg trabajando, detiene ese worker con docker stop
@@ -48,7 +51,14 @@ echo
 echo "==> docker stop $nombre"
 inicio=$(date +%s)
 docker stop -t 10 "$elegido" >/dev/null
-echo "    Se detuvo en $(( $(date +%s) - inicio ))s (por debajo de 10: no hizo falta SIGKILL)."
+duracion=$(( $(date +%s) - inicio ))
+codigo="$(docker inspect -f '{{.State.ExitCode}}' "$elegido")"
+# 137 = 128 + 9: docker se canso de esperar y lo mato con sigkill
+if [[ "$codigo" == 137 ]]; then
+  echo "    Se detuvo en ${duracion}s con SIGKILL (codigo 137): el retiro NO fue limpio." >&2
+  exit 1
+fi
+echo "    Se detuvo en ${duracion}s, codigo de salida $codigo: termino antes del SIGKILL."
 
 echo
 echo "==> Registros del worker retirado"
