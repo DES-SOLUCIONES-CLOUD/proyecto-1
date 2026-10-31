@@ -57,7 +57,10 @@ serie() {
     >"$tmp/${nombre}.json" || {
     echo "AVISO: sin datos de $nombre" >&2
     echo "[]" >"$tmp/${nombre}.json"
+    return 0
   }
+  # La API responde bien aunque la métrica no exista para este recurso.
+  [[ "$(cat "$tmp/${nombre}.json")" != "[]" ]] || echo "AVISO: serie vacía: $nombre" >&2
 }
 
 echo "recogiendo métricas $desde → $hasta (proyecto $proyecto)" >&2
@@ -70,7 +73,7 @@ serie disco_lectura 'metric.type="compute.googleapis.com/instance/disk/read_byte
 serie disco_escritura 'metric.type="compute.googleapis.com/instance/disk/write_bytes_count"'
 serie cpu_sql 'metric.type="cloudsql.googleapis.com/database/cpu/utilization"'
 serie memoria_sql 'metric.type="cloudsql.googleapis.com/database/memory/utilization"'
-serie conexiones_sql 'metric.type="cloudsql.googleapis.com/database/network/connections"'
+serie conexiones_sql 'metric.type="cloudsql.googleapis.com/database/postgresql/num_backends"'
 serie lb_peticiones 'metric.type="loadbalancing.googleapis.com/https/backend_request_count"'
 serie tamano_mig 'metric.type="compute.googleapis.com/instance_group/size"'
 
