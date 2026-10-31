@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 
 	coursedomain "github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/domain/course"
@@ -119,9 +120,10 @@ func (p *Procesador) conversor() Conversor {
 // HandleConvertDocument es el asynq.HandlerFunc de queue.TaskConvertDocument.
 //
 // Es idempotente por la misma vía que la transcodificación: reclamar el activo
-// es un UPDATE condicional, así que una entrega duplicada se descarta en
-// silencio en lugar de convertir dos veces.
-func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) error {
+// es un UPDATE condicional, así que una entrega duplicada no convierte dos
+// veces. Si el activo sigue arrendado se aplaza en lugar de descartarse, porque
+// el dueño pudo morir sin avisar.
+func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) (errFinal error) {
 	inicio := time.Now()
 
 	var payload queue.DocumentConvertPayload
@@ -139,10 +141,11 @@ func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) e
 		return err
 	}
 	if !reclamado {
-		p.log().Info("documentos: entrega duplicada descartada",
-			"activo", activo.ID, "recurso", payload.ResourceID, "estado", activo.Status)
-		return nil
+		return p.entregaNoReclamada(ctx, activo, payload.ResourceID)
 	}
+
+	// igual que en media.Processor: toda salida por retiro devuelve el activo
+	defer p.liberarSiHayRetiro(ctx, activo.ID, &errFinal)
 
 	log := p.log().With(append(
 		[]any{"activo", activo.ID, "recurso", payload.ResourceID, "formato", payload.Formato},
@@ -153,10 +156,8 @@ func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) e
 	clavePDF, err := p.convertir(ctx, log, payload)
 	if err != nil {
 		if queue.Retirado(ctx) {
-			// igual que en media.Processor: con el contexto cancelado la
-			// actualizacion no llegaria a la base
 			log.Warn("documentos: worker en retiro, el activo vuelve a la cola", "error", err)
-			return errors.Join(err, p.Assets.Liberar(context.WithoutCancel(ctx), activo.ID))
+			return err
 		}
 		_ = p.Assets.MarkFailed(ctx, activo.ID, err.Error())
 		_ = p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingFailed)
@@ -165,10 +166,11 @@ func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) e
 
 	// El original se conserva: la conversión produce una vista previa, no
 	// sustituye al archivo que subió el profesor.
-	if err := p.Assets.MarcarPDFListo(ctx, activo.ID, clavePDF); err != nil {
+	cierre := context.WithoutCancel(ctx)
+	if err := p.Assets.MarcarPDFListo(cierre, activo.ID, clavePDF); err != nil {
 		return err
 	}
-	if err := p.Courses.SetResourceProcessingStatusInternal(ctx, payload.ResourceID, coursedomain.ProcessingReady); err != nil {
+	if err := p.Courses.SetResourceProcessingStatusInternal(cierre, payload.ResourceID, coursedomain.ProcessingReady); err != nil {
 		return err
 	}
 
@@ -176,6 +178,30 @@ func (p *Procesador) HandleConvertDocument(ctx context.Context, t *asynq.Task) e
 		"pdf", clavePDF, "estado", coursedomain.ProcessingReady,
 		"duracion_ms", time.Since(inicio).Milliseconds())
 	return nil
+}
+
+// entregaNoReclamada resuelve una entrega que no pudo tomar el activo: la
+// descarta si ya esta listo y, si no, la aplaza hasta que venza el
+// arrendamiento.
+func (p *Procesador) entregaNoReclamada(ctx context.Context, activo *postgres.MediaAsset, recurso uuid.UUID) error {
+	espera, listo, err := p.Assets.EsperaDeArrendamiento(ctx, activo.ID, time.Now().UTC())
+	if err != nil {
+		return err
+	}
+	if !listo {
+		return &queue.Arrendado{Espera: espera}
+	}
+	p.log().Info("documentos: entrega duplicada descartada",
+		"activo", activo.ID, "recurso", recurso, "estado", activo.Status)
+	return nil
+}
+
+// liberarSiHayRetiro devuelve el activo si el trabajo salio por un retiro. con
+// el contexto cancelado la actualizacion no llegaria a la base.
+func (p *Procesador) liberarSiHayRetiro(ctx context.Context, id uuid.UUID, errFinal *error) {
+	if *errFinal != nil && queue.Retirado(ctx) {
+		*errFinal = errors.Join(*errFinal, p.Assets.Liberar(context.WithoutCancel(ctx), id))
+	}
 }
 
 func (p *Procesador) convertir(ctx context.Context, log *slog.Logger, payload queue.DocumentConvertPayload) (string, error) {
