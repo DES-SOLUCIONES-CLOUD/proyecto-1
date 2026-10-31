@@ -169,11 +169,16 @@ function auth(token) {
   };
 }
 
+const inscripcionEsperada = http.expectedStatuses({ min: 200, max: 399 }, 409);
+
 function inscribir(cfg, tags) {
+  // 409 already_enrolled es un rechazo esperado, no un fallo: sin esto k6 lo
+  // suma a http_req_failed. Solo en esta petición: un 409 en cualquier otra
+  // sigue contando como error.
   const res = http.post(
     `${BASE}/api/v1/enrollments`,
     JSON.stringify({ course_id: escenario.course_id }),
-    { ...cfg, tags },
+    { ...cfg, tags, responseCallback: inscripcionEsperada },
   );
   // 201: inscripción nueva. 409 already_enrolled: el estudiante ya estaba
   // (re-siembra o SEED_ENROLL=1). Las dos cuentan como inscripción en el

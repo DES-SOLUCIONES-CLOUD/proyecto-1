@@ -10,7 +10,7 @@
 #
 # Variables: BASE_URL, REPOSO_S (por defecto 600).
 #   escenario1/2:  NIVELES, MESETA, PROFESORES, ESTUDIANTES
-#   escenario3a/b: VUS_REPOSO, VUS_PICO, RAMPA, MESETA_ALTA, MESETA_BAJA
+#   escenario3a/b: VUS_REPOSO, VUS_PICO, RAMPA, MESETA_INICIAL, MESETA_ALTA, MESETA_BAJA
 # El escenario sembrado tiene que estar en load/salida/escenario.json.
 set -euo pipefail
 
@@ -48,11 +48,15 @@ commit="$(git -C "$(dirname "$DIR")" rev-parse --short HEAD 2>/dev/null || echo 
     echo "| VUS_REPOSO | \`${VUS_REPOSO:-sin registrar}\` |"
     echo "| VUS_PICO | \`${VUS_PICO:-sin registrar}\` |"
     echo "| RAMPA | \`${RAMPA:-sin registrar}\` |"
+    echo "| MESETA_INICIAL | \`${MESETA_INICIAL:-3m}\` |"
     echo "| MESETA_ALTA | \`${MESETA_ALTA:-sin registrar}\` |"
-    echo "| MESETA_BAJA | \`${MESETA_BAJA:-sin registrar}\` |"
-  else
+    echo "| MESETA_BAJA | \`${MESETA_BAJA:-15m}\` |"
+  elif [[ "$escenario" == escenario1 ]]; then
     echo "| NIVELES | \`${NIVELES:-50,100,200,300}\` |"
+    echo "| RAMPA | \`${RAMPA:-sin registrar}\` |"
     echo "| MESETA | \`${MESETA:-3m}\` |"
+  else
+    echo "| MESETA | \`${MESETA:-5m}\` |"
     echo "| PROFESORES | \`${PROFESORES:-3}\` |"
     echo "| ESTUDIANTES | \`${ESTUDIANTES:-20}\` |"
   fi
@@ -70,14 +74,15 @@ sleep "$REPOSO_S"
 inicio="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 export BASE_URL ESCENARIO="${ESCENARIO:-$SALIDA/escenario.json}" SALIDA
 export NIVELES MESETA PROFESORES ESTUDIANTES
-export VUS_REPOSO VUS_PICO RAMPA MESETA_ALTA MESETA_BAJA
+export VUS_REPOSO VUS_PICO RAMPA MESETA_INICIAL MESETA_ALTA MESETA_BAJA
 export PERFILES_DIR="${PERFILES_DIR:-$DIR/perfiles}"
 export VIDEO_CORTO="${VIDEO_CORTO:-$PERFILES_DIR/corto.mp4}"
 export VIDEO_MEDIO="${VIDEO_MEDIO:-$PERFILES_DIR/medio.mp4}"
 export VIDEO_LARGO="${VIDEO_LARGO:-$PERFILES_DIR/largo.mp4}"
 export AUDIO_WAV="${AUDIO_WAV:-$PERFILES_DIR/audio.wav}"
 
-k6 run "$DIR/${escenario}.js"
+# p(50) y p(99) no están entre las estadísticas por defecto de k6.
+k6 run --summary-trend-stats "avg,min,med,max,p(50),p(90),p(95),p(99)" "$DIR/${escenario}.js"
 fin="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "| Fin UTC | $fin |" >>"$meta"
 

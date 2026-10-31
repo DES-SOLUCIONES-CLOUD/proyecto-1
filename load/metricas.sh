@@ -4,7 +4,8 @@
 #   load/metricas.sh --corrida esc1-n200 --minutos 15
 #   load/metricas.sh --corrida esc2-p3 --desde 2026-09-27T14:00:00Z --hasta 2026-09-27T14:20:00Z
 #
-# Escribe load/salida/metricas-<corrida>.json y un Markdown colindante.
+# Escribe load/salida/metricas-<corrida>.json, un Markdown colindante y
+# series-<corrida>.csv con los puntos crudos. Un resumen por instancia.
 # Requiere gcloud autenticado en el proyecto del despliegue.
 set -euo pipefail
 
@@ -47,40 +48,40 @@ mkdir -p "$SALIDA"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# Por la API REST y no por gcloud: los errores tienen que verse. Una serie
+# vacía en silencio deja la corrida sin evidencia y nadie se entera.
 serie() {
-  local nombre="$1" tipo="$2"
-  gcloud monitoring time-series list \
-    --project="$proyecto" \
-    --filter="metric.type=\"${tipo}\"" \
-    --interval-start-time="$desde" \
-    --interval-end-time="$hasta" \
-    --format=json >"$tmp/${nombre}.json" 2>/dev/null || echo "[]" >"$tmp/${nombre}.json"
+  local nombre="$1" filtro="$2"
+  python3 "$DIR/serie-monitoring.py" "$proyecto" "$filtro" "$desde" "$hasta" \
+    >"$tmp/${nombre}.json" || {
+    echo "AVISO: sin datos de $nombre" >&2
+    echo "[]" >"$tmp/${nombre}.json"
+  }
 }
 
 echo "recogiendo métricas $desde → $hasta (proyecto $proyecto)" >&2
 
-serie cpu_vm compute.googleapis.com/instance/cpu/utilization
-serie memoria_vm agent.googleapis.com/memory/percent_used
-serie red_entrada compute.googleapis.com/instance/network/received_bytes_count
-serie red_salida compute.googleapis.com/instance/network/sent_bytes_count
-serie disco_lectura compute.googleapis.com/instance/disk/read_bytes_count
-serie disco_escritura compute.googleapis.com/instance/disk/write_bytes_count
-serie cpu_sql cloudsql.googleapis.com/database/cpu/utilization
-serie memoria_sql cloudsql.googleapis.com/database/memory/utilization
-serie conexiones_sql cloudsql.googleapis.com/database/network/connections
+serie cpu_vm 'metric.type="compute.googleapis.com/instance/cpu/utilization"'
+serie memoria_vm 'metric.type="agent.googleapis.com/memory/percent_used" AND metric.labels.state="used"'
+serie red_entrada 'metric.type="compute.googleapis.com/instance/network/received_bytes_count"'
+serie red_salida 'metric.type="compute.googleapis.com/instance/network/sent_bytes_count"'
+serie disco_lectura 'metric.type="compute.googleapis.com/instance/disk/read_bytes_count"'
+serie disco_escritura 'metric.type="compute.googleapis.com/instance/disk/write_bytes_count"'
+serie cpu_sql 'metric.type="cloudsql.googleapis.com/database/cpu/utilization"'
+serie memoria_sql 'metric.type="cloudsql.googleapis.com/database/memory/utilization"'
+serie conexiones_sql 'metric.type="cloudsql.googleapis.com/database/network/connections"'
+serie lb_peticiones 'metric.type="loadbalancing.googleapis.com/https/backend_request_count"'
+serie tamano_mig 'metric.type="compute.googleapis.com/instance_group/size"'
 
 echo null >"$tmp/cola.json"
 if [[ -x "$RAIZ/deploy/gcp/remoto.sh" ]]; then
-  # Snapshot de asynq al cerrar. No es una serie: profundidad y trabajos
-  # reintentados/archivados en ese instante.
-  if cola_raw="$("$RAIZ/deploy/gcp/remoto.sh" redis \
-      'c=$(sudo docker ps -qf name=redis | head -1); sudo docker exec "$c" redis-cli LLEN "asynq:{default}:pending"; sudo docker exec "$c" redis-cli ZCARD "asynq:{default}:active"; sudo docker exec "$c" redis-cli ZCARD "asynq:{default}:scheduled"; sudo docker exec "$c" redis-cli ZCARD "asynq:{default}:retry"; sudo docker exec "$c" redis-cli ZCARD "asynq:{default}:archived"' \
-      2>/dev/null)"; then
+  # Foto al cerrar. La serie completa la deja observar.sh.
+  programa="$(base64 -w0 "$DIR/cola-en-redis.sh")"
+  if cola_raw="$("$RAIZ/deploy/gcp/remoto.sh" redis "echo $programa | base64 -d | bash -s -- 0" 2>/dev/null)"; then
     printf '%s\n' "$cola_raw" | python3 -c '
 import json,sys
-ns=[int(x) for x in sys.stdin.read().split() if x.isdigit()]
-keys=["pending","active","scheduled","retry","archived"]
-print(json.dumps({k: (ns[i] if i<len(ns) else None) for i,k in enumerate(keys)} | {"fuente":"redis/asynq"}))
+claves=["ts_utc","cola","pending","active","scheduled","retry","archived","antiguedad_s"]
+print(json.dumps({"fuente":"redis/asynq","colas":[dict(zip(claves,l.split(","))) for l in sys.stdin.read().split()]}))
 ' >"$tmp/cola.json" || echo null >"$tmp/cola.json"
   fi
 fi
@@ -94,7 +95,7 @@ tmp = Path(tmp)
 nombres = [
     "cpu_vm", "memoria_vm", "red_entrada", "red_salida",
     "disco_lectura", "disco_escritura", "cpu_sql", "memoria_sql",
-    "conexiones_sql",
+    "conexiones_sql", "lb_peticiones", "tamano_mig",
 ]
 
 def puntos(series):
@@ -109,6 +110,22 @@ def puntos(series):
             elif "int64Value" in v:
                 vals.append(float(v["int64Value"]))
     return vals
+
+def origen(s):
+    """De qué instancia, grupo o base sale una serie."""
+    metrica = s.get("metric", {}).get("labels", {})
+    recurso = s.get("resource", {}).get("labels", {})
+    for valor in (
+        metrica.get("instance_name"),
+        recurso.get("instance_group_manager_name"),
+        recurso.get("instance_group_name"),
+        recurso.get("backend_name"),
+        recurso.get("database_id"),
+        recurso.get("instance_id"),
+    ):
+        if valor:
+            return valor
+    return "desconocido"
 
 def resumen(vals):
     if not vals:
@@ -134,15 +151,31 @@ out = {
     "proyecto": proyecto,
     "series": {},
 }
-for nombre in nombres:
-    try:
-        series = json.loads((tmp / f"{nombre}.json").read_text(encoding="utf-8") or "[]")
-    except json.JSONDecodeError:
-        series = []
-    out["series"][nombre] = {
-        "resumen": resumen(puntos(series)),
-        "crudo_n": len(series) if isinstance(series, list) else 0,
-    }
+# Un resumen por origen: promediar la CPU de la API con la de Redis y los
+# workers no dice nada. Los puntos crudos van a un CSV para las gráficas.
+crudo = Path(salida) / f"series-{corrida}.csv"
+with crudo.open("w", encoding="utf-8") as f:
+    f.write("serie,origen,ts_utc,valor\n")
+    for nombre in nombres:
+        try:
+            series = json.loads((tmp / f"{nombre}.json").read_text(encoding="utf-8") or "[]")
+        except json.JSONDecodeError:
+            series = []
+        por_origen = {}
+        for s in series:
+            por_origen.setdefault(origen(s), []).append(s)
+            for p in s.get("points", []):
+                v = p.get("value", {})
+                valor = v.get("doubleValue", v.get("int64Value"))
+                if valor is not None:
+                    f.write(f"{nombre},{origen(s)},{p['interval']['endTime']},{valor}\n")
+        for fuente, grupo in sorted(por_origen.items()):
+            out["series"][f"{nombre}/{fuente}"] = {
+                "resumen": resumen(puntos(grupo)),
+                "crudo_n": len(grupo),
+            }
+        if not por_origen:
+            out["series"][nombre] = {"resumen": {"n": 0}, "crudo_n": 0}
 
 try:
     out["cola"] = json.loads((tmp / "cola.json").read_text(encoding="utf-8"))

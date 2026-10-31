@@ -17,11 +17,11 @@
 // Esto NO mide latencia de negocio ni trae thresholds de p95: ya los mide
 // escenario1.js contra esta misma arquitectura. Lo que importa aquí es la
 // serie de instancias del MIG a lo largo del tiempo (Cloud Monitoring,
-// fuera de k6: load/metricas.sh), correlacionada con las marcas de fase que
+// fuera de k6: load/observar.sh y load/metricas.sh), correlacionada con las marcas de fase que
 // este script imprime por stdout y guarda en el resumen.
 //
 //   BASE_URL=https://<balanceador> \
-//   VUS_REPOSO=5 VUS_PICO=250 RAMPA=30s MESETA_ALTA=6m MESETA_BAJA=5m \
+//   VUS_REPOSO=5 VUS_PICO=250 RAMPA=30s MESETA_INICIAL=3m MESETA_ALTA=6m MESETA_BAJA=15m \
 //   k6 run load/escenario3a.js
 
 import http from "k6/http";
@@ -41,7 +41,10 @@ const VUS_REPOSO = Number(__ENV.VUS_REPOSO || 5);
 const VUS_PICO = Number(__ENV.VUS_PICO || 250);
 const RAMPA = __ENV.RAMPA || "30s";
 const MESETA_ALTA = __ENV.MESETA_ALTA || "6m";
-const MESETA_BAJA = __ENV.MESETA_BAJA || "5m";
+const MESETA_INICIAL = __ENV.MESETA_INICIAL || "3m";
+// El reposo final tiene que cubrir la ventana de estabilización del autoscaler
+// (unos 10 minutos antes de reducir) y lo que tarde en retirarse la instancia.
+const MESETA_BAJA = __ENV.MESETA_BAJA || "15m";
 
 const datos = new SharedArray("escenario", () => [JSON.parse(open(ESCENARIO))]);
 const escenario = datos[0];
@@ -53,7 +56,7 @@ export const options = {
       exec: "navegar",
       startVUs: VUS_REPOSO,
       stages: [
-        { duration: MESETA_BAJA, target: VUS_REPOSO }, // 1. reposo: una instancia
+        { duration: MESETA_INICIAL, target: VUS_REPOSO }, // 1. reposo: una instancia
         { duration: RAMPA, target: VUS_PICO }, // 2. rampa: sube la demanda
         { duration: MESETA_ALTA, target: VUS_PICO }, // 3. meseta alta: fuerza el scale-out
         { duration: RAMPA, target: VUS_REPOSO }, // 4. reduce la demanda
@@ -77,7 +80,7 @@ function segundos(s) {
 
 function calcularMarcas(inicioMs) {
   const fases = [
-    ["reposo_inicial", MESETA_BAJA],
+    ["reposo_inicial", MESETA_INICIAL],
     ["rampa_subida", RAMPA],
     ["meseta_alta", MESETA_ALTA],
     ["rampa_bajada", RAMPA],

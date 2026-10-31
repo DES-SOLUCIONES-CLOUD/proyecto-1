@@ -9,11 +9,22 @@ y el que corre en CI. Los otros dos son la caracterización en GCP.
 | `escenario1.js` | Lo mismo, con línea base + 3 niveles, inscripción en el recorrido, una cuenta por VU, envío duplicado sin doble nota | GCP, Entrega 2 |
 | `escenario2.js` | Profesores suben 3 perfiles y esperan `ready`; estudiantes consumen HLS al ritmo de EXTINF | GCP, Entrega 2 |
 
-`metricas.sh` vuelve de Cloud Monitoring (CPU, memoria, red, disco de las
-VM; CPU y conexiones de Cloud SQL) y un snapshot de la cola asynq.
+`metricas.sh` vuelve de Cloud Monitoring (CPU, memoria, red y disco por
+instancia; CPU y conexiones de Cloud SQL; peticiones del balanceador y tamaño
+de los MIG) con un resumen, un CSV de puntos crudos y una foto de la cola.
+`observar.sh` guarda durante la corrida las series de instancias de cada MIG
+y de profundidad y antigüedad de la cola. Va en Cloud Shell o un portátil:
+`mooc-k6` no tiene cuenta de servicio. `reconciliar-3b.sql` compara los
+trabajos aceptados en el 3B con su estado final.
 `correr.sh` espera 10 minutos (créditos de e2-small), lanza k6 y recoge
 métricas. `perfiles/generar.sh` fabrica los tres MP4 y un WAV. `generador-vm.sh`
 crea/borra la e2-standard-2. Orden: [`docs/entrega2/capacidad-corridas.md`](../docs/entrega2/capacidad-corridas.md).
+
+**El `409` de inscripción no es un error.** `http_req_failed` contaba cada
+«ya inscrito» como fallo: los 14.131 fallos (9,92 %) de la corrida de E2 son
+exactamente las 14.341 inscripciones menos las 210 con `201`. Desde E3 esa
+petición lo declara como respuesta esperada; para comparar con E2 hay que
+descontarlos.
 
 **Login en el Escenario 1:** se mide, a 8/min, fuera del mix de VU. No
 forma parte del recorrido de cada estudiante.

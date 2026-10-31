@@ -47,6 +47,7 @@ const PERFILES = {
 };
 
 const nombres = Object.keys(PERFILES);
+const inscripcionEsperada = http.expectedStatuses({ min: 200, max: 399 }, 409);
 const binarios = {};
 for (const nombre of nombres) {
   binarios[nombre] = open(PERFILES[nombre].archivo, "b");
@@ -359,10 +360,13 @@ export function consumirHLS(data) {
   if (recursos.length === 0) return;
   const rec = recursos[Math.floor(Math.random() * recursos.length)];
 
+  // 409 already_enrolled es un rechazo esperado, no un fallo: sin esto k6 lo
+  // suma a http_req_failed. Solo en esta petición: un 409 en cualquier otra
+  // sigue contando como error.
   const insc = http.post(
     `${BASE}/api/v1/enrollments`,
     JSON.stringify({ course_id: data.course_id }),
-    { ...cfg, tags },
+    { ...cfg, tags, responseCallback: inscripcionEsperada },
   );
   check(insc, { "inscripción 201/409": (r) => r.status === 201 || r.status === 409 });
 

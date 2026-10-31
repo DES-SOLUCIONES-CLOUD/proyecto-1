@@ -13,20 +13,16 @@
 // cada worker ocupado transcodificando sostiene su CPU mientras la cola
 // sigue creciendo detrás.
 //
-// VUS_PICO por defecto es 8 (dentro del rango de 5 a 10 que pide el
-// enunciado). Cada VU en el pico es un "profesor" subiendo videos sin
-// parar; en el reposo baja a VUS_REPOSO para dejar que la cola drene y
-// observar la reducción.
+// VUS_PICO por defecto es 8. Cada VU en el pico es un "profesor" subiendo
+// videos sin parar; en el reposo baja a VUS_REPOSO para dejar que la cola
+// drene y observar la reducción.
 //
-// La profundidad de cola NO la reporta k6 (vive en Redis, no en la API):
-// se mide aparte con load/metricas.sh, que saca un snapshot de
-// asynq:{default}:pending/active/retry/archived. Ese script hoy entra por
-// SSH a la VM del worker buscando el contenedor de Redis ahí — en cuanto
-// Redis tenga su propia VM fija (Integrante 1), metricas.sh necesita
-// apuntar a esa VM en lugar de al worker. Confirmar antes de correr esto.
+// La profundidad de cola NO la reporta k6 (vive en Redis, no en la API): la
+// serie sale de load/observar.sh y la reconciliación de los trabajos
+// aceptados, de load/reconciliar-3b.sql.
 //
 //   BASE_URL=https://<balanceador> \
-//   VUS_REPOSO=1 VUS_PICO=8 RAMPA=20s MESETA_ALTA=6m MESETA_BAJA=4m \
+//   VUS_REPOSO=1 VUS_PICO=8 RAMPA=20s MESETA_INICIAL=3m MESETA_ALTA=6m MESETA_BAJA=15m \
 //   k6 run load/escenario3b.js
 
 import http from "k6/http";
@@ -44,7 +40,10 @@ const VUS_REPOSO = Number(__ENV.VUS_REPOSO || 1);
 const VUS_PICO = Number(__ENV.VUS_PICO || 8);
 const RAMPA = __ENV.RAMPA || "20s";
 const MESETA_ALTA = __ENV.MESETA_ALTA || "6m";
-const MESETA_BAJA = __ENV.MESETA_BAJA || "4m";
+const MESETA_INICIAL = __ENV.MESETA_INICIAL || "3m";
+// El reposo final tiene que cubrir la ventana de estabilización del autoscaler
+// (unos 10 minutos antes de reducir) y lo que tarde en retirarse la instancia.
+const MESETA_BAJA = __ENV.MESETA_BAJA || "15m";
 
 
 const DIR_PERFILES = __ENV.PERFILES_DIR || "perfiles";
@@ -71,7 +70,7 @@ export const options = {
       exec: "subirSinEsperar",
       startVUs: VUS_REPOSO,
       stages: [
-        { duration: MESETA_BAJA, target: VUS_REPOSO }, // 1. reposo: cola casi vacía
+        { duration: MESETA_INICIAL, target: VUS_REPOSO }, // 1. reposo: cola casi vacía
         { duration: RAMPA, target: VUS_PICO }, // 2. rampa: empieza a encolar
         { duration: MESETA_ALTA, target: VUS_PICO }, // 3. meseta alta: fuerza el scale-out
         { duration: RAMPA, target: VUS_REPOSO }, // 4. deja de encolar
@@ -95,7 +94,7 @@ function segundos(s) {
 
 function calcularMarcas(inicioMs) {
   const fases = [
-    ["reposo_inicial", MESETA_BAJA],
+    ["reposo_inicial", MESETA_INICIAL],
     ["rampa_subida", RAMPA],
     ["meseta_alta", MESETA_ALTA],
     ["rampa_bajada", RAMPA],
@@ -130,8 +129,8 @@ export function setup() {
   console.log(`Fases (hora prevista, UTC):`);
   for (const m of marcas) console.log(`  ${m.fase.padEnd(16)} ${m.inicio}`);
   console.log("");
-  console.log("Correr en paralelo (otra terminal), para el snapshot de la cola:");
-  console.log("  load/metricas.sh --corrida esc3b-<fecha> --minutos <duración total + 2>");
+  console.log("Correr en paralelo, desde Cloud Shell o un portátil con permisos:");
+  console.log("  load/observar.sh --corrida esc3b-<fecha>");
   console.log("");
   return { marcas };
 }
@@ -247,9 +246,8 @@ function resumenLegible(data) {
     `Tasa de error:            ${((m.http_req_failed?.values?.rate ?? 0) * 100).toFixed(3)} %`,
     `VUs máximos:              ${m.vus_max?.values?.value ?? "—"}`,
     "",
-    "Completar a mano con load/metricas.sh: profundidad/antigüedad de la cola",
-    "antes/durante/después, instancias de mig-workers en el tiempo, trabajos",
-    "completados vs. encolados (el drenaje real, no solo lo que mandó k6).",
+    "Completar con load/observar.sh (cola e instancias en el tiempo) y con",
+    "load/reconciliar-3b.sql (el drenaje real, no solo lo que mandó k6).",
     "",
   ].join("\n");
 }
