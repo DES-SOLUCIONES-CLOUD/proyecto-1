@@ -73,3 +73,6 @@ AGENTS.md
 *.canvas.tsx
 prompts/
 .prompts/
+
+# Clave del admin del SonarQube local (deploy/sonarqube/analizar.sh)
+deploy/sonarqube/.clave-admin

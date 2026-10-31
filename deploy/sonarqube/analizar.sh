@@ -32,7 +32,14 @@ local_=false
 if [[ -z "${SONAR_HOST_URL:-}" ]]; then
   local_=true
   SONAR_HOST_URL="http://localhost:9000"
-  ADMIN_PASS="${SONAR_ADMIN_PASSWORD:-Mooc-Sonar-2026!}"
+  # la clave no va en el repositorio: la primera vez se genera y queda en un
+  # archivo ignorado por git, porque sonarqube la conserva en su volumen.
+  # los prefijos cumplen la politica de claves de sonarqube
+  CLAVE_LOCAL="$DIR/.clave-admin"
+  if [[ -z "${SONAR_ADMIN_PASSWORD:-}" && ! -s "$CLAVE_LOCAL" ]]; then
+    ( umask 077; echo "Mooc-$(openssl rand -hex 16)-A1" >"$CLAVE_LOCAL" )
+  fi
+  ADMIN_PASS="${SONAR_ADMIN_PASSWORD:-$(cat "$CLAVE_LOCAL" 2>/dev/null)}"
 
   echo "==> Levantando SonarQube 10 Community"
   "${compose[@]}" up -d sonarqube
@@ -108,6 +115,6 @@ fi
 
 if [[ $local_ == true ]]; then
   echo
-  echo "Panel: $SONAR_HOST_URL/dashboard?id=$PROYECTO (admin / la clave de SONAR_ADMIN_PASSWORD)"
+  echo "Panel: $SONAR_HOST_URL/dashboard?id=$PROYECTO (admin / SONAR_ADMIN_PASSWORD o deploy/sonarqube/.clave-admin)"
 fi
 exit $resultado
