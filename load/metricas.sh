@@ -10,8 +10,9 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-RAIZ="$(cd "$DIR/.." && pwd)"
 SALIDA="${SALIDA:-$DIR/salida}"
+ZONA="${GCP_ZONE:-us-central1-a}"
+VM_REDIS="${VM_REDIS:-mooc-redis}"
 corrida=""
 minutos=15
 desde=""
@@ -74,16 +75,17 @@ serie lb_peticiones 'metric.type="loadbalancing.googleapis.com/https/backend_req
 serie tamano_mig 'metric.type="compute.googleapis.com/instance_group/size"'
 
 echo null >"$tmp/cola.json"
-if [[ -x "$RAIZ/deploy/gcp/remoto.sh" ]]; then
-  # Foto al cerrar. La serie completa la deja observar.sh.
-  programa="$(base64 -w0 "$DIR/cola-en-redis.sh")"
-  if cola_raw="$("$RAIZ/deploy/gcp/remoto.sh" redis "echo $programa | base64 -d | bash -s -- 0" 2>/dev/null)"; then
-    printf '%s\n' "$cola_raw" | python3 -c '
+# Foto al cerrar. La serie completa la deja observar.sh.
+programa="$(base64 -w0 "$DIR/cola-en-redis.sh")"
+if cola_raw="$(gcloud compute ssh "$VM_REDIS" --project "$proyecto" --zone "$ZONA" --tunnel-through-iap --quiet \
+    --command "echo $programa | base64 -d | bash -s -- 0" 2>/dev/null)"; then
+  printf '%s\n' "$cola_raw" | python3 -c '
 import json,sys
 claves=["ts_utc","cola","pending","active","scheduled","retry","archived","antiguedad_s"]
 print(json.dumps({"fuente":"redis/asynq","colas":[dict(zip(claves,l.split(","))) for l in sys.stdin.read().split()]}))
 ' >"$tmp/cola.json" || echo null >"$tmp/cola.json"
-  fi
+else
+  echo "AVISO: sin foto de la cola (ssh a $VM_REDIS)" >&2
 fi
 
 python3 - "$SALIDA" "$corrida" "$desde" "$hasta" "$proyecto" "$tmp" <<'PY'

@@ -9,14 +9,16 @@
 #   serie-<corrida>-mig.csv    ts_utc,mig,objetivo,recomendado,estables,en_cambio
 #   serie-<corrida>-cola.csv   ts_utc,cola,pending,active,scheduled,retry,archived,antiguedad_s
 #
-# Necesita gcloud con permisos del proyecto y terraform (lo usa remoto.sh):
-# se corre desde Cloud Shell o un portátil, no desde mooc-k6.
+# Necesita gcloud con permisos del proyecto y OS Login: se corre desde Cloud
+# Shell o un portátil, no desde mooc-k6. No pasa por remoto.sh a propósito:
+# ese script lee el estado de Terraform, que contiene secretos, y aquí solo
+# hace falta el nombre de una VM fija (VM_REDIS).
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-RAIZ="$(cd "$DIR/.." && pwd)"
 SALIDA="${SALIDA:-$DIR/salida}"
 ZONA="${GCP_ZONE:-us-central1-a}"
+VM_REDIS="${VM_REDIS:-mooc-redis}"
 corrida=""
 cada=15
 
@@ -44,7 +46,8 @@ echo "ts_utc,cola,pending,active,scheduled,retry,archived,antiguedad_s" >"$csv_c
 # Una sola sesión SSH: abrir un túnel de IAP en cada lectura tarda varios
 # segundos y deformaría la serie.
 programa="$(base64 -w0 "$DIR/cola-en-redis.sh")"
-"$RAIZ/deploy/gcp/remoto.sh" redis "echo $programa | base64 -d | bash -s -- $cada" >>"$csv_cola" &
+gcloud compute ssh "$VM_REDIS" --project "$proyecto" --zone "$ZONA" --tunnel-through-iap --quiet \
+  --command "echo $programa | base64 -d | bash -s -- $cada" >>"$csv_cola" &
 pid_cola=$!
 trap 'kill "$pid_cola" 2>/dev/null || true' EXIT
 trap 'exit 0' INT TERM
