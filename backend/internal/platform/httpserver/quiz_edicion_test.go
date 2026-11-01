@@ -72,3 +72,40 @@ func TestNoSePublicaUnQuizSinPreguntas(t *testing.T) {
 		t.Fatalf("el motivo debe nombrar el quiz sin preguntas: %s", res.Crudo)
 	}
 }
+
+// al despublicar para editar, el borrador nuevo conserva las preguntas del quiz
+// y se puede volver a publicar sin reescribirlas
+func TestElBorradorDeActualizacionConservaElQuiz(t *testing.T) {
+	env := nuevoEntorno(t)
+	_, cursoID := env.cursoConQuiz("prof@example.com", "quiz-actualizado")
+	profesor := env.entrar("prof@example.com", clavePrueba)
+	borradorID := env.borradorDeActualizacion(profesor, cursoID)
+
+	//el recurso quiz del borrador es otro (id nuevo), pero debe tener sus preguntas
+	recursoNuevo := env.consultarTexto(`
+		SELECT res.id::text FROM resources res
+		JOIN units u ON u.id = res.unit_id
+		JOIN modules m ON m.id = u.module_id
+		WHERE m.course_version_id = $1 AND res.type = 'quiz'`, borradorID)
+	res := profesor.hacer(http.MethodGet, "/courses/versions/"+borradorID+"/resources/"+recursoNuevo+"/quiz", nil)
+	if res.Estado != http.StatusOK {
+		t.Fatalf("el quiz del borrador deberia existir: %d %s", res.Estado, res.Crudo)
+	}
+	if preguntas, _ := res.campo(t, "questions").([]any); len(preguntas) != 2 {
+		t.Fatalf("el borrador deberia conservar las 2 preguntas: %s", res.Crudo)
+	}
+
+	//las preguntas conservan su stable_id, asi los resultados siguen apuntando a la misma pregunta
+	iguales := env.contar(`
+		SELECT count(*) FROM quiz_questions nueva
+		JOIN quizzes qn ON qn.id = nueva.quiz_id AND qn.resource_id = $1
+		WHERE nueva.stable_id IN (SELECT stable_id FROM quiz_questions
+		                          WHERE quiz_id <> nueva.quiz_id)`, recursoNuevo)
+	if iguales != 2 {
+		t.Fatalf("las 2 preguntas deberian conservar su stable_id, coinciden %d", iguales)
+	}
+
+	if res := profesor.hacer(http.MethodPost, "/courses/versions/"+borradorID+"/publish", nil); res.Estado != http.StatusOK {
+		t.Fatalf("el borrador con su quiz copiado deberia publicarse: %d %s", res.Estado, res.Crudo)
+	}
+}

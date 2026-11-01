@@ -181,6 +181,12 @@ func (s *Service) CreateUpdateDraft(ctx context.Context, actor *user.User, cours
 				if err := s.repo.CreateResource(ctx, draft.ID, &newRes); err != nil {
 					return nil, err
 				}
+				//el quiz vive aparte del recurso: sin copiarlo, el borrador quedaria con el quiz vacio
+				if res.Type == domain.ResourceQuiz {
+					if err := s.repo.CopiarQuiz(ctx, res.ID, newRes.ID); err != nil {
+						return nil, err
+					}
+				}
 			}
 		}
 	}

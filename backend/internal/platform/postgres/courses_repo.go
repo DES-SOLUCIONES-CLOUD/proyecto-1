@@ -557,6 +557,63 @@ func nullIfEmpty(s string) any {
 	return s
 }
 
+// CopiarQuiz copia las preguntas de un quiz de un recurso a otro.
+//
+// se usa al abrir un borrador de actualizacion: el borrador crea recursos nuevos
+// y sin esto sus quizzes quedarian vacios. las preguntas y opciones conservan su
+// stable_id, asi los resultados siguen apuntando a la misma pregunta.
+// si el recurso de origen no tiene quiz, no hace nada.
+func (r *CourseRepo) CopiarQuiz(ctx context.Context, desde, hacia uuid.UUID) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	//1. se busca el quiz del recurso de origen
+	var quizViejo uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT id FROM quizzes WHERE resource_id = $1`, desde).Scan(&quizViejo)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil //no habia quiz que copiar
+	}
+	if err != nil {
+		return err
+	}
+
+	//2. se copia con su configuracion (titulo, nota minima, intentos...) al recurso nuevo
+	var quizNuevo uuid.UUID
+	err = tx.QueryRow(ctx, `
+		INSERT INTO quizzes (resource_id, title, time_limit_seconds, max_attempts,
+		                     pass_score, feedback_policy, shuffle_questions)
+		SELECT $2, title, time_limit_seconds, max_attempts,
+		       pass_score, feedback_policy, shuffle_questions
+		FROM quizzes WHERE id = $1
+		RETURNING id`, quizViejo, hacia).Scan(&quizNuevo)
+	if err != nil {
+		return err
+	}
+
+	//3. las preguntas, con el mismo stable_id
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO quiz_questions (quiz_id, stable_id, position, prompt_md, type, points)
+		SELECT $2, stable_id, position, prompt_md, type, points
+		FROM quiz_questions WHERE quiz_id = $1`, quizViejo, quizNuevo); err != nil {
+		return err
+	}
+
+	//4. las opciones: cada una se cuelga de la pregunta nueva que tiene el mismo stable_id
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO quiz_options (question_id, stable_id, position, text_md, is_correct)
+		SELECT nueva.id, o.stable_id, o.position, o.text_md, o.is_correct
+		FROM quiz_options o
+		JOIN quiz_questions vieja ON vieja.id = o.question_id AND vieja.quiz_id = $1
+		JOIN quiz_questions nueva ON nueva.quiz_id = $2 AND nueva.stable_id = vieja.stable_id`,
+		quizViejo, quizNuevo); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 // QuizSinPreguntas es un quiz visible que todavia no tiene preguntas.
 type QuizSinPreguntas struct {
 	Recurso string //titulo del recurso
