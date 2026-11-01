@@ -156,6 +156,17 @@ export interface QuizAttempt {
   passed?: boolean;
 }
 
+//el quiz guardado tal como lo ve su profesor (con las respuestas correctas)
+export interface DefinicionDeQuiz {
+  title: string;
+  time_limit_seconds: number | null;
+  max_attempts: number | null;
+  pass_score: number;
+  feedback_policy: "immediate" | "after_submit" | "after_close" | "none";
+  shuffle_questions: boolean;
+  questions: QuizQuestionDraft[];
+}
+
 export interface QuizQuestionDraft {
   prompt_md: string;
   type: "single" | "multiple";
@@ -617,6 +628,9 @@ export const api = {
 
   // Autoria del quiz. Solo el profesor dueno y sobre un borrador; la
   // respuesta nunca trae la clave correcta, ni siquiera para quien lo define.
+  //lee el quiz guardado para editarlo; responde 404 si todavia no tiene preguntas
+  getQuizDefinition: (versionId: string, resourceId: string) =>
+    request<DefinicionDeQuiz>(`/api/v1/courses/versions/${versionId}/resources/${resourceId}/quiz`),
   defineQuiz: (
     versionId: string,
     resourceId: string,

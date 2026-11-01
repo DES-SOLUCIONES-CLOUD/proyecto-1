@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { api, ApiError, type Version } from "@/lib/api";
-import { useI18n } from "@/lib/i18n";
+import { api, type Version } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
+import { useI18n, type Clave } from "@/lib/i18n";
+import { TextoConFormato } from "@/components/TextoConFormato";
 
 /**
  * Previsualización de autoría: el borrador tal como lo verá un estudiante.
@@ -25,7 +27,7 @@ export default function PrevisualizacionPage() {
     try {
       setVersion(await api.getVersion(versionId));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("previsualizacion.error"));
+      setError(mensajeDeError(e, t, "previsualizacion.error"));
     }
   }, [versionId, t]);
 
@@ -59,7 +61,7 @@ export default function PrevisualizacionPage() {
 
       <p className="muted">
         {t("previsualizacion.intro", { n: version.VersionNumber })}{" "}
-        <span className="badge">{version.Status}</span>
+        <span className="badge">{t(`estadoVersion.${version.Status}` as Clave)}</span>
       </p>
 
       {enProceso.length > 0 && (
@@ -102,8 +104,10 @@ export default function PrevisualizacionPage() {
                     <ul>
                       {visibles.map((r) => (
                         <li key={r.ID}>
-                          {r.Title} <span className="badge">{r.Type}</span>
+                          {r.Title} <span className="badge">{t(`tipo.${r.Type}` as Clave)}</span>
                           {r.Required && <span className="badge">{t("curso.obligatorio")}</span>}
+                          {/*el texto se ve igual que como lo vera el estudiante*/}
+                          {r.Type === "text" && r.TextContentMD && <TextoConFormato markdown={r.TextContentMD} />}
                         </li>
                       ))}
                     </ul>

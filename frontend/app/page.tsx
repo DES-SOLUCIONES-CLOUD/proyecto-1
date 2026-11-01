@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, type Version, ApiError } from "@/lib/api";
+import { api, type Version } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n, useTraductorEstable } from "@/lib/i18n";
 
 // Los filtros del catálogo (punto 10 del alcance mínimo) los resuelve la API:
@@ -43,7 +44,7 @@ export default function HomePage() {
       const res = await api.listCatalog(params);
       setCourses(res.items ?? []);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : traducir("catalogo.error"));
+      setError(mensajeDeError(e, traducir, "catalogo.error"));
     }
   }, [traducir]);
 
@@ -169,12 +170,15 @@ export default function HomePage() {
         {courses?.map((v) => (
           <li key={v.ID}>
             <article className="card">
+              {/*portada hecha con la categoria del curso en letra grande sobre un tono palido*/}
+              <div className="portada" data-tono={tonoDe(v.Category || v.CourseID)} aria-hidden="true">
+                <span>{v.Category || v.Title}</span>
+              </div>
               <h2>
                 <Link href={`/cursos/${v.CourseID}`}>{v.Title}</Link>
               </h2>
               <p style={{ flex: 1 }}>{v.Summary}</p>
               <p className="row">
-                {v.Category && <span className="badge">{v.Category}</span>}
                 {v.Level && <span className="badge">{v.Level}</span>}
                 <span className="badge">{v.Language}</span>
               </p>
@@ -184,6 +188,14 @@ export default function HomePage() {
       </ul>
     </div>
   );
+}
+
+//elige uno de los 4 tonos de portada a partir de la categoria del curso
+//asi los cursos de una misma categoria comparten color, sin guardarlo en la base de datos
+function tonoDe(id: string): number {
+  let suma = 0;
+  for (const letra of id) suma += letra.charCodeAt(0);
+  return (suma % 4) + 1;
 }
 
 function unicos(valores: (string | undefined | null)[]): string[] {

@@ -4,11 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, type Version, type Module, type Unit, type Clasificacion, ApiError } from "@/lib/api";
+import { mensajeDeError, motivoDePublicacion } from "@/lib/errores";
 import { BlockEditor } from "@/components/BlockEditor";
 import { HistorialDeRevisiones } from "@/components/HistorialDeRevisiones";
 import { Coautoria } from "@/components/Coautoria";
-import { subirArchivo, hayCargaPendiente, olvidarCarga, ErrorDeCarga } from "@/lib/carga";
+import { subirArchivo, cargaPendiente, olvidarCarga, ErrorDeCarga } from "@/lib/carga";
 import { useI18n, type Clave, type Traducir } from "@/lib/i18n";
+import { Icono } from "@/components/Icono";
 
 // El valor es el que entiende la API; la clave, cómo se llama en pantalla.
 const RESOURCE_TYPES: ReadonlyArray<readonly [string, Clave]> = [
@@ -32,10 +34,35 @@ const RESOURCE_TYPES: ReadonlyArray<readonly [string, Clave]> = [
  */
 function mensajeDeCarga(e: unknown, t: Traducir): string {
   if (e instanceof ErrorDeCarga) return t(`carga.error.${e.clave}`, e.datos);
-  return e instanceof Error ? e.message : t("carga.error.generico");
+  return mensajeDeError(e, t, "carga.error.generico");
 }
 
 const BINARY_TYPES = new Set(["image", "video", "audio", "pdf", "presentation", "file"]);
+
+//tipos de archivo que se ofrecen al elegir, segun el tipo de recurso
+//asi el profesor no elige por error un pdf para un recurso de video
+const ARCHIVOS_ACEPTADOS: Record<string, string> = {
+  image: "image/*",
+  video: "video/*",
+  audio: "audio/*",
+  pdf: "application/pdf",
+  presentation: ".pptx,.odp",
+};
+
+//convierte bytes a megas con un decimal, por ejemplo 125829120 -> "120,0 MB"
+function megas(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+//estados en los que el archivo todavia no esta listo
+const EN_PROCESO = new Set(["pending", "processing"]);
+
+//dice si algun recurso de la version sigue procesandose
+function hayArchivosProcesandose(v: Version): boolean {
+  return (v.Modules ?? []).some((m) =>
+    (m.Units ?? []).some((u) => (u.Resources ?? []).some((r) => EN_PROCESO.has(r.ProcessingStatus))),
+  );
+}
 
 export default function VersionEditorPage() {
   const { versionId } = useParams<{ versionId: string }>();
@@ -50,13 +77,22 @@ export default function VersionEditorPage() {
       const v = await api.getVersion(versionId);
       setVersion(v);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("version.error"));
+      setError(mensajeDeError(e, t, "version.error"));
     }
   }, [versionId, t]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  //mientras haya archivos procesandose se vuelve a preguntar cada 5 segundos
+  //asi el profesor ve el cambio a "Listo" sin tener que recargar la pagina
+  const procesando = version ? hayArchivosProcesandose(version) : false;
+  useEffect(() => {
+    if (!procesando) return;
+    const reloj = setInterval(load, 5000);
+    return () => clearInterval(reloj);
+  }, [procesando, load]);
 
   async function handlePublish() {
     setPublishErrors([]);
@@ -66,29 +102,42 @@ export default function VersionEditorPage() {
       setNotice(t("version.publicada"));
       load();
     } catch (e) {
+      //si la api dice que falta algo, se muestra la lista completa de motivos
+      //si fue otro error se muestra igual en la lista, sin borrar toda la pagina
       if (e instanceof ApiError && e.details?.length) {
         setPublishErrors(e.details);
       } else {
-        setError(e instanceof ApiError ? e.message : t("version.errorPublicar"));
+        setPublishErrors([mensajeDeError(e, t, "version.errorPublicar")]);
       }
     }
   }
 
+  //por ejemplo si un profesor abre el curso de otro profesor: se explica y se ofrece volver
   if (error) {
     return (
-      <p className="error-banner" role="alert">
-        {error}
-      </p>
+      <div className="columna-estrecha">
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+        <Link href="/profesor">← {t("version.volverAMisCursos")}</Link>
+      </div>
     );
   }
   if (!version) {
-    return <p>{t("comun.cargando")}</p>;
+    return <p role="status">{t("comun.cargando")}</p>;
   }
 
   const isDraft = version.Status === "draft";
 
+  const modulos = version.Modules ?? [];
+
+  //la pagina va en el orden en que el profesor trabaja:
+  //paso 1 datos del curso, paso 2 contenido, paso 3 publicar
   return (
     <div>
+      <p>
+        <Link href="/profesor">← {t("version.volverAMisCursos")}</Link>
+      </p>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
         <h1>{version.Title || t("version.sinTitulo")}</h1>
         <Link href={`/profesor/versiones/${versionId}/previsualizacion`}>
@@ -96,49 +145,66 @@ export default function VersionEditorPage() {
         </Link>
       </div>
       <p className="badge">
-        {t("version.etiqueta", { n: version.VersionNumber, estado: version.Status })}
+        {t("version.etiqueta", { n: version.VersionNumber, estado: t(`estadoVersion.${version.Status}` as Clave) })}
       </p>
 
       {/* Una sola advertencia: antes se pintaban dos banners seguidos, uno de
           aviso y otro de error, diciendo lo mismo con distinto color. */}
-      {!isDraft && (
+      {!isDraft && !notice && (
         <p className="warning-banner" role="status">
           {t("version.inmutable")}{" "}
           <Link href="/profesor">{t("version.irADespublicar")}</Link>
         </p>
       )}
 
-      {notice && <p className="success-banner">{notice}</p>}
-      {publishErrors.length > 0 && (
-        <div className="error-banner" role="alert">
-          <strong>{t("version.motivos")}</strong>
-          <ul>
-            {publishErrors.map((d, i) => (
-              <li key={i}>{d}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/*paso 1: datos del curso*/}
+      {/*la key hace que el formulario solo se reinicie si cambia de version,
+          no cada vez que la pagina se actualiza sola, asi no se borra lo que se escribe*/}
+      <MetadataForm key={version.ID} version={version} disabled={!isDraft} onSaved={load} />
 
-      <MetadataForm version={version} disabled={!isDraft} onSaved={load} />
+      {/*paso 2: modulos, unidades y recursos*/}
+      <section className="stack">
+        <h2>{t("version.estructura")}</h2>
+        {isDraft && <p className="muted">{t("version.estructuraAyuda")}</p>}
+        {isDraft && <AddModuleForm versionId={versionId} nextPosition={modulos.length + 1} onAdded={load} />}
+        {modulos.length === 0 && <p className="muted">{t("version.sinModulos")}</p>}
+        <ol className="stack">
+          {modulos.map((m) => (
+            <ModuleCard key={m.ID} versionId={versionId} module={m} editable={isDraft} onChange={load} />
+          ))}
+        </ol>
+      </section>
 
+      {/*paso 3: publicar, con el resultado justo al lado del boton*/}
+      <section className="card stack">
+        <h2 style={{ marginTop: 0 }}>{t("version.pasoPublicar")}</h2>
+        {isDraft && <p className="muted">{t("version.publicarAyuda")}</p>}
+        {isDraft && <CambiosDelBorrador versionId={versionId} />}
+        {publishErrors.length > 0 && (
+          <div className="error-banner" role="alert">
+            <strong>{t("version.motivos")}</strong>
+            <ul>
+              {publishErrors.map((d, i) => (
+                <li key={i}>{motivoDePublicacion(d, t)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {notice && (
+          <p className="success-banner" role="status">
+            {notice} <Link href={`/cursos/${version.CourseID}`}>{t("version.verEnCatalogo")}</Link>
+          </p>
+        )}
+        {isDraft && (
+          <div>
+            <button onClick={handlePublish}>{t("version.publicar")}</button>
+          </div>
+        )}
+        {!isDraft && !notice && <p className="muted">{t("version.yaPublicada")}</p>}
+      </section>
+
+      {/*opcional: invitar a otros profesores a editar el curso*/}
       <Coautoria courseId={version.CourseID} />
-
-      {isDraft && (
-        <div className="card stack">
-          <CambiosDelBorrador versionId={versionId} />
-          <button onClick={handlePublish}>{t("version.publicar")}</button>
-        </div>
-      )}
-
-      <h2>{t("version.estructura")}</h2>
-      {isDraft && <AddModuleForm versionId={versionId} nextPosition={(version.Modules?.length ?? 0) + 1} onAdded={load} />}
-
-      <ol className="stack">
-        {version.Modules?.map((m) => (
-          <ModuleCard key={m.ID} versionId={versionId} module={m} editable={isDraft} onChange={load} />
-        ))}
-      </ol>
     </div>
   );
 }
@@ -148,13 +214,14 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
   const [form, setForm] = useState(version);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => setForm(version), [version]);
+  //para confirmarle al profesor que sus cambios quedaron guardados
+  const [guardado, setGuardado] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError("");
+    setGuardado(false);
     try {
       await api.updateVersionMetadata(version.ID, {
         title: form.Title,
@@ -166,9 +233,10 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
         approval_min_score: Number(form.ApprovalMinScore),
         approval_required_resources_pct: Number(form.ApprovalRequiredResourcesPct),
       } as any);
+      setGuardado(true);
       onSaved();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("version.errorGuardar"));
+      setError(mensajeDeError(e, t, "version.errorGuardar"));
     } finally {
       setSaving(false);
     }
@@ -244,6 +312,11 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
       <button type="submit" disabled={disabled || saving}>
         {saving ? t("comun.guardando") : t("version.guardarMetadatos")}
       </button>
+      {guardado && (
+        <p className="success-banner" role="status">
+          {t("version.datosGuardados")}
+        </p>
+      )}
     </form>
   );
 }
@@ -261,7 +334,7 @@ function AddModuleForm({ versionId, nextPosition, onAdded }: { versionId: string
       setTitle("");
       onAdded();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("version.errorModulo"));
+      setError(mensajeDeError(e, t, "version.errorModulo"));
     }
   }
 
@@ -289,11 +362,18 @@ function ModuleCard({
   onChange: () => void;
 }) {
   const { t } = useI18n();
+  const [error, setError] = useState("");
 
   async function handleDelete() {
     if (!confirm(t("version.confirmarModulo", { titulo: m.Title }))) return;
-    await api.deleteModule(versionId, m.ID);
-    onChange();
+    //si falla, se avisa en vez de no hacer nada
+    try {
+      setError("");
+      await api.deleteModule(versionId, m.ID);
+      onChange();
+    } catch (e) {
+      setError(mensajeDeError(e, t, "version.errorEliminar"));
+    }
   }
 
   return (
@@ -306,9 +386,15 @@ function ModuleCard({
           </button>
         )}
       </div>
+      {error && (
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+      )}
 
       {editable && <AddUnitForm versionId={versionId} moduleId={m.ID} nextPosition={(m.Units?.length ?? 0) + 1} onAdded={onChange} />}
 
+      {(m.Units ?? []).length === 0 && <p className="muted">{t("version.moduloVacio")}</p>}
       <ol className="stack">
         {m.Units?.map((u) => (
           <UnitCard key={u.ID} versionId={versionId} unit={u} editable={editable} onChange={onChange} />
@@ -331,16 +417,28 @@ function AddUnitForm({
 }) {
   const { t } = useI18n();
   const [title, setTitle] = useState("");
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await api.addUnit(versionId, moduleId, { title, position: nextPosition });
-    setTitle("");
-    onAdded();
+    //si falla, se avisa en vez de no hacer nada
+    try {
+      setError("");
+      await api.addUnit(versionId, moduleId, { title, position: nextPosition });
+      setTitle("");
+      onAdded();
+    } catch (err) {
+      setError(mensajeDeError(err, t, "version.errorUnidad"));
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="row">
+      {error && (
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+      )}
       <div className="form-field" style={{ flex: 1, marginBottom: "0.5rem" }}>
         <label htmlFor={`new-unit-${moduleId}`}>{t("version.nuevaUnidad")}</label>
         <input id={`new-unit-${moduleId}`} required value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -362,11 +460,18 @@ function UnitCard({
   onChange: () => void;
 }) {
   const { t } = useI18n();
+  const [error, setError] = useState("");
 
   async function handleDelete() {
     if (!confirm(t("version.confirmarUnidad", { titulo: u.Title }))) return;
-    await api.deleteUnit(versionId, u.ID);
-    onChange();
+    //si falla, se avisa en vez de no hacer nada
+    try {
+      setError("");
+      await api.deleteUnit(versionId, u.ID);
+      onChange();
+    } catch (e) {
+      setError(mensajeDeError(e, t, "version.errorEliminar"));
+    }
   }
 
   return (
@@ -379,7 +484,13 @@ function UnitCard({
           </button>
         )}
       </div>
+      {error && (
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+      )}
 
+      {(u.Resources ?? []).length === 0 && <p className="muted">{t("version.unidadVacia")}</p>}
       <ul className="stack">
         {u.Resources?.map((r) => (
           <ResourceRow key={r.ID} versionId={versionId} resource={r} editable={editable} onChange={onChange} />
@@ -412,16 +523,42 @@ function ResourceRow({
   // Una subida a medias de este recurso, detectada al montar. El archivo no
   // se puede recuperar —ningún navegador deja releer un File de otra sesión—,
   // así que lo que se ofrece es volver a elegirlo para continuar.
-  const [pendiente, setPendiente] = useState(false);
+  //para los quiz: null mientras se averigua, true si ya tiene preguntas, false si no
+  const [quizListo, setQuizListo] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (r.Type !== "quiz") return;
+    //si el quiz no tiene preguntas guardadas la api responde 404
+    api
+      .getQuizDefinition(versionId, r.ID)
+      .then(() => setQuizListo(true))
+      .catch(() => setQuizListo(false));
+  }, [r.Type, r.ID, versionId]);
+
+  //pendiente guarda el nombre y tamaño del archivo que quedo a medias
+  const [pendiente, setPendiente] = useState<{ nombre: string; tamano: number } | null>(null);
 
   useEffect(() => {
-    setPendiente(hayCargaPendiente(r.ID));
+    setPendiente(cargaPendiente(r.ID));
   }, [r.ID]);
+
+  //si el profesor intenta cerrar la pagina mientras sube, el navegador le avisa
+  useEffect(() => {
+    if (!uploading) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [uploading]);
 
   async function handleDelete() {
     if (!confirm(t("version.confirmarRecurso", { titulo: r.Title }))) return;
-    await api.deleteResource(versionId, r.ID);
-    onChange();
+    //si falla, se avisa en vez de no hacer nada
+    try {
+      setError("");
+      await api.deleteResource(versionId, r.ID);
+      onChange();
+    } catch (e) {
+      setError(mensajeDeError(e, t, "version.errorEliminar"));
+    }
   }
 
   async function handleFile(file: File) {
@@ -444,7 +581,7 @@ function ResourceRow({
           );
         },
       });
-      setPendiente(false);
+      setPendiente(null);
       setTimeout(() => {
         setUploadStatusText("");
         setUploadPercent(0);
@@ -453,7 +590,7 @@ function ResourceRow({
     } catch (e) {
       // La carga interrumpida sigue registrada: al volver a elegir el mismo
       // archivo se reanuda desde donde se quedó, sin reenviar lo que llegó.
-      setPendiente(hayCargaPendiente(r.ID));
+      setPendiente(cargaPendiente(r.ID));
       setError(mensajeDeCarga(e, t));
     } finally {
       setUploading(false);
@@ -462,7 +599,7 @@ function ResourceRow({
 
   function descartarCarga() {
     olvidarCarga(r.ID);
-    setPendiente(false);
+    setPendiente(null);
     setError("");
   }
 
@@ -470,32 +607,46 @@ function ResourceRow({
     <li className="row" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.4rem" }}>
       <div className="row" style={{ alignItems: "center" }}>
         <span style={{ flex: 1 }}>
-          {r.Title} <span className="badge">{r.Type}</span>{" "}
+          {r.Title} <span className="badge">{t(`tipo.${r.Type}` as Clave)}</span>{" "}
           {r.ProcessingStatus !== "none" && (
             <span className="badge">
-              {t("version.procesamiento", { estado: r.ProcessingStatus })}
+              {t(`procesamiento.${r.ProcessingStatus}` as Clave)}
             </span>
           )}
           {!r.Visible && <span className="badge">{t("version.oculto")}</span>}
         </span>
+        {r.Type === "quiz" && quizListo !== null && (
+          <span className="badge">
+            {quizListo ? (
+              <>
+                <Icono nombre="listo" tamano={12} /> {t("version.quizListo")}
+              </>
+            ) : (
+              t("version.quizSinPreguntas")
+            )}
+          </span>
+        )}
         {r.Type === "quiz" && (
           <Link href={`/profesor/versiones/${versionId}/quiz/${r.ID}`}>
-            {t("version.definirEvaluacion")}
+            {quizListo ? t("version.editarEvaluacion") : t("version.definirEvaluacion")}
           </Link>
         )}
         {editable && BINARY_TYPES.has(r.Type) && (
           <label className="row" style={{ marginBottom: 0 }}>
-            <span className="badge" style={{ cursor: uploading ? "not-allowed" : "pointer", background: uploading ? "#3b82f6" : undefined, color: uploading ? "white" : undefined }}>
+            <span className="boton-archivo" data-subiendo={uploading}>
               {uploading
                 ? uploadStatusText || t("comun.cargando")
                 : pendiente
                   ? t("version.reanudarSubida")
-                  : t("version.subirArchivo")}
+                  : r.ObjectKey
+                    ? t("version.reemplazarArchivo")
+                    : t("version.subirArchivo")}
             </span>
             <input
               type="file"
               style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)" }}
               disabled={uploading}
+              accept={ARCHIVOS_ACEPTADOS[r.Type]}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);
@@ -510,17 +661,34 @@ function ResourceRow({
         )}
       </div>
 
+      {/*ayudas segun el estado del archivo, para que el profesor sepa que hacer*/}
+      {editable && BINARY_TYPES.has(r.Type) && !r.ObjectKey && !uploading && !pendiente && (
+        <p className="muted">{t("version.faltaArchivo")}</p>
+      )}
+      {EN_PROCESO.has(r.ProcessingStatus) && !uploading && !pendiente && (
+        <p className="muted" role="status">
+          {t("version.procesandoAyuda")}
+        </p>
+      )}
+      {r.ProcessingStatus === "failed" && <p className="error-banner">{t("version.procesamientoFallo")}</p>}
+      {r.Type === "quiz" && quizListo === false && (
+        <p className="warning-banner">{t("version.quizSinPreguntasAyuda")}</p>
+      )}
+
       {editable && r.Type === "text" && (
         <EditorDeContenido versionId={versionId} resource={r} onChange={onChange} />
       )}
 
+      {/*la subida anterior se corto: se explica que archivo elegir y que seguira desde donde iba*/}
       {pendiente && !uploading && (
-        <p className="muted" role="status">
-          {t("version.cargaPendiente")}{" "}
+        <div className="warning-banner" role="status">
+          <p style={{ margin: 0 }}>
+            {t("version.cargaPendiente", { nombre: pendiente.nombre, tamano: megas(pendiente.tamano) })}
+          </p>
           <button type="button" className="secondary" onClick={descartarCarga}>
             {t("version.empezarDeNuevo")}
           </button>
-        </p>
+        </div>
       )}
 
       {uploading && (
@@ -531,17 +699,23 @@ function ResourceRow({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuetext={uploadStatusText}
-          style={{ width: "100%", background: "#e5e7eb", borderRadius: "999px", height: "6px", overflow: "hidden" }}
+          style={{ width: "100%", background: "var(--color-surface-raised)", borderRadius: "999px", height: "6px", overflow: "hidden" }}
         >
           <div
             style={{
               width: `${uploadPercent}%`,
-              background: "#3b82f6",
+              background: "var(--color-accent)",
               height: "100%",
               transition: "width 0.3s ease-in-out",
             }}
           />
         </div>
+      )}
+      {/*texto visible con la fase y el porcentaje, ademas de la barra*/}
+      {uploading && (
+        <p className="muted" role="status" style={{ margin: 0 }}>
+          {uploadStatusText} · {uploadPercent}%. {t("version.subiendoAviso")}
+        </p>
       )}
 
       {error && <span className="error-banner">{error}</span>}
@@ -583,7 +757,7 @@ function EditorDeContenido({
       setRecarga((n) => n + 1);
       onChange();
     } catch (e) {
-      setEstado(e instanceof ApiError ? e.message : t("version.errorGuardar"));
+      setEstado(mensajeDeError(e, t, "version.errorGuardar"));
     }
   }
 
@@ -761,7 +935,7 @@ function AddResourceForm({
       setExternalUrl("");
       onAdded();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("version.errorRecurso"));
+      setError(mensajeDeError(e, t, "version.errorRecurso"));
     }
   }
 

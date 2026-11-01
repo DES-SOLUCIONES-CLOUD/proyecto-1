@@ -6,6 +6,7 @@ package courses
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -179,6 +180,12 @@ func (s *Service) CreateUpdateDraft(ctx context.Context, actor *user.User, cours
 				newRes.UnitID = newUnit.ID
 				if err := s.repo.CreateResource(ctx, draft.ID, &newRes); err != nil {
 					return nil, err
+				}
+				//el quiz vive aparte del recurso: sin copiarlo, el borrador quedaria con el quiz vacio
+				if res.Type == domain.ResourceQuiz {
+					if err := s.repo.CopiarQuiz(ctx, res.ID, newRes.ID); err != nil {
+						return nil, err
+					}
 				}
 			}
 		}
@@ -516,8 +523,27 @@ func (s *Service) PublishVersion(ctx context.Context, actor *user.User, versionI
 	}
 	v.Modules = modules
 
+	//se juntan todos los motivos para no publicar, para mostrarlos de una sola vez
+	var motivos []error
 	if err := v.ValidateForPublish(); err != nil {
+		var invalida *domain.ValidationError
+		if !errors.As(err, &invalida) {
+			return err
+		}
+		motivos = invalida.Reasons
+	}
+
+	//un quiz sin preguntas no se puede presentar: tampoco deja publicar
+	sinPreguntas, err := s.repo.QuizzesSinPreguntas(ctx, v.ID)
+	if err != nil {
 		return err
+	}
+	for _, q := range sinPreguntas {
+		motivos = append(motivos, fmt.Errorf("%w: recurso %q (unidad %q)", domain.ErrQuizSinPreguntas, q.Recurso, q.Unidad))
+	}
+
+	if len(motivos) > 0 {
+		return &domain.ValidationError{Reasons: motivos}
 	}
 
 	now := time.Now().UTC()

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 import { aBloques, aMarkdown, bloqueVacio, nuevoID, type Block, type TipoDeBloque } from "@/lib/markdown";
 import { useI18n, type Traducir } from "@/lib/i18n";
+import { Icono } from "@/components/Icono";
 
 // El editor delega la conversión a lib/markdown, que es lógica pura y tiene
 // pruebas de ida y vuelta por tipo de nodo. Aquí solo queda la interfaz.
@@ -144,7 +145,7 @@ export function BlockEditor({ initialMarkdown = "", draftKey = "mooc_block_draft
   };
 
   return (
-    <div className="stack" style={{ background: "var(--color-bg-subtle, #f8f9fa)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--color-border, #e5e7eb)" }}>
+    <div className="stack" style={{ background: "var(--color-surface)", padding: "1rem", borderRadius: "var(--radius-sm)" }}>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
         <strong style={{ fontSize: "0.9rem" }}>{t("editor.titulo")}</strong>
         <span className="badge" style={{ fontSize: "0.75rem", opacity: 0.8 }}>
@@ -157,17 +158,16 @@ export function BlockEditor({ initialMarkdown = "", draftKey = "mooc_block_draft
           <div
             key={block.id}
             style={{
-              background: "white",
+              background: "var(--color-bg)",
               padding: "0.75rem",
               borderRadius: "6px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-              border: "1px solid var(--color-border, #e5e7eb)",
+              border: "1px solid var(--color-border)",
             }}
           >
             <div className="row" style={{ justifyContent: "space-between", marginBottom: "0.4rem" }}>
               <div className="row" style={{ gap: "0.3rem", alignItems: "center" }}>
                 <span className="badge" style={{ textTransform: "capitalize", fontSize: "0.75rem" }}>
-                  {block.type} {block.type === "heading" ? `H${block.level}` : ""}
+                  {t(`bloque.${block.type}`)} {block.type === "heading" ? `H${block.level}` : ""}
                 </span>
                 {block.type === "heading" && (
                   <select
@@ -196,8 +196,10 @@ export function BlockEditor({ initialMarkdown = "", draftKey = "mooc_block_draft
                   type="button"
                   onClick={() => moveBlock(index, "up")}
                   disabled={index === 0}
-                  style={{ padding: "2px 6px", fontSize: "0.75rem" }}
+                  className="secondary"
+                  style={{ padding: "2px 8px", fontSize: "0.8125rem", minHeight: "1.75rem" }}
                   title={t("editor.moverArriba")}
+                  aria-label={t("editor.moverArriba")}
                 >
                   ↑
                 </button>
@@ -205,18 +207,22 @@ export function BlockEditor({ initialMarkdown = "", draftKey = "mooc_block_draft
                   type="button"
                   onClick={() => moveBlock(index, "down")}
                   disabled={index === blocks.length - 1}
-                  style={{ padding: "2px 6px", fontSize: "0.75rem" }}
+                  className="secondary"
+                  style={{ padding: "2px 8px", fontSize: "0.8125rem", minHeight: "1.75rem" }}
                   title={t("editor.moverAbajo")}
+                  aria-label={t("editor.moverAbajo")}
                 >
                   ↓
                 </button>
                 <button
                   type="button"
                   onClick={() => removeBlock(block.id)}
-                  style={{ padding: "2px 6px", fontSize: "0.75rem", color: "#dc2626" }}
+                  className="secondary"
+                  style={{ padding: "2px 8px", fontSize: "0.8125rem", minHeight: "1.75rem", color: "var(--color-danger)" }}
                   title={t("editor.eliminarBloque")}
+                  aria-label={t("editor.eliminarBloque")}
                 >
-                  ✕
+                  <Icono nombre="cerrar" tamano={12} />
                 </button>
               </div>
             </div>
@@ -239,7 +245,7 @@ export function BlockEditor({ initialMarkdown = "", draftKey = "mooc_block_draft
                 value={block.content}
                 placeholder={t("editor.codigoPlaceholder")}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                style={{ width: "100%", fontFamily: "monospace", fontSize: "0.85rem", background: "#1e1e1e", color: "#f8f8f2", borderRadius: "4px" }}
+                style={{ width: "100%", fontFamily: "monospace", fontSize: "0.85rem", background: "var(--color-surface-raised)", color: "var(--color-text)", borderRadius: "var(--radius-sm)" }}
               />
             ) : block.type === "callout" ? (
               <textarea
@@ -247,7 +253,7 @@ export function BlockEditor({ initialMarkdown = "", draftKey = "mooc_block_draft
                 value={block.content}
                 placeholder={t("editor.calloutPlaceholder")}
                 onChange={(e) => updateBlock(block.id, { content: e.target.value })}
-                style={{ width: "100%", borderLeft: "4px solid #3b82f6", background: "#eff6ff" }}
+                style={{ width: "100%", background: "var(--color-warning-soft)", color: "var(--color-warning)" }}
               />
             ) : block.type === "formula" ? (
               <>
@@ -292,31 +298,31 @@ export function BlockEditor({ initialMarkdown = "", draftKey = "mooc_block_draft
       </div>
 
       <div className="row" style={{ gap: "0.5rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
-        <button type="button" onClick={() => addBlock("paragraph")}>
+        <button type="button" className="secondary" onClick={() => addBlock("paragraph")}>
           {t("editor.parrafo")}
         </button>
-        <button type="button" onClick={() => addBlock("heading")}>
+        <button type="button" className="secondary" onClick={() => addBlock("heading")}>
           {t("editor.encabezado")}
         </button>
-        <button type="button" onClick={() => addBlock("code")}>
+        <button type="button" className="secondary" onClick={() => addBlock("code")}>
           {t("editor.codigo")}
         </button>
-        <button type="button" onClick={() => addBlock("callout")}>
+        <button type="button" className="secondary" onClick={() => addBlock("callout")}>
           {t("editor.nota")}
         </button>
-        <button type="button" onClick={() => addBlock("list")}>
+        <button type="button" className="secondary" onClick={() => addBlock("list")}>
           {t("editor.lista")}
         </button>
-        <button type="button" onClick={() => addBlock("task")}>
+        <button type="button" className="secondary" onClick={() => addBlock("task")}>
           {t("editor.tareas")}
         </button>
-        <button type="button" onClick={() => addBlock("table")}>
+        <button type="button" className="secondary" onClick={() => addBlock("table")}>
           {t("editor.tabla")}
         </button>
-        <button type="button" onClick={() => addBlock("formula")}>
+        <button type="button" className="secondary" onClick={() => addBlock("formula")}>
           {t("editor.formula")}
         </button>
-        <button type="button" onClick={clearDraft} style={{ marginLeft: "auto", fontSize: "0.75rem", opacity: 0.7 }}>
+        <button type="button" className="secondary" onClick={clearDraft} style={{ marginLeft: "auto", fontSize: "0.8125rem" }}>
           {t("editor.limpiar")}
         </button>
       </div>
@@ -361,7 +367,7 @@ function EditorDeTabla({
             {filas.map((fila, i) => (
               <tr key={i}>
                 {Array.from({ length: columnas }).map((_, j) => (
-                  <td key={j} style={{ border: "1px solid var(--color-border, #e5e7eb)", padding: 0 }}>
+                  <td key={j} style={{ border: "1px solid var(--color-border)", padding: 0 }}>
                     <label className="visually-hidden" htmlFor={`celda-${i}-${j}`}>
                       {i === 0
                         ? t("editor.encabezadoColumna", { n: j + 1 })
@@ -376,7 +382,7 @@ function EditorDeTabla({
                         border: 0,
                         padding: "0.35rem",
                         fontWeight: i === 0 ? 600 : 400,
-                        background: i === 0 ? "var(--color-bg-subtle, #f1f5f9)" : "transparent",
+                        background: i === 0 ? "var(--color-surface)" : "transparent",
                       }}
                     />
                   </td>
@@ -476,7 +482,7 @@ function EditorDeTareas({
               }
               aria-label={t("editor.quitarTarea", { n: i + 1 })}
             >
-              ✕
+              <Icono nombre="cerrar" tamano={12} />
             </button>
           )}
         </div>

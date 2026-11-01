@@ -36,10 +36,10 @@ export function MarcoIncrustado({ contenido }: { contenido: ResourceContent }) {
           position: "relative",
           width: "100%",
           aspectRatio: "16 / 9",
-          background: "var(--color-bg-subtle, #f1f5f9)",
+          background: "var(--color-surface)",
           borderRadius: "8px",
           overflow: "hidden",
-          border: "1px solid var(--color-border, #e5e7eb)",
+          border: "1px solid var(--color-border)",
         }}
       >
         {!cargado && (

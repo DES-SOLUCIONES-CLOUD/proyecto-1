@@ -62,12 +62,14 @@ test.describe("5. Consumo de contenido", () => {
     await expect(page.getByRole("status")).toContainText(/inscripción|enrolled/i);
 
     await page.getByRole("link", { name: "Lección de apertura" }).click();
-    await expect(page.getByRole("heading", { name: "Lección de apertura" })).toBeVisible();
+    // El texto de la lección ahora se muestra con formato y repite su título como
+    // subtítulo, así que se busca el título de la página (h1).
+    await expect(page.getByRole("heading", { name: "Lección de apertura", level: 1 })).toBeVisible();
     await expect(page.getByText("Texto de la lección")).toBeVisible();
 
-    // El curso aparece en "Mis cursos" con su estado.
+    // El curso aparece en "Mis cursos" con su nombre.
     await page.goto("/mis-cursos");
-    await expect(page.getByRole("link", { name: /ver curso|view course/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: curso.titulo })).toBeVisible();
   });
 
   test("la navegación por teclado llega al contenido sin usar el ratón", async ({

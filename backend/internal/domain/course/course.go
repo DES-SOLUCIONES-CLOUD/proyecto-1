@@ -173,6 +173,8 @@ var (
 	ErrAlreadyPublished        = errors.New("course: la versión ya está publicada")
 	ErrNotDraft                = errors.New("course: solo un borrador puede publicarse")
 	ErrInvalidApprovalCriteria = errors.New("course: los criterios de aprobación deben estar entre 0 y 100")
+	//un quiz sin preguntas no se puede presentar, asi que no deja publicar
+	ErrQuizSinPreguntas = errors.New("course: hay quizzes visibles sin preguntas")
 )
 
 // ValidationError agrega una lista de motivos de rechazo para exponer al

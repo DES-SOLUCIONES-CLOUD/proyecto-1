@@ -92,6 +92,11 @@ test.describe("Auditoría de accesibilidad (WCAG 2.2 AA)", () => {
     await auditar(page, "recurso-de-texto");
 
     await page.goto(`/cursos/${curso.courseId}/recursos/${curso.recursoQuiz}`);
+    // El intento ya no se abre solo: primero se audita la pantalla de inicio y
+    // luego se abre la evaluación para auditar las preguntas.
+    await expect(page.getByRole("button", { name: /empezar o retomar|start or resume/i })).toBeVisible();
+    await auditar(page, "quiz-inicio");
+    await page.getByRole("button", { name: /empezar o retomar|start or resume/i }).click();
     await expect(page.getByRole("radio").first()).toBeVisible();
     await auditar(page, "quiz");
 

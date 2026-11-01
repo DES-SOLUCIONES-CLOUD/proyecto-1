@@ -15,6 +15,9 @@ func (h *handlers) registerQuizzes(mux *http.ServeMux) {
 
 	mux.Handle("PUT /api/v1/courses/versions/{versionId}/resources/{resourceId}/quiz",
 		h.auth()(teacher(http.HandlerFunc(h.defineQuiz))))
+	//el profesor lee su quiz guardado para editarlo
+	mux.Handle("GET /api/v1/courses/versions/{versionId}/resources/{resourceId}/quiz",
+		h.auth()(teacher(http.HandlerFunc(h.getQuizDefinition))))
 
 	mux.Handle("POST /api/v1/resources/{resourceId}/quiz/attempts",
 		h.auth()(student(http.HandlerFunc(h.startQuizAttempt))))
@@ -85,6 +88,64 @@ func (h *handlers) defineQuiz(w http.ResponseWriter, r *http.Request) {
 	// completo incluiria la clave correcta, que no debe salir del servidor.
 	writeJSON(w, http.StatusOK, map[string]any{
 		"quiz_id": q.ID, "questions": len(q.Questions),
+	})
+}
+
+// getQuizDefinition devuelve el quiz completo, con las respuestas correctas,
+// para que el profesor lo edite sin tener que escribirlo de nuevo.
+//
+// la clave correcta solo la ve el dueño del curso (o un coeditor o un admin):
+// DefinicionParaInforme revisa que la version sea suya. el estudiante usa otras
+// rutas (/quiz/attempts) que nunca mandan cual opcion es la correcta.
+// responde con la misma forma que recibe el PUT, asi el formulario la usa tal cual.
+func (h *handlers) getQuizDefinition(w http.ResponseWriter, r *http.Request) {
+	versionID, err := uuid.Parse(r.PathValue("versionId"))
+	if err != nil {
+		writeError(w, ErrBadRequest)
+		return
+	}
+	resourceID, err := uuid.Parse(r.PathValue("resourceId"))
+	if err != nil {
+		writeError(w, ErrBadRequest)
+		return
+	}
+
+	actor, _ := UserFromContext(r.Context())
+	//si el quiz todavia no tiene preguntas guardadas, esto responde 404
+	definicion, err := h.deps.Quizzes.DefinicionParaInforme(r.Context(), actor, versionID, resourceID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	q := definicion.Quiz
+
+	type opcion struct {
+		TextMD    string `json:"text_md"`
+		IsCorrect bool   `json:"is_correct"`
+	}
+	type pregunta struct {
+		PromptMD string   `json:"prompt_md"`
+		Type     string   `json:"type"`
+		Points   float64  `json:"points"`
+		Options  []opcion `json:"options"`
+	}
+	preguntas := []pregunta{}
+	for _, p := range q.Questions {
+		nueva := pregunta{PromptMD: p.PromptMD, Type: string(p.Type), Points: p.Points, Options: []opcion{}}
+		for _, o := range p.Options {
+			nueva.Options = append(nueva.Options, opcion{TextMD: o.TextMD, IsCorrect: o.IsCorrect})
+		}
+		preguntas = append(preguntas, nueva)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"title":              q.Title,
+		"time_limit_seconds": q.TimeLimitSeconds,
+		"max_attempts":       q.MaxAttempts,
+		"pass_score":         q.PassScore,
+		"feedback_policy":    string(q.FeedbackPolicy),
+		"shuffle_questions":  q.ShuffleQuestions,
+		"questions":          preguntas,
 	})
 }
 

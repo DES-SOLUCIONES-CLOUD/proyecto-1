@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { api, ApiError, type Hilo, type RespuestaDeForo } from "@/lib/api";
+import { api, type Hilo, type RespuestaDeForo } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 
 /**
@@ -61,7 +62,7 @@ export function Foro({
       setCuerpo("");
       await cargar();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("foro.errorAbrir"));
+      setError(mensajeDeError(err, t, "foro.errorAbrir"));
     } finally {
       setOcupado(false);
     }
@@ -160,7 +161,7 @@ function HiloAbierto({
     try {
       setDatos(await api.getThread(threadId));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("foro.errorAbrir"));
+      setError(mensajeDeError(e, t, "foro.errorAbrir"));
     }
   }, [threadId, t]);
 
@@ -180,7 +181,7 @@ function HiloAbierto({
       await cargar();
       onCambio();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("foro.errorResponder"));
+      setError(mensajeDeError(err, t, "foro.errorResponder"));
     } finally {
       setOcupado(false);
     }
@@ -192,7 +193,7 @@ function HiloAbierto({
       await cargar();
       onCambio();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("foro.errorEstado"));
+      setError(mensajeDeError(err, t, "foro.errorEstado"));
     }
   }
 
@@ -201,12 +202,12 @@ function HiloAbierto({
       await api.deleteForumPost(postId);
       await cargar();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("foro.errorBorrar"));
+      setError(mensajeDeError(err, t, "foro.errorBorrar"));
     }
   }
 
   return (
-    <div className="stack" style={{ paddingLeft: "1rem", borderLeft: "3px solid var(--color-border, #e5e7eb)" }}>
+    <div className="stack" style={{ paddingLeft: "1rem", borderLeft: "2px solid var(--color-border)" }}>
       <p style={{ whiteSpace: "pre-wrap" }}>{datos.thread.body_md}</p>
 
       {error && (

@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n, useTraductorEstable } from "@/lib/i18n";
 
 function VerifyEmailInner() {
@@ -27,7 +28,7 @@ function VerifyEmailInner() {
       .then(() => setStatus("ok"))
       .catch((e) => {
         setStatus("error");
-        setMessage(e instanceof ApiError ? e.message : traducir("auth.verificar.error"));
+        setMessage(mensajeDeError(e, traducir, "auth.verificar.error"));
       });
   }, [token, traducir]);
 

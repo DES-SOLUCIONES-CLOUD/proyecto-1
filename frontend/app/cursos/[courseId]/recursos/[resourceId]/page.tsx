@@ -4,13 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, ApiError, type ResourceContent } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { ReproductorHLS, type PistaDeSubtitulos } from "@/components/ReproductorHLS";
 import { Foro } from "@/components/Foro";
 import { VisorPDF } from "@/components/VisorPDF";
 import { QuizPlayer } from "@/components/QuizPlayer";
+import { TextoConFormato } from "@/components/TextoConFormato";
+import { AnteriorSiguiente, MigasDelRecurso, useNavegacionDelCurso } from "@/components/NavegacionDelCurso";
 import { MarcoIncrustado } from "@/components/MarcoIncrustado";
 import { useProgressReporting } from "@/lib/useProgressReporting";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type Clave } from "@/lib/i18n";
 
 /**
  * Consumo de un recurso por parte del estudiante.
@@ -35,6 +38,8 @@ export default function RecursoPage() {
   }, [resourceId]);
 
   const [contenido, setContenido] = useState<ResourceContent | null>(null);
+  //para ubicar al estudiante dentro del curso y pasar al recurso siguiente
+  const nav = useNavegacionDelCurso(courseId, resourceId);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
 
@@ -57,7 +62,7 @@ export default function RecursoPage() {
         } else if (e instanceof ApiError && e.status === 404) {
           setError(t("recurso.sinAcceso"));
         } else {
-          setError(e instanceof ApiError ? e.message : t("recurso.error"));
+          setError(mensajeDeError(e, t, "recurso.error"));
         }
       }
     })();
@@ -115,11 +120,12 @@ export default function RecursoPage() {
 
   return (
     <div>
+      <MigasDelRecurso courseId={courseId} nav={nav} />
       <header className="page-header">
         <div>
           <h1>{contenido.title}</h1>
           <p>
-            <span className="badge">{contenido.type}</span>
+            <span className="badge">{t(`tipo.${contenido.type}` as Clave)}</span>
           </p>
         </div>
         <Link href={`/cursos/${courseId}`}>{t("recurso.volver")}</Link>
@@ -175,13 +181,8 @@ export default function RecursoPage() {
         />
       )}
 
-      {contenido.type === "text" && contenido.markdown && (
-        <article className="card">
-          <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontFamily: "inherit" }}>
-            {contenido.markdown}
-          </pre>
-        </article>
-      )}
+      {/*el texto se muestra con formato (titulos, listas, tablas) y no como markdown crudo*/}
+      {contenido.type === "text" && contenido.markdown && <TextoConFormato markdown={contenido.markdown} />}
 
       {contenido.type === "link" && contenido.external_url && (
         <p>
@@ -204,6 +205,8 @@ export default function RecursoPage() {
       )}
 
       {contenido.type === "quiz" && <QuizPlayer resourceId={resourceId} />}
+
+      <AnteriorSiguiente courseId={courseId} nav={nav} />
 
       {/* El foro va acotado a este recurso: junto a una lección interesa lo
           que se discute sobre ella, no el foro entero del curso. */}

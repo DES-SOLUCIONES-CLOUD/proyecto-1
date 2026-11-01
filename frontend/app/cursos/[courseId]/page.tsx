@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { api, type Version, type CourseProgress, ApiError } from "@/lib/api";
+import { api, type Version, type CourseProgress } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n, type Clave } from "@/lib/i18n";
 
@@ -21,13 +22,16 @@ export default function CourseDetailPage() {
   const [version, setVersion] = useState<Version | null>(null);
   const [error, setError] = useState("");
   const [enrollMessage, setEnrollMessage] = useState("");
+  //el error va aparte del mensaje de exito para pintarlo en rojo y no en verde
+  const [enrollError, setEnrollError] = useState("");
+  const [inscribiendo, setInscribiendo] = useState(false);
   const [progress, setProgress] = useState<CourseProgress | null>(null);
 
   useEffect(() => {
     api
       .getPublishedCourse(courseId)
       .then(setVersion)
-      .catch((e) => setError(e instanceof ApiError ? e.message : t("curso.error")));
+      .catch((e) => setError(mensajeDeError(e, t, "curso.error")));
   }, [courseId, t]);
 
   const loadProgress = useCallback(() => {
@@ -43,25 +47,42 @@ export default function CourseDetailPage() {
 
   async function handleEnroll() {
     setEnrollMessage("");
+    setEnrollError("");
+    setInscribiendo(true);
     try {
       await api.enroll(courseId);
       setEnrollMessage(t("curso.inscrito"));
       loadProgress();
     } catch (e) {
-      setEnrollMessage(e instanceof ApiError ? e.message : t("curso.errorInscripcion"));
+      setEnrollError(mensajeDeError(e, t, "curso.errorInscripcion"));
+    } finally {
+      setInscribiendo(false);
     }
   }
 
   if (error) {
     return (
-      <p className="error-banner" role="alert">
-        {error}
-      </p>
+      <div className="columna-estrecha">
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+        <Link href="/">{t("acceso.irAlCatalogo")}</Link>
+      </div>
     );
   }
   if (!version) {
-    return <p>{t("curso.cargando")}</p>;
+    return <p role="status">{t("curso.cargando")}</p>;
   }
+
+  //el primer recurso visible del curso, para el boton de empezar
+  const primerRecurso = (version.Modules ?? [])
+    .flatMap((m) => m.Units ?? [])
+    .flatMap((u) => u.Resources ?? [])
+    .find((r) => r.Visible);
+  const esEstudiante = user?.role === "student";
+  //un estudiante que se retiro puede volver a inscribirse y conserva su progreso
+  const retirado = progress?.status === "withdrawn";
+  const inscrito = Boolean(progress) && !retirado;
 
   return (
     <div>
@@ -75,16 +96,37 @@ export default function CourseDetailPage() {
             <span className="badge">{version.Language}</span>
           </div>
         </div>
-        {user?.role === "student" && !progress && (
-          <div>
-            <button onClick={handleEnroll}>{t("curso.inscribirme")}</button>
-          </div>
-        )}
+        {/*lo que se ofrece depende de quien mira el curso*/}
+        <div className="stack">
+          {esEstudiante && !inscrito && (
+            <button onClick={handleEnroll} disabled={inscribiendo}>
+              {inscribiendo ? t("curso.inscribiendo") : retirado ? t("curso.reinscribirme") : t("curso.inscribirme")}
+            </button>
+          )}
+          {inscrito && primerRecurso && (
+            <Link className="boton" href={`/cursos/${courseId}/recursos/${primerRecurso.ID}`}>
+              {t("curso.irAlContenido")}
+            </Link>
+          )}
+        </div>
       </header>
+
+      {!user && (
+        <p className="warning-banner" role="status">
+          {t("curso.entrarParaInscribirse")} <Link href="/login">{t("nav.entrar")}</Link>
+        </p>
+      )}
+      {user && !esEstudiante && <p className="muted">{t("curso.soloEstudiantes")}</p>}
+      {retirado && <p className="warning-banner">{t("curso.retiradoAyuda")}</p>}
 
       {enrollMessage && (
         <p className="success-banner" role="status">
           {enrollMessage}
+        </p>
+      )}
+      {enrollError && (
+        <p className="error-banner" role="alert">
+          {enrollError}
         </p>
       )}
 
@@ -101,6 +143,13 @@ export default function CourseDetailPage() {
               })}
             </span>
           </p>
+          {/*barra de avance: muestra de un vistazo cuanto falta*/}
+          <progress
+            value={progress.required_percent}
+            max={100}
+            aria-label={t("curso.tuAvance")}
+            style={{ width: "100%" }}
+          />
           {progress.quizzes_pending > 0 && (
             <p className="muted">
               {t("curso.evaluacionesPendientes", { n: progress.quizzes_pending })}
@@ -116,29 +165,30 @@ export default function CourseDetailPage() {
       )}
 
       <h2>{t("curso.contenido")}</h2>
-      <ol className="stack">
+      {/*temario: cada modulo es un panel, cada unidad un subtitulo y cada recurso una fila*/}
+      <ol className="temario">
         {version.Modules?.map((m) => (
           <li key={m.ID} className="card">
             <h3>{m.Title}</h3>
-            <ol>
-              {m.Units?.map((u) => (
-                <li key={u.ID}>
-                  <strong>{u.Title}</strong>
-                  <ul>
-                    {u.Resources?.filter((r) => r.Visible).map((r) => (
-                      <li key={r.ID}>
-                        {/* Solo quien esté inscrito recibirá el contenido; la
-                            API lo comprueba en cada entrega. El enlace se
-                            muestra igual para que se vea qué trae el curso. */}
-                        <Link href={`/cursos/${courseId}/recursos/${r.ID}`}>{r.Title}</Link>{" "}
-                        <span className="badge">{r.Type}</span>
-                        {r.Required && <span className="badge">{t("curso.obligatorio")}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ol>
+            {m.Units?.map((u) => (
+              <section key={u.ID} className="temario__unidad">
+                <h4>{u.Title}</h4>
+                <ul>
+                  {u.Resources?.filter((r) => r.Visible).map((r) => (
+                    <li key={r.ID}>
+                      {/* Solo quien esté inscrito recibirá el contenido; la
+                          API lo comprueba en cada entrega. El enlace se
+                          muestra igual para que se vea qué trae el curso. */}
+                      <Link href={`/cursos/${courseId}/recursos/${r.ID}`}>{r.Title}</Link>
+                      <span className="temario__datos">
+                        {t(`tipo.${r.Type}` as Clave)}
+                        {r.Required && <> · {t("curso.obligatorio")}</>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
           </li>
         ))}
       </ol>

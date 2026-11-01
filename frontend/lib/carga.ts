@@ -75,6 +75,18 @@ export function olvidarCarga(resourceId: string) {
   }
 }
 
+//devuelve el nombre y el tamaño del archivo que quedo a medias, o null si no hay
+//sirve para decirle al profesor exactamente que archivo debe volver a elegir
+export function cargaPendiente(resourceId: string): { nombre: string; tamano: number } | null {
+  if (!hayCargaPendiente(resourceId)) return null;
+  try {
+    const carga = JSON.parse(localStorage.getItem(clave(resourceId)) ?? "") as CargaEnCurso;
+    return { nombre: carga.nombre, tamano: carga.tamano };
+  } catch {
+    return null;
+  }
+}
+
 /** hayCargaPendiente informa si este recurso dejó una subida a medias. */
 export function hayCargaPendiente(resourceId: string): boolean {
   try {

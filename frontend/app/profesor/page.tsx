@@ -3,13 +3,27 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api, type Course, ApiError } from "@/lib/api";
+import { api, type Course } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
+
+//convierte un titulo en un identificador para la url
+//ejemplo: "Introducción a la Nube" -> "introduccion-a-la-nube"
+function aSlug(titulo: string): string {
+  return titulo
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") //quita tildes
+    .replace(/[^a-z0-9]+/g, "-") //todo lo que no sea letra o numero se vuelve guion
+    .replace(/^-+|-+$/g, ""); //sin guiones al inicio ni al final
+}
 
 export default function TeacherDashboardPage() {
   const [courses, setCourses] = useState<Course[] | null>(null);
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
+  //mientras el profesor no toque el slug, se llena solo a partir del titulo
+  const [slugEditado, setSlugEditado] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { t } = useI18n();
@@ -23,7 +37,7 @@ export default function TeacherDashboardPage() {
       const res = await api.listMyCourses();
       setCourses(res.items ?? []);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("profesor.error"));
+      setError(mensajeDeError(e, t, "profesor.error"));
     }
   }, [t]);
 
@@ -42,7 +56,7 @@ export default function TeacherDashboardPage() {
       // una pantalla que ya está cargada.
       router.push(`/profesor/versiones/${res.version_id}`);
     } catch (e) {
-      setError(e instanceof ApiError ? [e.message, ...(e.details ?? [])].join(" ") : t("profesor.errorCrear"));
+      setError(mensajeDeError(e, t, "profesor.errorCrear"));
     } finally {
       setSubmitting(false);
     }
@@ -70,7 +84,15 @@ export default function TeacherDashboardPage() {
         <form onSubmit={handleCreate} className="stack">
           <div className="form-field">
             <label htmlFor="title">{t("comun.titulo")}</label>
-            <input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              id="title"
+              required
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (!slugEditado) setSlug(aSlug(e.target.value));
+              }}
+            />
           </div>
           <div className="form-field">
             <label htmlFor="slug">{t("profesor.slug")}</label>
@@ -80,8 +102,12 @@ export default function TeacherDashboardPage() {
               pattern="[a-z0-9-]+"
               placeholder={t("profesor.slugPlaceholder")}
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={(e) => {
+                setSlug(e.target.value);
+                setSlugEditado(true);
+              }}
             />
+            <p className="muted">{t("profesor.slugAyuda")}</p>
           </div>
           <button type="submit" disabled={submitting}>
             {submitting ? t("profesor.creando") : t("profesor.crearBorrador")}
@@ -113,8 +139,19 @@ function CourseRow({
   const router = useRouter();
   const { t } = useI18n();
   const [trabajando, setTrabajando] = useState(false);
+  const [titulo, setTitulo] = useState("");
 
   const publicado = Boolean(c.CurrentPublishedVersionID);
+
+  //el curso no trae su titulo, asi que se pide a su version mas reciente
+  const versionParaTitulo = c.LatestDraftVersionID ?? c.CurrentPublishedVersionID;
+  useEffect(() => {
+    if (!versionParaTitulo) return;
+    api
+      .getVersion(versionParaTitulo)
+      .then((v) => setTitulo(v.Title))
+      .catch(() => setTitulo(""));
+  }, [versionParaTitulo]);
 
   // Editar siempre ocurre sobre un borrador: si ya hay uno abierto se entra
   // directo, y si no, se abre copiando la última versión. A un curso publicado
@@ -129,7 +166,7 @@ function CourseRow({
       const v = await api.createUpdateDraft(c.ID);
       router.push(`/profesor/versiones/${v.ID}`);
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : t("profesor.errorBorrador"));
+      onError(mensajeDeError(e, t, "profesor.errorBorrador"));
     } finally {
       setTrabajando(false);
     }
@@ -144,7 +181,7 @@ function CourseRow({
       await api.unpublishCourse(c.ID);
       await onChange();
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : t("profesor.errorDespublicar"));
+      onError(mensajeDeError(e, t, "profesor.errorDespublicar"));
     } finally {
       setTrabajando(false);
     }
@@ -152,7 +189,8 @@ function CourseRow({
 
   return (
     <li className="card">
-      <strong>{c.Slug}</strong>
+      {/*si no hay titulo todavia se muestra el slug para no dejar la fila vacia*/}
+      <strong>{titulo || c.Slug}</strong> <span className="muted">/{c.Slug}</span>
       <p className="badge">{publicado ? t("profesor.publicado") : t("profesor.sinPublicar")}</p>
       {publicado && <p className="muted">{t("profesor.publicadoAyuda")}</p>}
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>

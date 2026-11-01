@@ -3,7 +3,8 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 
 function RequestResetForm() {
@@ -54,7 +55,7 @@ function ConfirmResetForm({ token }: { token: string }) {
       await api.confirmPasswordReset(token, password);
       setDone(true);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("auth.reset.error"));
+      setError(mensajeDeError(e, t, "auth.reset.error"));
     } finally {
       setSubmitting(false);
     }

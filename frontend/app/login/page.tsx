@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/lib/i18n";
 
@@ -28,7 +29,7 @@ export default function LoginPage() {
       else if (user.role === "teacher") router.push("/profesor");
       else router.push("/mis-cursos");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("auth.login.error"));
+      setError(mensajeDeError(e, t, "auth.login.error"));
     } finally {
       setSubmitting(false);
     }

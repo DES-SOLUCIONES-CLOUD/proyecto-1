@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type Badge, ApiError } from "@/lib/api";
+import { api, type Badge } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { ListaPersonal } from "@/components/ListaPersonal";
 import { useI18n, type Traducir } from "@/lib/i18n";
@@ -50,7 +51,7 @@ export default function MyBadgesPage() {
     api
       .listMyBadges()
       .then((res) => setItems(res.items ?? []))
-      .catch((e) => setError(e instanceof ApiError ? e.message : t("insignias.error")));
+      .catch((e) => setError(mensajeDeError(e, t, "insignias.error")));
   }, [authLoading, user, t]);
 
   return (

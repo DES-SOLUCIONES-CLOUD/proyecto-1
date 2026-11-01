@@ -134,6 +134,8 @@ test.describe("6. Quiz", () => {
 
     await entrarPorLaInterfaz(page, estudiante);
     await page.goto(`/cursos/${curso.courseId}/recursos/${curso.recursoQuiz}`);
+    // El intento ya no se abre solo: el estudiante lo empieza con el botón.
+    await page.getByRole("button", { name: /empezar o retomar|start or resume/i }).click();
 
     // Se marca la primera opción de cada pregunta. Puede aprobar o no; lo que
     // se comprueba es que califique y lo diga.

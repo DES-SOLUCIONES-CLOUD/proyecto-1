@@ -1642,6 +1642,23 @@ paths:
         "200": { description: Inscripción retirada. }
 
   /courses/versions/{versionId}/resources/{resourceId}/quiz:
+    get:
+      tags: [Evaluacion]
+      summary: Devuelve la evaluacion guardada para que el profesor la edite
+      description: >
+        Solo el profesor dueno, un coeditor o un administrador. Incluye cual
+        opcion es la correcta, por eso nunca la recibe un estudiante: el
+        estudiante usa las rutas de intentos, que no la exponen. Tiene la misma
+        forma que el cuerpo del PUT. Responde 404 si el quiz aun no tiene
+        preguntas guardadas.
+      operationId: getQuizDefinition
+      parameters:
+        - { name: versionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: resourceId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Evaluacion guardada, con la misma forma que el cuerpo del PUT. }
+        "403": { $ref: '#/components/responses/Error' }
+        "404": { $ref: '#/components/responses/Error' }
     put:
       tags: [Evaluacion]
       summary: Define o reemplaza la evaluacion de un recurso de tipo quiz

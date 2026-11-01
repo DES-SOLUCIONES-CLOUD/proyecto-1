@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, ApiError, type Session } from "@/lib/api";
+import { api, type Session } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { DescargarMisDatos } from "@/components/DescargarMisDatos";
 import { useI18n } from "@/lib/i18n";
@@ -27,7 +28,7 @@ export default function SesionesPage() {
       const { items } = await api.listSessions();
       setSesiones(items);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("sesiones.error"));
+      setError(mensajeDeError(e, t, "sesiones.error"));
     }
   }, [t]);
 
@@ -53,7 +54,7 @@ export default function SesionesPage() {
       }
       await cargar();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("sesiones.errorRevocar"));
+      setError(mensajeDeError(e, t, "sesiones.errorRevocar"));
     } finally {
       setOcupado(false);
     }
@@ -66,7 +67,7 @@ export default function SesionesPage() {
       await api.revokeOtherSessions();
       await cargar();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("sesiones.errorRevocarTodas"));
+      setError(mensajeDeError(e, t, "sesiones.errorRevocarTodas"));
     } finally {
       setOcupado(false);
     }
