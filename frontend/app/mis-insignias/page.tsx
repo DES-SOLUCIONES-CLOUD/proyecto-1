@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type Badge, ApiError } from "@/lib/api";
+import { api, type Badge } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { ListaPersonal } from "@/components/ListaPersonal";

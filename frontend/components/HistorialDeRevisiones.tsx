@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { api, ApiError, type Revision } from "@/lib/api";
+import { api, type Revision } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 

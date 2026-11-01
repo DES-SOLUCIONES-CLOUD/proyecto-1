@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, type Version, ApiError } from "@/lib/api";
+import { api, type Version } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useI18n, useTraductorEstable } from "@/lib/i18n";
 

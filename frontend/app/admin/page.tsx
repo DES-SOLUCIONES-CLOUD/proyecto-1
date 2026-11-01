@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   api,
-  ApiError,
   type AuditEntry,
   type Conteo,
   type IframeDestino,

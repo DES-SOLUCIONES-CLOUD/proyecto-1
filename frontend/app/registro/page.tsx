@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { api, ApiError, type Version } from "@/lib/api";
+import { api, type Version } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useI18n, type Clave } from "@/lib/i18n";
 

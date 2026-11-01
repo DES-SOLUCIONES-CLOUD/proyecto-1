@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api, ApiError, type QuizAttempt, type QuizQuestion } from "@/lib/api";
+import { api, type QuizAttempt, type QuizQuestion } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useI18n, useTraductorEstable } from "@/lib/i18n";
 

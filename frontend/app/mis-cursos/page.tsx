@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type Enrollment, ApiError } from "@/lib/api";
+import { api, type Enrollment } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { ListaPersonal } from "@/components/ListaPersonal";

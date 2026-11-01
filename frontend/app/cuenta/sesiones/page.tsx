@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, ApiError, type Session } from "@/lib/api";
+import { api, type Session } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { DescargarMisDatos } from "@/components/DescargarMisDatos";
