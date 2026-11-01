@@ -576,5 +576,10 @@
   "quiz.intentarDeNuevo": "Intentar de nuevo",
   "quiz.elegirUna": "Elige una opción",
   "quiz.elegirVarias": "Puedes elegir varias opciones",
-  "quiz.respuestaGuardada": "Respuesta guardada"
+  "quiz.respuestaGuardada": "Respuesta guardada",
+  "navegacion.migas": "Ubicación en el curso",
+  "navegacion.curso": "Curso",
+  "navegacion.recursoDe": "recurso {n} de {total}",
+  "navegacion.entreRecursos": "Recurso anterior y siguiente",
+  "navegacion.terminar": "Volver al curso y ver mi avance"
 }

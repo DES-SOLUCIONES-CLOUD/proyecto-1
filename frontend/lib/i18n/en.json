@@ -576,5 +576,10 @@
   "quiz.intentarDeNuevo": "Try again",
   "quiz.elegirUna": "Choose one option",
   "quiz.elegirVarias": "You can choose several options",
-  "quiz.respuestaGuardada": "Answer saved"
+  "quiz.respuestaGuardada": "Answer saved",
+  "navegacion.migas": "Location in the course",
+  "navegacion.curso": "Course",
+  "navegacion.recursoDe": "resource {n} of {total}",
+  "navegacion.entreRecursos": "Previous and next resource",
+  "navegacion.terminar": "Back to the course and see my progress"
 }

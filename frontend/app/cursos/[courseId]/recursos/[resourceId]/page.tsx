@@ -10,6 +10,7 @@ import { Foro } from "@/components/Foro";
 import { VisorPDF } from "@/components/VisorPDF";
 import { QuizPlayer } from "@/components/QuizPlayer";
 import { TextoConFormato } from "@/components/TextoConFormato";
+import { AnteriorSiguiente, MigasDelRecurso, useNavegacionDelCurso } from "@/components/NavegacionDelCurso";
 import { MarcoIncrustado } from "@/components/MarcoIncrustado";
 import { useProgressReporting } from "@/lib/useProgressReporting";
 import { useI18n, type Clave } from "@/lib/i18n";
@@ -37,6 +38,8 @@ export default function RecursoPage() {
   }, [resourceId]);
 
   const [contenido, setContenido] = useState<ResourceContent | null>(null);
+  //para ubicar al estudiante dentro del curso y pasar al recurso siguiente
+  const nav = useNavegacionDelCurso(courseId, resourceId);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
 
@@ -117,6 +120,7 @@ export default function RecursoPage() {
 
   return (
     <div>
+      <MigasDelRecurso courseId={courseId} nav={nav} />
       <header className="page-header">
         <div>
           <h1>{contenido.title}</h1>
@@ -201,6 +205,8 @@ export default function RecursoPage() {
       )}
 
       {contenido.type === "quiz" && <QuizPlayer resourceId={resourceId} />}
+
+      <AnteriorSiguiente courseId={courseId} nav={nav} />
 
       {/* El foro va acotado a este recurso: junto a una lección interesa lo
           que se discute sobre ella, no el foro entero del curso. */}
