@@ -209,11 +209,11 @@
   "profesor.titulo": "Course authoring",
   "profesor.subtitulo": "Create drafts and publish versions. A published version is immutable.",
   "profesor.nuevoCurso": "New course",
-  "profesor.nuevoCursoAyuda": "The course starts out as an editable draft.",
-  "profesor.slug": "Slug (identifier in the URL)",
+  "profesor.nuevoCursoAyuda": "The course starts as a draft. Then you add modules, units and resources, and publish it when it's ready.",
+  "profesor.slug": "Course short address",
   "profesor.slugPlaceholder": "introduction-to-cloud",
   "profesor.creando": "Creating…",
-  "profesor.crearBorrador": "Create draft",
+  "profesor.crearBorrador": "Create course",
   "profesor.sinCursos": "You have not created any course yet.",
   "profesor.publicado": "Published",
   "profesor.sinPublicar": "Not published",
@@ -550,5 +550,6 @@
   "version.yaPublicada": "This version is no longer a draft, so it can't be published again.",
   "version.volverAMisCursos": "Back to my courses",
   "version.errorEliminar": "It couldn't be deleted. Please try again.",
-  "version.errorUnidad": "The unit couldn't be added"
+  "version.errorUnidad": "The unit couldn't be added",
+  "profesor.slugAyuda": "Filled in automatically from the title. Lowercase letters, numbers and hyphens only; it must be unique."
 }

@@ -209,11 +209,11 @@
   "profesor.titulo": "Autoría de cursos",
   "profesor.subtitulo": "Crea borradores y publica versiones. Una versión publicada es inmutable.",
   "profesor.nuevoCurso": "Nuevo curso",
-  "profesor.nuevoCursoAyuda": "El curso nace como borrador editable.",
-  "profesor.slug": "Slug (identificador en la URL)",
+  "profesor.nuevoCursoAyuda": "El curso empieza como borrador. Después le agregas módulos, unidades y recursos, y lo publicas cuando esté listo.",
+  "profesor.slug": "Dirección corta del curso",
   "profesor.slugPlaceholder": "introduccion-a-cloud",
   "profesor.creando": "Creando…",
-  "profesor.crearBorrador": "Crear borrador",
+  "profesor.crearBorrador": "Crear curso",
   "profesor.sinCursos": "Aún no has creado ningún curso.",
   "profesor.publicado": "Publicado",
   "profesor.sinPublicar": "Sin publicar",
@@ -550,5 +550,6 @@
   "version.yaPublicada": "Esta versión ya no es un borrador, así que no se puede publicar otra vez.",
   "version.volverAMisCursos": "Volver a mis cursos",
   "version.errorEliminar": "No se pudo eliminar. Inténtalo de nuevo.",
-  "version.errorUnidad": "No se pudo agregar la unidad"
+  "version.errorUnidad": "No se pudo agregar la unidad",
+  "profesor.slugAyuda": "Se llena sola a partir del título. Solo minúsculas, números y guiones; no se puede repetir."
 }
