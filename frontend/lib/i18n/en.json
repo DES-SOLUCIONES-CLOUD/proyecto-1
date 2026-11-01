@@ -534,5 +534,8 @@
   "bloque.list": "List",
   "bloque.table": "Table",
   "bloque.formula": "Formula",
-  "bloque.task": "Tasks"
+  "bloque.task": "Tasks",
+  "version.faltaArchivo": "This resource's file hasn't been uploaded yet.",
+  "version.procesandoAyuda": "The file is being prepared on the server. It may take a few minutes and this page updates by itself. You can close it: processing continues and, if interrupted, resumes automatically.",
+  "version.procesamientoFallo": "The file couldn't be processed. Check that it's valid and upload it again."
 }

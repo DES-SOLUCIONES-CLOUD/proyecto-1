@@ -38,6 +38,16 @@ function mensajeDeCarga(e: unknown, t: Traducir): string {
 
 const BINARY_TYPES = new Set(["image", "video", "audio", "pdf", "presentation", "file"]);
 
+//estados en los que el archivo todavia no esta listo
+const EN_PROCESO = new Set(["pending", "processing"]);
+
+//dice si algun recurso de la version sigue procesandose
+function hayArchivosProcesandose(v: Version): boolean {
+  return (v.Modules ?? []).some((m) =>
+    (m.Units ?? []).some((u) => (u.Resources ?? []).some((r) => EN_PROCESO.has(r.ProcessingStatus))),
+  );
+}
+
 export default function VersionEditorPage() {
   const { versionId } = useParams<{ versionId: string }>();
   const { t } = useI18n();
@@ -58,6 +68,15 @@ export default function VersionEditorPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  //mientras haya archivos procesandose se vuelve a preguntar cada 5 segundos
+  //asi el profesor ve el cambio a "Listo" sin tener que recargar la pagina
+  const procesando = version ? hayArchivosProcesandose(version) : false;
+  useEffect(() => {
+    if (!procesando) return;
+    const reloj = setInterval(load, 5000);
+    return () => clearInterval(reloj);
+  }, [procesando, load]);
 
   async function handlePublish() {
     setPublishErrors([]);
@@ -123,7 +142,9 @@ export default function VersionEditorPage() {
         </div>
       )}
 
-      <MetadataForm version={version} disabled={!isDraft} onSaved={load} />
+      {/*la key hace que el formulario solo se reinicie si cambia de version,
+          no cada vez que la pagina se actualiza sola, asi no se borra lo que se escribe*/}
+      <MetadataForm key={version.ID} version={version} disabled={!isDraft} onSaved={load} />
 
       <Coautoria courseId={version.CourseID} />
 
@@ -151,8 +172,6 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
   const [form, setForm] = useState(version);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => setForm(version), [version]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -512,6 +531,17 @@ function ResourceRow({
           </button>
         )}
       </div>
+
+      {/*ayudas segun el estado del archivo, para que el profesor sepa que hacer*/}
+      {editable && BINARY_TYPES.has(r.Type) && !r.ObjectKey && !uploading && !pendiente && (
+        <p className="muted">{t("version.faltaArchivo")}</p>
+      )}
+      {EN_PROCESO.has(r.ProcessingStatus) && !uploading && !pendiente && (
+        <p className="muted" role="status">
+          {t("version.procesandoAyuda")}
+        </p>
+      )}
+      {r.ProcessingStatus === "failed" && <p className="error-banner">{t("version.procesamientoFallo")}</p>}
 
       {editable && r.Type === "text" && (
         <EditorDeContenido versionId={versionId} resource={r} onChange={onChange} />
