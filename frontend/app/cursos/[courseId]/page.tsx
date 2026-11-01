@@ -165,29 +165,30 @@ export default function CourseDetailPage() {
       )}
 
       <h2>{t("curso.contenido")}</h2>
-      <ol className="stack">
+      {/*temario: cada modulo es un panel, cada unidad un subtitulo y cada recurso una fila*/}
+      <ol className="temario">
         {version.Modules?.map((m) => (
           <li key={m.ID} className="card">
             <h3>{m.Title}</h3>
-            <ol>
-              {m.Units?.map((u) => (
-                <li key={u.ID}>
-                  <strong>{u.Title}</strong>
-                  <ul>
-                    {u.Resources?.filter((r) => r.Visible).map((r) => (
-                      <li key={r.ID}>
-                        {/* Solo quien esté inscrito recibirá el contenido; la
-                            API lo comprueba en cada entrega. El enlace se
-                            muestra igual para que se vea qué trae el curso. */}
-                        <Link href={`/cursos/${courseId}/recursos/${r.ID}`}>{r.Title}</Link>{" "}
-                        <span className="badge">{t(`tipo.${r.Type}` as Clave)}</span>
-                        {r.Required && <span className="badge">{t("curso.obligatorio")}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ol>
+            {m.Units?.map((u) => (
+              <section key={u.ID} className="temario__unidad">
+                <h4>{u.Title}</h4>
+                <ul>
+                  {u.Resources?.filter((r) => r.Visible).map((r) => (
+                    <li key={r.ID}>
+                      {/* Solo quien esté inscrito recibirá el contenido; la
+                          API lo comprueba en cada entrega. El enlace se
+                          muestra igual para que se vea qué trae el curso. */}
+                      <Link href={`/cursos/${courseId}/recursos/${r.ID}`}>{r.Title}</Link>
+                      <span className="temario__datos">
+                        {t(`tipo.${r.Type}` as Clave)}
+                        {r.Required && <> · {t("curso.obligatorio")}</>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
           </li>
         ))}
       </ol>
