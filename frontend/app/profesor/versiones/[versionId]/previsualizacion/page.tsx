@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { api, type Version } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useI18n, type Clave } from "@/lib/i18n";
+import { TextoConFormato } from "@/components/TextoConFormato";
 
 /**
  * Previsualización de autoría: el borrador tal como lo verá un estudiante.
@@ -105,6 +106,8 @@ export default function PrevisualizacionPage() {
                         <li key={r.ID}>
                           {r.Title} <span className="badge">{t(`tipo.${r.Type}` as Clave)}</span>
                           {r.Required && <span className="badge">{t("curso.obligatorio")}</span>}
+                          {/*el texto se ve igual que como lo vera el estudiante*/}
+                          {r.Type === "text" && r.TextContentMD && <TextoConFormato markdown={r.TextContentMD} />}
                         </li>
                       ))}
                     </ul>

@@ -9,6 +9,7 @@ import { ReproductorHLS, type PistaDeSubtitulos } from "@/components/Reproductor
 import { Foro } from "@/components/Foro";
 import { VisorPDF } from "@/components/VisorPDF";
 import { QuizPlayer } from "@/components/QuizPlayer";
+import { TextoConFormato } from "@/components/TextoConFormato";
 import { MarcoIncrustado } from "@/components/MarcoIncrustado";
 import { useProgressReporting } from "@/lib/useProgressReporting";
 import { useI18n, type Clave } from "@/lib/i18n";
@@ -176,13 +177,8 @@ export default function RecursoPage() {
         />
       )}
 
-      {contenido.type === "text" && contenido.markdown && (
-        <article className="card">
-          <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontFamily: "inherit" }}>
-            {contenido.markdown}
-          </pre>
-        </article>
-      )}
+      {/*el texto se muestra con formato (titulos, listas, tablas) y no como markdown crudo*/}
+      {contenido.type === "text" && contenido.markdown && <TextoConFormato markdown={contenido.markdown} />}
 
       {contenido.type === "link" && contenido.external_url && (
         <p>
