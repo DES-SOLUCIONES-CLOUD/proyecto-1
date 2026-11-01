@@ -1,0 +1,468 @@
+{
+  "metrics": {
+    "mooc_confirmacion": {
+      "values": {
+        "p(50)": 113,
+        "p(90)": 135,
+        "p(95)": 141,
+        "p(99)": 145.8,
+        "avg": 111.81818181818181,
+        "min": 81,
+        "med": 113,
+        "max": 147
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "mooc_videos_listos": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 8,
+        "rate": 0.01961037593448845
+      }
+    },
+    "mooc_hls_segmento": {
+      "values": {
+        "min": 17,
+        "med": 35,
+        "max": 761,
+        "p(50)": 35,
+        "p(90)": 55,
+        "p(95)": 70.64999999999998,
+        "p(99)": 92.8599999999999,
+        "avg": 39.59529702970297
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "mooc_transferencia": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 132.20000000000002,
+        "avg": 97.45454545454545,
+        "min": 71,
+        "med": 95,
+        "max": 134,
+        "p(50)": 95,
+        "p(90)": 116,
+        "p(95)": 125
+      }
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 14,
+        "min": 0,
+        "max": 23
+      }
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 11.735619600000039,
+        "avg": 0.31374920067534967,
+        "min": 0,
+        "med": 0,
+        "max": 39.418769,
+        "p(50)": 0
+      }
+    },
+    "mooc_espera_cola": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 84242.7,
+        "p(95)": 88505.34999999999,
+        "p(99)": 91915.47,
+        "avg": 42068.625,
+        "min": 2014,
+        "med": 36249.5,
+        "max": 92768,
+        "p(50)": 36249.5
+      }
+    },
+    "iteration_duration": {
+      "contains": "time",
+      "values": {
+        "p(50)": 30491.353405,
+        "p(90)": 135753.25844449998,
+        "p(95)": 136210.5666,
+        "p(99)": 136218.8246263,
+        "avg": 43914.300550080894,
+        "min": 5099.928008,
+        "med": 30491.353405,
+        "max": 136250.642869
+      },
+      "type": "trend"
+    },
+    "mooc_ready_fallido": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "fails": 8,
+        "rate": 0,
+        "passes": 0
+      },
+      "thresholds": {
+        "rate<0.2": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 2073,
+        "rate": 5.081538664024319
+      }
+    },
+    "mooc_total_subida": {
+      "values": {
+        "p(95)": 88714.4,
+        "p(99)": 92118.08,
+        "avg": 42306.25,
+        "min": 2274,
+        "med": 36460.5,
+        "max": 92969,
+        "p(50)": 36460.5,
+        "p(90)": 84459.8
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 68.8946031999999,
+        "p(99)": 167.82194364000094,
+        "avg": 31.296687579835993,
+        "min": 7.559507,
+        "med": 26.751514,
+        "max": 761.130408,
+        "p(50)": 26.751514,
+        "p(90)": 49.7512262
+      }
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 66.970635,
+        "p(50)": 0.168434,
+        "p(90)": 6.606941599999999,
+        "p(95)": 8.794946199999998,
+        "p(99)": 14.971144680000014,
+        "avg": 1.986875127834058,
+        "min": 0.038713,
+        "med": 0.168434
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 49.7512262,
+        "p(95)": 68.8946031999999,
+        "p(99)": 167.82194364000094,
+        "avg": 31.296687579835993,
+        "min": 7.559507,
+        "med": 26.751514,
+        "max": 761.130408,
+        "p(50)": 26.751514
+      }
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 0,
+        "max": 23.352403,
+        "p(50)": 0,
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 2.2038890800000814,
+        "avg": 0.08823421562952248,
+        "min": 0
+      }
+    },
+    "mooc_firma": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 59,
+        "p(50)": 18,
+        "p(90)": 58,
+        "p(95)": 58.5,
+        "p(99)": 58.9,
+        "avg": 26.09090909090909,
+        "min": 14,
+        "med": 18
+      }
+    },
+    "http_req_blocked": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.5213444138929105,
+        "min": 0.000239,
+        "med": 0.000684,
+        "max": 232.2522,
+        "p(50)": 0.000684,
+        "p(90)": 0.0010927999999999999,
+        "p(95)": 0.001278,
+        "p(99)": 18.014626600000224
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.12979073468403274,
+        "min": 0.02337,
+        "med": 0.102487,
+        "max": 10.850624,
+        "p(50)": 0.102487,
+        "p(90)": 0.169198,
+        "p(95)": 0.20196039999999993,
+        "p(99)": 0.29770608000000026
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 554243427,
+        "rate": 1358615.2453361508
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 0.33337639088630366,
+        "count": 136
+      }
+    },
+    "checks": {
+      "values": {
+        "rate": 1,
+        "passes": 1512,
+        "fails": 0
+      },
+      "thresholds": {
+        "rate>0.9": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 11493821,
+        "rate": 28174.768841714747
+      }
+    },
+    "http_req_failed": {
+      "values": {
+        "fails": 2073,
+        "rate": 0,
+        "passes": 0
+      },
+      "thresholds": {
+        "rate<0.05": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "max": 23,
+        "value": 23,
+        "min": 23
+      }
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 167.62235804000093,
+        "avg": 29.180021717317935,
+        "min": 7.316182,
+        "med": 24.719864,
+        "max": 694.098044,
+        "p(50)": 24.719864,
+        "p(90)": 44.9683628,
+        "p(95)": 62.48532179999996
+      }
+    }
+  },
+  "setup_data": {
+    "cantidades": {
+      "recursos": 27,
+      "usuarios": 404,
+      "cursos": 1,
+      "estudiantes": 400,
+      "inscripciones": 0,
+      "intentos": 0,
+      "perfiles_multimedia": [
+        "corto",
+        "medio",
+        "largo"
+      ],
+      "profesores": 3
+    },
+    "course_id": "a5f25028-79bc-4c0d-a6cd-cbebe067971f",
+    "perfiles": [
+      "corto",
+      "medio",
+      "largo",
+      "audio"
+    ],
+    "recursos_video": [
+      {
+        "id": "4ea8580d-aa36-4299-bd76-38ce4cf899fa",
+        "perfil": "corto"
+      },
+      {
+        "id": "8afa0572-a177-40c4-a46d-d69ce5ba3b08",
+        "perfil": "medio"
+      },
+      {
+        "id": "db954f69-8a19-4ce6-a135-c0ef037ba0ea",
+        "perfil": "largo"
+      },
+      {
+        "id": "d11a708e-1a60-420a-b96e-04b7ae8c79be",
+        "perfil": "audio"
+      }
+    ]
+  },
+  "root_group": {
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [
+      {
+        "name": "setup",
+        "path": "::setup",
+        "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+        "groups": [],
+        "checks": [
+            {
+              "name": "firma 200",
+              "path": "::setup::firma 200",
+              "id": "f0c65839073a32bbf78015b5ce8d0d11",
+              "passes": 4,
+              "fails": 0
+            },
+            {
+              "id": "e064c7efc3c035e1e183b0d33a3013d2",
+              "passes": 4,
+              "fails": 0,
+              "name": "transferencia 2xx",
+              "path": "::setup::transferencia 2xx"
+            },
+            {
+              "path": "::setup::confirmación 202/200",
+              "id": "e058f38c64ec8011e440bb9320eb185d",
+              "passes": 4,
+              "fails": 0,
+              "name": "confirmación 202/200"
+            }
+          ]
+      }
+    ],
+    "checks": [
+      {
+        "id": "2cdcb0f35d9fc54d26dcf1a78fb2300c",
+        "passes": 7,
+        "fails": 0,
+        "name": "curso creado",
+        "path": "::curso creado"
+      },
+      {
+        "passes": 143,
+        "fails": 0,
+        "name": "inscripción 201/409",
+        "path": "::inscripción 201/409",
+        "id": "b533c1fc2d2e7a2690f0ddc405f8d89e"
+      },
+      {
+        "name": "manifiesto autorizado",
+        "path": "::manifiesto autorizado",
+        "id": "8702c8f2c3ccfd519b594fc90abdde60",
+        "passes": 143,
+        "fails": 0
+      },
+      {
+        "name": "lista HLS 200",
+        "path": "::lista HLS 200",
+        "id": "36f80dde5d7b94d93003839991d19955",
+        "passes": 378,
+        "fails": 0
+      },
+      {
+        "path": "::segmento 200",
+        "id": "9db0ffe2b8e39da5d7a08adac98eb0cb",
+        "passes": 808,
+        "fails": 0,
+        "name": "segmento 200"
+      },
+      {
+        "path": "::firma 200",
+        "id": "d5009617ea59df2d040485df4296a45d",
+        "passes": 7,
+        "fails": 0,
+        "name": "firma 200"
+      },
+      {
+        "passes": 7,
+        "fails": 0,
+        "name": "transferencia 2xx",
+        "path": "::transferencia 2xx",
+        "id": "97886c4b5004261ad73b13dcf989b418"
+      },
+      {
+        "fails": 0,
+        "name": "confirmación 202/200",
+        "path": "::confirmación 202/200",
+        "id": "6535a1a56cb411a0db46606cd3209779",
+        "passes": 7
+      }
+    ],
+    "name": ""
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(50)",
+      "p(90)",
+      "p(95)",
+      "p(99)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 407947.304362
+  }
+}
