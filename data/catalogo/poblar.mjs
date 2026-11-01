@@ -1,19 +1,20 @@
 //llena el catalogo con cursos de ejemplo y crea las cuentas de la demostracion
 //
 //todo pasa por la api publica, igual que si alguien lo hiciera en el navegador:
-//registro, activacion por un administrador, creacion de cursos, lecciones, quiz y publicacion.
+//el administrador crea las cuentas, y el profesor crea los cursos con lecciones,
+//archivos (video, imagen, pdf), quizzes, espera a que los workers los procesen y publica.
 //se puede correr varias veces: lo que ya existe se salta.
 //
-//uso (necesita node 20 o mas nuevo):
-//  MOOC_URL=https://136.82.109.164.sslip.io \
-//  ADMIN_EMAIL=... ADMIN_PASSWORD=... \
-//  DEMO_PASSWORD=una-clave-de-10-o-mas \
+//uso (necesita node 20 o mas nuevo), en powershell:
+//  $env:MOOC_URL="https://136.82.109.164.sslip.io"
+//  $env:ADMIN_EMAIL="<correo del administrador>"
+//  $env:ADMIN_PASSWORD="<clave del administrador>"
+//  $env:DEMO_PASSWORD="<clave para las cuentas de la demo>"
 //  node data/catalogo/poblar.mjs
-//
-//en windows powershell las variables se ponen asi: $env:MOOC_URL="https://..."
 //
 //las claves no se guardan en el repositorio: se pasan al correrlo
 
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 const URL_BASE = (process.env.MOOC_URL ?? "").replace(/\/$/, "");
@@ -29,6 +30,9 @@ if (!URL_BASE || !ADMIN_EMAIL || !ADMIN_PASSWORD || DEMO_PASSWORD.length < 10) {
 const datos = JSON.parse(await readFile(new URL("./cursos.json", import.meta.url), "utf8"));
 
 const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
+//tipo de contenido de cada archivo segun su extension
+const TIPOS_MIME = { ".mp4": "video/mp4", ".png": "image/png", ".jpg": "image/jpeg", ".pdf": "application/pdf" };
 
 //una sesion es un "navegador" con sus cookies: la de sesion y la del token anti-csrf
 function nuevaSesion() {
@@ -50,7 +54,7 @@ function nuevaSesion() {
         const i = par.indexOf("=");
         cookies.set(par.slice(0, i).trim(), par.slice(i + 1).trim());
       }
-      //el login y el registro tienen limite de intentos por minuto: si se llega, se espera
+      //el login tiene limite de intentos por minuto: si se llega, se espera
       if (res.status === 429 && intento < 5) {
         console.log("  limite de peticiones, esperando 20 s...");
         await espera(20000);
@@ -77,27 +81,52 @@ function nuevaSesion() {
   };
 }
 
-//1. cuentas: cada una se registra como estudiante y el admin la activa y le pone su rol
+//1. cuentas: el administrador las crea ya activas, con su rol y la clave de la demo
 async function prepararCuentas() {
   const admin = nuevaSesion();
   await admin.entrar(ADMIN_EMAIL, ADMIN_PASSWORD);
   console.log("admin con sesion");
 
   for (const c of datos.cuentas) {
-    const publico = nuevaSesion();
-    //si el correo ya existe la api responde igual (no revela que correos hay), asi que no falla
-    await publico.post("/api/v1/auth/register", { email: c.email, password: DEMO_PASSWORD, full_name: c.nombre });
-
-    const { items } = await admin.get(`/api/v1/admin/users?${new URLSearchParams({ q: c.email })}`);
-    const u = (items ?? []).find((x) => x.email === c.email);
-    if (!u) throw new Error(`no aparece la cuenta ${c.email} despues de registrarla`);
-    if (u.status !== "active") await admin.patch(`/api/v1/admin/users/${u.id}/status`, { status: "active" });
-    if (u.role !== c.rol) await admin.patch(`/api/v1/admin/users/${u.id}/role`, { role: c.rol });
-    console.log(`cuenta lista: ${c.email} (${c.rol})`);
+    try {
+      await admin.post("/api/v1/admin/users", { email: c.email, full_name: c.nombre, role: c.rol, password: DEMO_PASSWORD });
+      console.log(`cuenta creada: ${c.email} (${c.rol})`);
+    } catch (e) {
+      //si ya existia se deja como esta
+      if (e.status === 409) console.log(`ya existia: ${c.email}`);
+      else throw e;
+    }
   }
 }
 
-//2. cursos: los crea el profesor dueno con modulos, unidades, lecciones de texto y un quiz, y los publica
+//sube un archivo igual que el navegador: pide la url firmada, lo manda directo al bucket
+//y le avisa a la api con su huella sha-256 para que lo verifique y lo mande a la cola
+async function subirArchivo(profe, v, recursoId, nombre) {
+  const bytes = await readFile(new URL(`./medios/${nombre}`, import.meta.url));
+  const mime = TIPOS_MIME[nombre.slice(nombre.lastIndexOf("."))] ?? "application/octet-stream";
+  const { upload_url } = await profe.post(`${v}/resources/${recursoId}/upload-url`, { mime_type: mime });
+  const res = await fetch(upload_url, { method: "PUT", body: bytes, headers: { "Content-Type": mime } });
+  if (!res.ok) throw new Error(`subida de ${nombre} -> ${res.status}`);
+  const huella = createHash("sha256").update(bytes).digest("hex");
+  await profe.post(`${v}/resources/${recursoId}/confirm-upload`, { checksum_sha256: huella });
+}
+
+//espera a que los workers terminen de procesar los archivos de la version (maximo 10 minutos)
+async function esperarProcesamiento(profe, v) {
+  for (let i = 0; i < 120; i++) {
+    const version = await profe.get(v);
+    const recursos = (version.Modules ?? []).flatMap((m) => (m.Units ?? []).flatMap((u) => u.Resources ?? []));
+    const pendientes = recursos.filter((r) => r.ProcessingStatus === "pending" || r.ProcessingStatus === "processing");
+    const fallidos = recursos.filter((r) => r.ProcessingStatus === "failed");
+    if (fallidos.length) throw new Error(`fallo el procesamiento de: ${fallidos.map((r) => r.Title).join(", ")}`);
+    if (!pendientes.length) return;
+    if (i % 6 === 0) console.log(`  esperando a los workers: ${pendientes.length} archivo(s) en proceso`);
+    await espera(5000);
+  }
+  throw new Error("los archivos no terminaron de procesarse en 10 minutos");
+}
+
+//2. cursos: los crea el profesor dueno con modulos, unidades, lecciones, archivos y quizzes, y los publica
 async function crearCursos() {
   const profe = nuevaSesion();
   await profe.entrar(datos.dueno, DEMO_PASSWORD);
@@ -109,6 +138,7 @@ async function crearCursos() {
       console.log(`ya publicado, se salta: ${curso.titulo}`);
       continue;
     }
+    console.log(`creando: ${curso.titulo}`);
     //si quedo un borrador a medias de una corrida anterior se reutiliza
     const previo = (mios ?? []).find((c) => c.Slug === curso.slug);
     let versionId = previo?.LatestDraftVersionID;
@@ -127,6 +157,7 @@ async function crearCursos() {
       language: "es",
       approval_min_score: 60,
       approval_required_resources_pct: 100,
+      portada: curso.portada ?? 0,
     });
 
     //un borrador reutilizado puede traer contenido viejo: se arma solo si esta vacio
@@ -138,16 +169,19 @@ async function crearCursos() {
           const u = await profe.post(`${v}/modules/${m.ID}/units`, { title: unidad.titulo, position: iu + 1 });
           let pos = 1;
           for (const leccion of unidad.lecciones) {
-            await profe.post(`${v}/units/${u.ID}/resources`, {
-              type: "text",
+            const tipo = leccion.tipo ?? "text";
+            const r = await profe.post(`${v}/units/${u.ID}/resources`, {
+              type: tipo,
               title: leccion.titulo,
               position: pos++,
               visible: true,
-              required: true,
-              downloadable: false,
-              text_content_md: leccion.texto,
+              //el texto y lo marcado como obligatorio cuentan para el avance
+              required: tipo === "text" ? true : Boolean(leccion.obligatorio),
+              downloadable: tipo === "pdf",
+              text_content_md: tipo === "text" ? leccion.texto : "",
               external_url: "",
             });
+            if (leccion.archivo) await subirArchivo(profe, v, r.ID, leccion.archivo);
           }
           if (unidad.quiz) {
             const r = await profe.post(`${v}/units/${u.ID}/resources`, {
@@ -179,6 +213,7 @@ async function crearCursos() {
       }
     }
 
+    await esperarProcesamiento(profe, v);
     await profe.post(`${v}/publish`);
     console.log(`publicado: ${curso.titulo}`);
   }

@@ -2,16 +2,26 @@
 
 Aquí están los datos sintéticos que usamos para la demostración del frontend de la entrega 3. Son reproducibles: se crean con un script que usa la API pública, igual que si alguien lo hiciera desde el navegador.
 
-* `cursos.json`: las 3 cuentas de la demostración y 6 cursos de ejemplo, cada uno con módulos, lecciones en Markdown y un quiz.
-* `poblar.mjs`: registra las cuentas y las activa con el administrador (rol de profesor o de estudiante, según el archivo). Después crea los cursos con el profesor dueño y los publica. Si se corre otra vez, se salta lo que ya existe.
+* `cursos.json`: las cuentas de la demostración y 6 cursos de temas variados. Tienen distinto largo (1 o 2 módulos), distintos tipos de recurso (texto, video, imagen, PDF) y quizzes de 2 a 6 preguntas. Cada curso trae una portada elegida.
+* `medios/`: los archivos de esos cursos (2 videos cortos, 4 imágenes y 3 PDF, todos de menos de 2,5 MB).
+* `poblar.mjs`: hace lo mismo que alguien haría en el navegador.
+  1. El administrador crea las cuentas ya activas.
+  2. El profesor dueño crea cada curso con sus módulos, unidades y lecciones.
+  3. Sube los archivos directo al bucket y espera a que los workers los procesen.
+  4. Define los quizzes y publica.
+
+  Si se corre otra vez, se salta lo que ya existe.
 
 Las cuentas que crea:
 
 | Correo | Rol | Para qué |
 |---|---|---|
-| `laura.profesora@demo.mooc.local` | profesor | Crea en vivo el curso de Kubernetes |
-| `carlos.profesor@demo.mooc.local` | profesor | Dueño de los cursos del catálogo; también es el "profesor ajeno" que no puede editar los cursos de Laura |
-| `ana.estudiante@demo.mooc.local` | estudiante | Se inscribe, ve el contenido, presenta el quiz y gana la insignia |
+| `laura@mooc.test` | profesor | Crea en vivo el curso de Kubernetes |
+| `carlos@mooc.test` | profesor | Dueño de los cursos del catálogo; es el "profesor ajeno" que no puede editar los cursos de Laura |
+| `ana@mooc.test` | estudiante | Se inscribe, ve el contenido, presenta el quiz y gana la insignia |
+| `luis@mooc.test` | estudiante | Segundo estudiante, para ver qué pasa cuando sale una versión nueva del curso |
+
+`.test` es un dominio reservado: estos correos no existen fuera de la plataforma.
 
 Las contraseñas no están en el repositorio: se pasan al correrlo. Con Node 20 o más nuevo, en PowerShell:
 
@@ -19,7 +29,7 @@ Las contraseñas no están en el repositorio: se pasan al correrlo. Con Node 20 
 $env:MOOC_URL="https://136.82.109.164.sslip.io"
 $env:ADMIN_EMAIL="<correo del administrador>"
 $env:ADMIN_PASSWORD="<clave del administrador>"
-$env:DEMO_PASSWORD="<clave para las cuentas de la demo, mínimo 10 caracteres>"
+$env:DEMO_PASSWORD="<clave para las cuentas de la demo>"
 node data/catalogo/poblar.mjs
 ```
 
