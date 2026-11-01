@@ -1,4 +1,4 @@
-## SonarQube: commit `4e1c008`
+## SonarQube: commit `746f11d`
 
 Puerta de calidad: **OK** (http://localhost:9000)
 

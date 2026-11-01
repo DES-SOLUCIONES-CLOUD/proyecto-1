@@ -20,7 +20,7 @@ esperan una corrida que todavía no se ha hecho.
 | Script (local y CI) | [deploy/sonarqube/analizar.sh](../../deploy/sonarqube/analizar.sh) |
 | Última medición del pipeline | `b023430`, [SonarQube #6](https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1/actions/runs/39884217156), puerta de calidad OK |
 | Medición previa al cierre | `4e1c008`, 2026-10-31, corrida local con `analizar.sh`, puerta de calidad OK. [Reporte](evidencias/sonar/resumen.md) |
-| Línea base (commit final) | POR MEDIR: commit, fecha, enlace a la corrida y reporte exportado |
+| Línea base (commit `746f11d`) | 2026-11-01, [SonarQube #58](https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1/actions/runs/41277280190) en verde. [Reporte exportado](evidencias/sonar/resumen.md), generado con `analizar.sh` sobre el mismo commit, puerta de calidad OK. Si después cambia el código, se repite la medición |
 
 Además del análisis automático, el diagnóstico revisó a mano:
 
@@ -55,22 +55,22 @@ GitHub dura 30 días, así que el reporte de la línea base se versiona en
 
 ## 2. Medición
 
-| Métrica | Inicial (`31d5af0`) | Primera corrida (`0c63963`) | Pipeline (`b023430`) | Previa al cierre (`4e1c008`) | Commit final | Umbral |
+| Métrica | Inicial (`31d5af0`) | Primera corrida (`0c63963`) | Pipeline (`b023430`) | Previa al cierre (`4e1c008`) | Commit `746f11d` | Umbral |
 |---|---|---|---|---|---|---|
-| Líneas de código | 18.344 | 17.422 | 17.429 | 17.529 | POR MEDIR | |
-| Duplicación (%) | 5,2 | 0,4 | 0,4 | 0,4 | POR MEDIR | <= 20 % |
-| Bloques duplicados | 295 | 6 | 6 | 6 | POR MEDIR | |
-| Mantenibilidad | A | A | A | A | POR MEDIR | C o mejor |
-| Deuda técnica (min) | 963 | 973 | 963 | 958 | POR MEDIR | Registrar |
-| Ratio de deuda (%) | 0,2 | 0,2 | 0,2 | 0,2 | POR MEDIR | |
-| Confiabilidad | A | A | A | A | POR MEDIR | |
-| Seguridad | E | E | A | A | POR MEDIR | |
-| Bugs | 0 | 0 | 0 | 0 | POR MEDIR | |
-| Vulnerabilidades | 1 | 1 | 0 | 0 | POR MEDIR | |
-| Code smells | 156 | 158 | 156 | 155 | POR MEDIR | |
-| Security hotspots | 6 | 6 | 6 | 6 | POR MEDIR | |
-| Cobertura (%) | 11,8 | 12,0 | 12,1 | 30,6 | POR MEDIR | |
-| Hallazgos Bloqueantes | 1 | 1 | 0 | 0 | POR MEDIR | |
+| Líneas de código | 18.344 | 17.422 | 17.429 | 17.529 | 17.529 | |
+| Duplicación (%) | 5,2 | 0,4 | 0,4 | 0,4 | 0,4 | <= 20 % |
+| Bloques duplicados | 295 | 6 | 6 | 6 | 6 | |
+| Mantenibilidad | A | A | A | A | A | C o mejor |
+| Deuda técnica (min) | 963 | 973 | 963 | 958 | 958 | Registrar |
+| Ratio de deuda (%) | 0,2 | 0,2 | 0,2 | 0,2 | 0,2 | |
+| Confiabilidad | A | A | A | A | A | |
+| Seguridad | E | E | A | A | A | |
+| Bugs | 0 | 0 | 0 | 0 | 0 | |
+| Vulnerabilidades | 1 | 1 | 0 | 0 | 0 | |
+| Code smells | 156 | 158 | 156 | 155 | 155 | |
+| Security hotspots | 6 | 6 | 6 | 6 | 6 | |
+| Cobertura (%) | 11,8 | 12,0 | 12,1 | 30,6 | 30,6 | |
+| Hallazgos Bloqueantes | 1 | 1 | 0 | 0 | 0 | |
 
 Mediciones:
 
