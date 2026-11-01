@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, type Version, type CourseProgress } from "@/lib/api";
+import { Portada } from "@/components/Portada";
 import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n, type Clave } from "@/lib/i18n";
@@ -86,6 +87,8 @@ export default function CourseDetailPage() {
 
   return (
     <div>
+      {/*la misma portada de colores del catalogo, en grande*/}
+      <Portada titulo={version.Title} categoria={version.Category} ancha />
       <header className="page-header">
         <div>
           <h1>{version.Title}</h1>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, type Version } from "@/lib/api";
+import { Portada } from "@/components/Portada";
 import { mensajeDeError } from "@/lib/errores";
 import { useI18n, useTraductorEstable } from "@/lib/i18n";
 
@@ -78,10 +79,17 @@ export default function HomePage() {
 
   return (
     <div>
-      <header className="page-header">
-        <div>
+      {/*franja de bienvenida con colores, es lo primero que se ve*/}
+      <header className="hero">
+        <div className="hero__texto">
+          <p className="hero__antetitulo">{t("catalogo.antetitulo")}</p>
           <h1>{t("catalogo.titulo")}</h1>
           <p>{t("catalogo.subtitulo")}</p>
+        </div>
+        <div className="hero__figuras" aria-hidden="true">
+          <span />
+          <span />
+          <span />
         </div>
       </header>
 
@@ -170,10 +178,8 @@ export default function HomePage() {
         {courses?.map((v) => (
           <li key={v.ID}>
             <article className="card">
-              {/*portada hecha con la categoria del curso en letra grande sobre un tono palido*/}
-              <div className="portada" data-tono={tonoDe(v.Category || v.CourseID)} aria-hidden="true">
-                <span>{v.Category || v.Title}</span>
-              </div>
+              {/*portada de colores dibujada segun el curso y su categoria*/}
+              <Portada titulo={v.Title} categoria={v.Category} />
               <h2>
                 <Link href={`/cursos/${v.CourseID}`}>{v.Title}</Link>
               </h2>
@@ -188,14 +194,6 @@ export default function HomePage() {
       </ul>
     </div>
   );
-}
-
-//elige uno de los 4 tonos de portada a partir de la categoria del curso
-//asi los cursos de una misma categoria comparten color, sin guardarlo en la base de datos
-function tonoDe(id: string): number {
-  let suma = 0;
-  for (const letra of id) suma += letra.charCodeAt(0);
-  return (suma % 4) + 1;
 }
 
 function unicos(valores: (string | undefined | null)[]): string[] {

@@ -74,14 +74,14 @@
   "auth.registro.iniciaSesion": "Sign in",
   "auth.registro.error": "Could not complete the registration",
   "auth.registro.revisaTitulo": "Check your email",
-  "auth.registro.revisaTexto": "If {email} is available, we sent a verification link. Confirm it to be able to sign in. In development, check Mailpit at http://localhost:8025.",
+  "auth.registro.revisaTexto": "If {email} is available, we sent a verification link. Confirm it to be able to sign in. If it does not arrive, an administrator can also activate your account.",
   "auth.verificar.titulo": "Email verification",
   "auth.verificar.enCurso": "Verifying…",
   "auth.verificar.ok": "Your email was verified. You can sign in now.",
   "auth.verificar.sinToken": "The link is missing the verification token.",
   "auth.verificar.error": "Could not verify the email",
   "auth.reset.titulo": "Reset password",
-  "auth.reset.enviado": "If the address exists, we sent a link to reset the password. In development, check Mailpit (http://localhost:8025).",
+  "auth.reset.enviado": "If the address exists, we sent a link to reset the password.",
   "auth.reset.enviando": "Sending…",
   "auth.reset.enviar": "Send link",
   "auth.reset.nueva": "New password",
@@ -588,5 +588,10 @@
   "version.editarEvaluacion": "Edit questions",
   "version.datosGuardados": "✓ Course details saved.",
   "publicar.quizSinPreguntas": "Quiz “{a}” (unit “{b}”) has no questions. Click “Create questions” before publishing.",
-  "quizAutoria.cargada": "These are the saved questions. Edit them and click “Save assessment”."
+  "quizAutoria.cargada": "These are the saved questions. Edit them and click “Save assessment”.",
+  "catalogo.antetitulo": "Learn at your own pace",
+  "pie.versionWeb": "Web version {v}",
+  "pie.versionApi": "API {v}",
+  "pie.atendidoPor": "Served by {maquina}",
+  "version.archivoEnAlmacen": "Stored in object storage as"
 }

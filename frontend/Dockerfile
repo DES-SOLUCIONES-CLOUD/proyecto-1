@@ -16,6 +16,9 @@ COPY . .
 # compose local; deploy/gcp/publicar.sh pasa el origen HTTPS del Web Server.
 ARG NEXT_PUBLIC_API_URL=http://localhost:8080
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# el commit que se publica, se ve en el pie de pagina para saber que version esta desplegada
+ARG NEXT_PUBLIC_VERSION=dev
+ENV NEXT_PUBLIC_VERSION=$NEXT_PUBLIC_VERSION
 RUN npm run build
 
 FROM node:20-alpine AS runner

@@ -671,6 +671,12 @@ function ResourceRow({
         </p>
       )}
       {r.ProcessingStatus === "failed" && <p className="error-banner">{t("version.procesamientoFallo")}</p>}
+      {/*donde quedo guardado el archivo en el bucket, para buscarlo en cloud storage*/}
+      {r.ObjectKey && (
+        <p className="muted ruta-almacen">
+          {t("version.archivoEnAlmacen")} <code>{r.ObjectKey}</code>
+        </p>
+      )}
       {r.Type === "quiz" && quizListo === false && (
         <p className="warning-banner">{t("version.quizSinPreguntasAyuda")}</p>
       )}

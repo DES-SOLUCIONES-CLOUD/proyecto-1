@@ -1,32 +1,39 @@
 /*
  * Estilos de la plataforma.
  *
- * Direccion visual: "editorial" con superficies color papel, un solo color de
- * acento (verde azulado) y botones casi negros en forma de pastilla.
+ * Direccion visual: "calida y viva". Fondo crema, tarjetas blancas, un azul
+ * cobalto para las acciones y una familia de colores alegres (mandarina,
+ * menta, frambuesa, sol, oceano) para las portadas y los detalles.
+ * Letras: Bricolage Grotesque para los titulos y Plus Jakarta Sans para el texto.
  * Todos los colores viven aqui como variables: un componente nunca escribe un
- * color suelto. Todos los pares texto/fondo superan el contraste 4.5:1 de
- * WCAG 2.2 AA, en tema claro y oscuro.
+ * color suelto. Los pares texto/fondo superan el contraste 4.5:1 de WCAG 2.2 AA.
  */
 
 :root {
   color-scheme: light dark;
 
-  /* fondos: la pagina es blanca y los paneles color papel, como un cuaderno */
-  --color-bg: #ffffff;
-  --color-surface: #f6f5f1;
-  --color-surface-raised: #ecebe6;
-  --color-border: #e7e5df;
-  --color-border-strong: #cfcdc5;
+  /* fondo crema y tarjetas blancas con borde suave */
+  --color-bg: #fff8f0;
+  --color-surface: #ffffff;
+  --color-surface-raised: #fdeedd;
+  --color-border: #f1e2d0;
+  --color-border-strong: #dcc6ad;
 
-  /* texto en dos tonos: tinta y gris */
-  --color-text: #1f201d;
-  --color-text-muted: #5c5c57;
+  /* texto en tinta azul muy oscura y un gris violeta */
+  --color-text: #1c1a33;
+  --color-text-muted: #59546f;
 
-  /* el boton principal es casi negro; el acento solo va en enlaces, avance y foco */
-  --color-primary: #1f201d;
+  /* acciones en azul cobalto; el acento es el mismo azul */
+  --color-primary: #3045c9;
   --color-primary-contrast: #ffffff;
-  --color-accent: #1b6e66;
-  --color-accent-soft: #dcebe8;
+  --color-accent: #3045c9;
+  --color-accent-soft: #e5e8ff;
+
+  /* colores alegres de apoyo (solo adorno, nunca texto sobre fondo claro) */
+  --color-mandarina: #ff7a45;
+  --color-sol: #ffc23d;
+  --color-menta: #2bb38a;
+  --color-frambuesa: #d63a83;
 
   /* avisos: fondo palido con texto oscuro del mismo tono */
   --color-danger: #a8261b;
@@ -34,40 +41,52 @@
   --color-success: #1d5a2c;
   --color-success-soft: #e3f4e8;
   --color-warning: #8a3b0b;
-  --color-warning-soft: #fff6df;
+  --color-warning-soft: #fff1d6;
 
-  /* tonos palidos para las portadas de los cursos */
-  --tono-1: #dcebe8;
-  --tono-2: #efe6d6;
-  --tono-3: #e1e5ea;
-  --tono-4: #e6ecdb;
+  /* las 6 portadas de curso: degradado de dos tonos y color del texto encima */
+  --portada-1-a: #3045c9;
+  --portada-1-b: #6f7ff2;
+  --portada-2-a: #e85d2c;
+  --portada-2-b: #ffa25f;
+  --portada-3-a: #13805f;
+  --portada-3-b: #3cc79a;
+  --portada-4-a: #b52a6c;
+  --portada-4-b: #ee6aa7;
+  --portada-5-a: #f2a516;
+  --portada-5-b: #ffd76a;
+  --portada-6-a: #0b6a83;
+  --portada-6-b: #27b5cc;
+
+  --sombra: 0 1px 2px rgb(28 26 51 / 0.05), 0 8px 24px -12px rgb(28 26 51 / 0.12);
+  --sombra-alta: 0 2px 4px rgb(28 26 51 / 0.06), 0 18px 40px -16px rgb(48 69 201 / 0.28);
 
   --radius: 22px;
   --radius-sm: 12px;
   --radius-pill: 999px;
-  --font-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* letra de titulos (antes era con serifa; se deja el mismo nombre de variable) */
+  --font-serif: "Bricolage Grotesque", "Plus Jakarta Sans", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
   --espacio: 1rem;
-  --ancho: 70rem;
+  --ancho: 72rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #121211;
-    --color-surface: #1b1b19;
-    --color-surface-raised: #262623;
-    --color-border: #2d2d2a;
-    --color-border-strong: #46463f;
-    --color-text: #f3f2ee;
-    --color-text-muted: #b5b4ad;
+    --color-bg: #14121f;
+    --color-surface: #1d1a2c;
+    --color-surface-raised: #29253d;
+    --color-border: #2e2a44;
+    --color-border-strong: #4a4566;
+    --color-text: #f4f2ff;
+    --color-text-muted: #bcb6d6;
 
-    /* en oscuro el boton principal se invierte: fondo claro y texto oscuro */
-    --color-primary: #f3f2ee;
-    --color-primary-contrast: #121211;
-    --color-accent: #6cc7bb;
-    --color-accent-soft: #19302d;
+    /* en oscuro el azul se aclara para que se lea sobre el fondo */
+    --color-primary: #93a0ff;
+    --color-primary-contrast: #14121f;
+    --color-accent: #93a0ff;
+    --color-accent-soft: #262a52;
 
     --color-danger: #f29a8f;
     --color-danger-soft: #2c1a17;
@@ -76,10 +95,8 @@
     --color-warning: #f2c26b;
     --color-warning-soft: #2b2110;
 
-    --tono-1: #1b2e2b;
-    --tono-2: #2e281d;
-    --tono-3: #222830;
-    --tono-4: #242b1e;
+    --sombra: 0 1px 2px rgb(0 0 0 / 0.3);
+    --sombra-alta: 0 2px 4px rgb(0 0 0 / 0.35), 0 18px 40px -16px rgb(0 0 0 / 0.6);
   }
 }
 
@@ -116,10 +133,10 @@ textarea {
 /* los titulos de pagina van en la letra con serifa, como un libro */
 h1 {
   font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: 2rem;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  font-size: 2.25rem;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
   margin: 0 0 0.75rem;
   text-wrap: balance;
   overflow-wrap: break-word;
@@ -127,8 +144,10 @@ h1 {
 }
 
 h2 {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   line-height: 1.3;
   margin: 2rem 0 0.75rem;
   text-wrap: balance;
@@ -273,7 +292,8 @@ ul {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
@@ -306,8 +326,9 @@ ul {
 }
 
 .navbar nav a[aria-current="page"] {
-  color: var(--color-text);
-  background: var(--color-surface-raised);
+  color: var(--color-primary);
+  background: var(--color-accent-soft);
+  font-weight: 600;
 }
 
 /* el boton de crear cuenta conserva su aspecto de boton dentro del menu */
@@ -321,8 +342,10 @@ ul {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  font-weight: 600;
-  font-size: 1.0625rem;
+  font-family: var(--font-serif);
+  font-weight: 800;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
   text-decoration: none;
   color: var(--color-text);
 }
@@ -340,9 +363,11 @@ ul {
 
 /* --- superficies --- */
 
-/* un panel es un bloque color papel, sin borde ni sombra */
+/* un panel es una tarjeta blanca con borde suave y una sombra ligera */
 .card {
   background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--sombra);
   border-radius: var(--radius);
   padding: 1.5rem;
   margin-bottom: var(--espacio);
@@ -368,9 +393,10 @@ ul {
   font-size: 0.9375rem;
 }
 
-/* un panel dentro de otro panel va en blanco, para no repetir el mismo tono */
+/* un panel dentro de otro panel va en crema y sin sombra, para no repetir el mismo tono */
 .card .card {
   background: var(--color-bg);
+  box-shadow: none;
   border-radius: var(--radius-sm);
 }
 
@@ -397,11 +423,21 @@ ul {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem 0.75rem 1.25rem;
-  transition: background-color 0.15s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
+/* al pasar el mouse la tarjeta se levanta un poquito */
 .rejilla .card:hover {
-  background: var(--color-surface-raised);
+  transform: translateY(-3px);
+  box-shadow: var(--sombra-alta);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rejilla .card:hover {
+    transform: none;
+  }
 }
 
 .rejilla .card > :not(.portada) {
@@ -436,40 +472,84 @@ ul {
   outline-offset: 2px;
 }
 
-/* portada de un curso: el titulo en letra grande sobre un tono palido.
-   no hay fotos de los cursos, asi que la portada se arma con tipografia */
+/* portada de un curso: degradado de color, dos circulos de adorno, la
+   categoria en una etiqueta y un icono del tema. no hay fotos de los cursos,
+   asi que la portada se dibuja (components/Portada.tsx) */
 .portada {
+  --a: var(--portada-1-a);
+  --b: var(--portada-1-b);
+  position: relative;
   aspect-ratio: 16 / 9;
   border-radius: 16px;
-  background: var(--tono-1);
-  display: flex;
-  align-items: flex-end;
-  padding: 1rem 1.1rem;
+  background: linear-gradient(135deg, var(--a), var(--b));
+  color: #ffffff;
   overflow: hidden;
+  isolation: isolate;
 }
 
-.portada[data-tono="2"] {
-  background: var(--tono-2);
+.portada[data-color="2"] { --a: var(--portada-2-a); --b: var(--portada-2-b); }
+.portada[data-color="3"] { --a: var(--portada-3-a); --b: var(--portada-3-b); }
+.portada[data-color="4"] { --a: var(--portada-4-a); --b: var(--portada-4-b); }
+.portada[data-color="5"] { --a: var(--portada-5-a); --b: var(--portada-5-b); color: #3a2600; }
+.portada[data-color="6"] { --a: var(--portada-6-a); --b: var(--portada-6-b); }
+
+.portada__circulo {
+  position: absolute;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.16);
+  z-index: -1;
 }
 
-.portada[data-tono="3"] {
-  background: var(--tono-3);
+.portada__circulo--grande {
+  width: 70%;
+  aspect-ratio: 1;
+  right: -18%;
+  bottom: -45%;
 }
 
-.portada[data-tono="4"] {
-  background: var(--tono-4);
+.portada__circulo--chico {
+  width: 22%;
+  aspect-ratio: 1;
+  left: 8%;
+  top: -8%;
+  background: rgb(255 255 255 / 0.12);
 }
 
-.portada span {
-  font-family: var(--font-serif);
-  font-size: 1.75rem;
-  line-height: 1.05;
-  color: var(--color-text);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: break-word;
+.portada__categoria {
+  position: absolute;
+  left: 0.9rem;
+  bottom: 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--radius-pill);
+  /* fondo oscuro translucido para que la etiqueta se lea sobre cualquier color */
+  background: rgb(20 18 40 / 0.42);
+  color: #ffffff;
+  backdrop-filter: blur(4px);
+}
+
+.portada__icono {
+  position: absolute;
+  right: 12%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34%;
+  height: auto;
+  opacity: 0.95;
+}
+
+/* version ancha, arriba del detalle del curso */
+.portada--ancha {
+  aspect-ratio: auto;
+  height: 11rem;
+  margin-bottom: 1.75rem;
+  border-radius: var(--radius);
+}
+
+.portada--ancha .portada__icono {
+  width: auto;
+  height: 70%;
 }
 
 /* temario del curso: modulos como paneles y recursos como filas limpias */
@@ -484,7 +564,7 @@ ul {
 
 .temario h3 {
   font-family: var(--font-serif);
-  font-weight: 400;
+  font-weight: 700;
   font-size: 1.5rem;
   margin: 0 0 0.5rem;
 }
@@ -941,4 +1021,116 @@ tbody tr:last-child td {
   .card {
     padding: 1.15rem;
   }
+}
+
+/* --- franja de bienvenida del catalogo --- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: var(--radius);
+  padding: 2.75rem 2.5rem;
+  margin-bottom: 2rem;
+  background: linear-gradient(120deg, #2a3cb8 0%, #4a5be0 55%, #7a63e6 100%);
+  color: #ffffff;
+  box-shadow: var(--sombra-alta);
+}
+
+.hero__texto {
+  max-width: 34rem;
+}
+
+.hero h1 {
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.hero p {
+  margin: 0;
+  font-size: 1.0625rem;
+  color: rgb(255 255 255 / 0.88);
+}
+
+.hero .hero__antetitulo {
+  display: inline-block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #3a2600;
+  background: var(--color-sol);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-pill);
+  margin-bottom: 1rem;
+}
+
+/* tres figuras de colores a la derecha, solo de adorno */
+.hero__figuras span {
+  position: absolute;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.hero__figuras span:nth-child(1) {
+  width: 15rem;
+  height: 15rem;
+  right: -3rem;
+  top: -5rem;
+  background: var(--color-mandarina);
+  opacity: 0.9;
+}
+
+.hero__figuras span:nth-child(2) {
+  width: 9rem;
+  height: 9rem;
+  right: 10rem;
+  bottom: -4rem;
+  background: var(--color-sol);
+}
+
+.hero__figuras span:nth-child(3) {
+  width: 5rem;
+  height: 5rem;
+  right: 6rem;
+  top: 7rem;
+  background: var(--color-menta);
+}
+
+/* en el celular las figuras se achican y se van a la esquina para no tapar el titulo */
+@media (max-width: 40rem) {
+  .hero {
+    padding: 2rem 1.5rem;
+  }
+
+  .hero__figuras span:nth-child(1) {
+    width: 7rem;
+    height: 7rem;
+    right: -2.5rem;
+    top: -2.5rem;
+  }
+
+  .hero__figuras span:nth-child(2),
+  .hero__figuras span:nth-child(3) {
+    display: none;
+  }
+}
+
+/* --- pie de pagina: version desplegada y maquina que respondio --- */
+.pie {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1.25rem;
+  padding: 1.25rem 1.5rem 2rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* ruta del archivo dentro del bucket, en letra de codigo */
+.ruta-almacen code {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  word-break: break-all;
 }

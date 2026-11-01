@@ -93,7 +93,10 @@ export default function LoginPage() {
         </button>
       </form>
       <p>
-        <Link href="/restablecer-contrasena">{t("auth.login.olvide")}</Link>
+        {/*con algo de relleno para que sea facil de tocar en el celular*/}
+        <Link href="/restablecer-contrasena" style={{ display: "inline-block", paddingBlock: "0.25rem" }}>
+          {t("auth.login.olvide")}
+        </Link>
       </p>
       <p>
         {t("auth.login.sinCuenta")} <Link href="/registro">{t("auth.login.registrate")}</Link>

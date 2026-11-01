@@ -74,14 +74,14 @@
   "auth.registro.iniciaSesion": "Inicia sesión",
   "auth.registro.error": "No se pudo completar el registro",
   "auth.registro.revisaTitulo": "Revisa tu correo",
-  "auth.registro.revisaTexto": "Si {email} está disponible, enviamos un enlace de verificación. Confírmalo para poder iniciar sesión. En desarrollo, revisa Mailpit en http://localhost:8025.",
+  "auth.registro.revisaTexto": "Si {email} está disponible, enviamos un enlace de verificación. Confírmalo para poder iniciar sesión. Si no te llega, un administrador también puede activar tu cuenta.",
   "auth.verificar.titulo": "Verificación de correo",
   "auth.verificar.enCurso": "Verificando…",
   "auth.verificar.ok": "Tu correo fue verificado. Ya puedes iniciar sesión.",
   "auth.verificar.sinToken": "Falta el token de verificación en el enlace.",
   "auth.verificar.error": "No se pudo verificar el correo",
   "auth.reset.titulo": "Restablecer contraseña",
-  "auth.reset.enviado": "Si el correo existe, enviamos un enlace para restablecer la contraseña. Revisa Mailpit en desarrollo (http://localhost:8025).",
+  "auth.reset.enviado": "Si el correo existe, enviamos un enlace para restablecer la contraseña.",
   "auth.reset.enviando": "Enviando…",
   "auth.reset.enviar": "Enviar enlace",
   "auth.reset.nueva": "Nueva contraseña",
@@ -588,5 +588,10 @@
   "version.editarEvaluacion": "Editar preguntas",
   "version.datosGuardados": "✓ Datos del curso guardados.",
   "publicar.quizSinPreguntas": "El quiz «{a}» (unidad «{b}») no tiene preguntas. Pulsa «Crear preguntas» antes de publicar.",
-  "quizAutoria.cargada": "Estas son las preguntas guardadas. Edítalas y pulsa «Guardar evaluación»."
+  "quizAutoria.cargada": "Estas son las preguntas guardadas. Edítalas y pulsa «Guardar evaluación».",
+  "catalogo.antetitulo": "Aprende a tu ritmo",
+  "pie.versionWeb": "Versión web {v}",
+  "pie.versionApi": "API {v}",
+  "pie.atendidoPor": "Atendido por {maquina}",
+  "version.archivoEnAlmacen": "Guardado en el almacén como"
 }
