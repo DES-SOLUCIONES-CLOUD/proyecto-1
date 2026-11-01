@@ -513,6 +513,17 @@ function ResourceRow({
   // Una subida a medias de este recurso, detectada al montar. El archivo no
   // se puede recuperar —ningún navegador deja releer un File de otra sesión—,
   // así que lo que se ofrece es volver a elegirlo para continuar.
+  //para los quiz: null mientras se averigua, true si ya tiene preguntas, false si no
+  const [quizListo, setQuizListo] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (r.Type !== "quiz") return;
+    //si el quiz no tiene preguntas guardadas la api responde 404
+    api
+      .quizResults(versionId, r.ID)
+      .then(() => setQuizListo(true))
+      .catch(() => setQuizListo(false));
+  }, [r.Type, r.ID, versionId]);
+
   //pendiente guarda el nombre y tamaño del archivo que quedo a medias
   const [pendiente, setPendiente] = useState<{ nombre: string; tamano: number } | null>(null);
 
@@ -594,9 +605,12 @@ function ResourceRow({
           )}
           {!r.Visible && <span className="badge">{t("version.oculto")}</span>}
         </span>
+        {r.Type === "quiz" && quizListo !== null && (
+          <span className="badge">{quizListo ? `✓ ${t("version.quizListo")}` : t("version.quizSinPreguntas")}</span>
+        )}
         {r.Type === "quiz" && (
           <Link href={`/profesor/versiones/${versionId}/quiz/${r.ID}`}>
-            {t("version.definirEvaluacion")}
+            {quizListo ? t("version.editarEvaluacion") : t("version.definirEvaluacion")}
           </Link>
         )}
         {editable && BINARY_TYPES.has(r.Type) && (
@@ -639,6 +653,9 @@ function ResourceRow({
         </p>
       )}
       {r.ProcessingStatus === "failed" && <p className="error-banner">{t("version.procesamientoFallo")}</p>}
+      {r.Type === "quiz" && quizListo === false && (
+        <p className="warning-banner">{t("version.quizSinPreguntasAyuda")}</p>
+      )}
 
       {editable && r.Type === "text" && (
         <EditorDeContenido versionId={versionId} resource={r} onChange={onChange} />

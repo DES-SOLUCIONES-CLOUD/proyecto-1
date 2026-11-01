@@ -260,7 +260,7 @@
   "version.confirmarUnidad": "Delete the unit “{titulo}” and its resources?",
   "version.confirmarRecurso": "Delete the resource “{titulo}”?",
   "version.oculto": "hidden",
-  "version.definirEvaluacion": "Define assessment",
+  "version.definirEvaluacion": "Create questions",
   "version.subirArchivo": "Upload file",
   "version.reanudarSubida": "Resume upload",
   "version.subiendoAria": "Uploading {titulo}",
@@ -316,7 +316,7 @@
   "previsualizacion.sinVisibles": "No visible resources.",
   "quizAutoria.noEncontrado": "The resource was not found in this version.",
   "quizAutoria.errorVersion": "Could not load the version",
-  "quizAutoria.guardada": "Assessment saved.",
+  "quizAutoria.guardada": "Questions saved. You can go back to the course to continue or publish it.",
   "quizAutoria.errorGuardar": "Could not save the assessment",
   "quizAutoria.titulo": "Assessment: {recurso}",
   "quizAutoria.volver": "Back to the version",
@@ -581,5 +581,9 @@
   "navegacion.curso": "Course",
   "navegacion.recursoDe": "resource {n} of {total}",
   "navegacion.entreRecursos": "Previous and next resource",
-  "navegacion.terminar": "Back to the course and see my progress"
+  "navegacion.terminar": "Back to the course and see my progress",
+  "version.quizListo": "Has questions",
+  "version.quizSinPreguntas": "No questions yet",
+  "version.quizSinPreguntasAyuda": "This quiz has no questions yet. Click “Create questions” before publishing, or students won't be able to take it.",
+  "version.editarEvaluacion": "Replace questions"
 }
