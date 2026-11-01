@@ -70,6 +70,7 @@ const MOTIVOS_DE_PUBLICACION: ReadonlyArray<readonly [string, Clave]> = [
   ["todo módulo debe tener al menos una unidad", "publicar.moduloSinUnidades"],
   ["toda unidad debe tener al menos un recurso visible", "publicar.unidadSinRecursos"],
   ["hay recursos visibles que aún no terminan de procesarse", "publicar.recursoNoListo"],
+  ["hay quizzes visibles sin preguntas", "publicar.quizSinPreguntas"],
   ["solo un borrador puede publicarse", "publicar.noEsBorrador"],
   ["los criterios de aprobación deben estar entre 0 y 100", "publicar.criterios"],
 ];

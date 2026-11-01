@@ -8,7 +8,7 @@ import (
 
 //pruebas de la edicion de quizzes por el profesor y de la regla de publicacion
 
-//el profesor puede leer su quiz guardado (con las respuestas correctas) para editarlo
+// el profesor puede leer su quiz guardado (con las respuestas correctas) para editarlo
 func TestElProfesorLeeSuQuizParaEditarlo(t *testing.T) {
 	env := nuevoEntorno(t)
 	recursoID, cursoID := env.cursoConQuiz("prof@example.com", "quiz-editable")
@@ -29,7 +29,7 @@ func TestElProfesorLeeSuQuizParaEditarlo(t *testing.T) {
 	}
 }
 
-//otro profesor y un estudiante no pueden leer la definicion con las respuestas
+// otro profesor y un estudiante no pueden leer la definicion con las respuestas
 func TestNadieMasLeeLasRespuestasDelQuiz(t *testing.T) {
 	env := nuevoEntorno(t)
 	recursoID, cursoID := env.cursoConQuiz("prof@example.com", "quiz-secreto")
@@ -44,5 +44,31 @@ func TestNadieMasLeeLasRespuestasDelQuiz(t *testing.T) {
 	estudiante := env.inscribir("ana@example.com", cursoID)
 	if res := estudiante.hacer(http.MethodGet, ruta, nil); res.Estado == http.StatusOK {
 		t.Fatalf("un estudiante no deberia leer las respuestas: %s", res.Crudo)
+	}
+}
+
+// un curso con un quiz visible sin preguntas no se puede publicar,
+// y el motivo dice cual quiz es
+func TestNoSePublicaUnQuizSinPreguntas(t *testing.T) {
+	env := nuevoEntorno(t)
+	c, versionID := env.profesorConCurso("prof@example.com", "quiz-vacio")
+	unidadID := env.unidadVacia(c, versionID)
+
+	res := c.hacer(http.MethodPost, "/courses/versions/"+versionID+"/units/"+unidadID+"/resources",
+		map[string]any{"type": "quiz", "title": "Quiz vacio", "position": 1, "visible": true, "required": true})
+	if res.Estado != http.StatusCreated {
+		t.Fatalf("crear quiz: %d %s", res.Estado, res.Crudo)
+	}
+	if res := c.hacer(http.MethodPatch, "/courses/versions/"+versionID,
+		map[string]any{"title": "Curso", "summary": "Resumen"}); res.Estado != http.StatusOK {
+		t.Fatalf("metadatos: %d %s", res.Estado, res.Crudo)
+	}
+
+	res = c.hacer(http.MethodPost, "/courses/versions/"+versionID+"/publish", nil)
+	if res.Estado != http.StatusUnprocessableEntity {
+		t.Fatalf("se esperaba 422 al publicar un quiz vacio, llego %d %s", res.Estado, res.Crudo)
+	}
+	if !strings.Contains(res.Crudo, "sin preguntas") || !strings.Contains(res.Crudo, "Quiz vacio") {
+		t.Fatalf("el motivo debe nombrar el quiz sin preguntas: %s", res.Crudo)
 	}
 }

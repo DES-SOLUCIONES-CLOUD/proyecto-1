@@ -556,3 +556,41 @@ func nullIfEmpty(s string) any {
 	}
 	return s
 }
+
+// QuizSinPreguntas es un quiz visible que todavia no tiene preguntas.
+type QuizSinPreguntas struct {
+	Recurso string //titulo del recurso
+	Unidad  string //titulo de la unidad donde esta
+}
+
+// QuizzesSinPreguntas lista los quizzes visibles de una version que no tienen
+// ninguna pregunta, en el orden del curso. Se revisa antes de publicar.
+func (r *CourseRepo) QuizzesSinPreguntas(ctx context.Context, versionID uuid.UUID) ([]QuizSinPreguntas, error) {
+	filas, err := r.pool.Query(ctx, `
+		SELECT res.title, u.title
+		FROM resources res
+		JOIN units u ON u.id = res.unit_id
+		JOIN modules m ON m.id = u.module_id
+		WHERE m.course_version_id = $1
+		  AND res.type = 'quiz'
+		  AND res.visible
+		  AND NOT EXISTS (
+		      SELECT 1 FROM quizzes q
+		      JOIN quiz_questions p ON p.quiz_id = q.id
+		      WHERE q.resource_id = res.id)
+		ORDER BY m.position, u.position, res.position`, versionID)
+	if err != nil {
+		return nil, err
+	}
+	defer filas.Close()
+
+	var lista []QuizSinPreguntas
+	for filas.Next() {
+		var q QuizSinPreguntas
+		if err := filas.Scan(&q.Recurso, &q.Unidad); err != nil {
+			return nil, err
+		}
+		lista = append(lista, q)
+	}
+	return lista, filas.Err()
+}

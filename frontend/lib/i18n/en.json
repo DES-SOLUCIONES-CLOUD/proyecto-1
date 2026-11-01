@@ -587,5 +587,6 @@
   "version.quizSinPreguntasAyuda": "This quiz has no questions yet. Click “Create questions” before publishing, or students won't be able to take it.",
   "version.editarEvaluacion": "Edit questions",
   "version.datosGuardados": "✓ Course details saved.",
+  "publicar.quizSinPreguntas": "Quiz “{a}” (unit “{b}”) has no questions. Click “Create questions” before publishing.",
   "quizAutoria.cargada": "These are the saved questions. Edit them and click “Save assessment”."
 }

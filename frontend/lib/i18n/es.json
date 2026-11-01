@@ -587,5 +587,6 @@
   "version.quizSinPreguntasAyuda": "Este quiz aún no tiene preguntas. Pulsa «Crear preguntas» antes de publicar, o los estudiantes no podrán presentarlo.",
   "version.editarEvaluacion": "Editar preguntas",
   "version.datosGuardados": "✓ Datos del curso guardados.",
+  "publicar.quizSinPreguntas": "El quiz «{a}» (unidad «{b}») no tiene preguntas. Pulsa «Crear preguntas» antes de publicar.",
   "quizAutoria.cargada": "Estas son las preguntas guardadas. Edítalas y pulsa «Guardar evaluación»."
 }
