@@ -26,19 +26,14 @@ services:
       retries: 5
 
   minio:
-    # quay.io y no Docker Hub: MinIO dejó de publicar la imagen ahí de forma
-    # pública, y `docker pull minio/minio` responde "pull access denied ...
-    # repository does not exist or may require 'docker login'". No es un fallo
-    # transitorio ni un límite de descargas: el repositorio existe pero ya
-    # exige autenticación. quay.io es el registro propio de MinIO, el que usa
-    # su documentación.
+    # pgsty es un fork comunitario, no la imagen oficial: MinIO dejó de publicar
+    # imágenes con descarga anónima, ni en Docker Hub ni en quay.io, donde
+    # responde "unauthorized". Solo se usa aquí, en local y en CI y con datos de
+    # prueba: en GCP el almacenamiento es Cloud Storage.
     #
     # La referencia es una variable para que una mudanza de registro sea un
-    # cambio en el .env y no una edición de este archivo. Va sin fijar a una
-    # release concreta, que es deuda consciente: conviene fijar
-    # MINIO_IMAGE a una etiqueta RELEASE.* comprobada, por el mismo motivo por
-    # el que las demás imágenes de aquí llevan versión.
-    image: ${MINIO_IMAGE:-quay.io/minio/minio:latest}
+    # cambio en el .env y no una edición de este archivo.
+    image: ${MINIO_IMAGE:-pgsty/minio:RELEASE.2026-08-04T00-00-00Z}
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -67,7 +62,7 @@ services:
   # Solo hls/, que son derivados de reproducción con nombre impredecible. Los
   # originales, los PDF y las descargas siguen firmándose uno a uno.
   minio-init:
-    image: ${MINIO_MC_IMAGE:-quay.io/minio/mc:latest}
+    image: ${MINIO_MC_IMAGE:-pgsty/mc:RELEASE.2026-10-26T00-00-00Z}
     depends_on:
       minio:
         condition: service_started

@@ -7,6 +7,10 @@
 #   bash deploy/retiro-seguro/demo-gcp.sh caida        # docker kill (sigkill)
 #   bash deploy/retiro-seguro/demo-gcp.sh restaurar    # vuelve al minimo de 1
 #
+# para grabar, en otra terminal, despues de lanzar el modo:
+#
+#   bash deploy/retiro-seguro/demo-gcp.sh registros
+#
 # 1. espera a que se suba un video desde la web y un worker lo tome. usar uno
 #    de un par de minutos: los perfiles de load/perfiles terminan muy rapido
 # 2. con ffmpeg trabajando retira ese worker, segun el modo
@@ -16,38 +20,68 @@
 # deja todo en docs/entrega3/evidencias/retiro-seguro/<modo>-<fecha>/ y
 # escribe ahi registro.md con lo que va en la seccion 6 de deuda-tecnica.md
 #
+# solo necesita gcloud con permisos del proyecto y os login, por eso corre
+# desde cloud shell. no pasa por deploy/gcp/lib.sh a proposito: ese archivo lee
+# el estado de terraform, que contiene secretos, y aqui bastan nombres fijos
+#
 # los registros se siguen por ssh desde antes de retirar el worker porque
-# viven en la vm y en el modo instancia se borran con ella
+# viven en la vm y en el modo instancia se borran con ella. el worker detenido
+# no vuelve a arrancar hasta el final, si no podria retomar el mismo trabajo y
+# no se veria a otro terminarlo
 #
 # el modo caida no da oportunidad de liberar el activo: otro worker solo lo
 # toma al vencer el arrendamiento de 30 min, por eso tarda mucho mas
 #
 # variables: ESPERA_S, segundos entre que el worker toma el video y se retira
-# (por defecto 20, en una e2-small ffmpeg va mas lento que en local)
-source "$(dirname "$0")/../gcp/lib.sh"
-requiere terraform base64
-comprobar_gcloud
-requiere_infra
+# (por defecto 20, en una e2-small ffmpeg va mas lento que en local);
+# GCP_PROJECT_ID, GCP_ZONE, MIG_WORKERS, MIG_API, VM_REDIS
+set -euo pipefail
 
-modo="${1:?uso: demo-gcp.sh preparar|contenedor|instancia|caida|restaurar}"
+DIR="$(cd "$(dirname "$0")" && pwd)"
+RAIZ="$(cd "$DIR/../.." && pwd)"
+PROYECTO="${GCP_PROJECT_ID:-$(gcloud config get-value project 2>/dev/null || true)}"
+ZONA="${GCP_ZONE:-us-central1-a}"
+MIG="${MIG_WORKERS:-mig-workers}"
+MIG_API="${MIG_API:-mig-api}"
+VM_REDIS="${VM_REDIS:-mooc-redis}"
 ESPERA_S="${ESPERA_S:-20}"
 CONTENEDOR=mooc-worker-worker-1
-ZONA="$(salida zona)"
-MIG="$(salida mig_workers)"
-DIR="$(cd "$(dirname "$0")" && pwd)"
+CARPETA="$RAIZ/docs/entrega3/evidencias/retiro-seguro"
 
-workers() {
-  gc compute instance-groups managed list-instances "$MIG" --zone "$ZONA" \
+morir() { echo "error: $*" >&2; exit 1; }
+aviso() { echo ">> $*" >&2; }
+
+modo="${1:?uso: demo-gcp.sh preparar|contenedor|instancia|caida|registros|restaurar}"
+
+# registros no toca gcp: solo muestra lo que ya esta guardando el modo en curso
+if [[ "$modo" == registros ]]; then
+  ultima="$(ls -td "$CARPETA"/*/ 2>/dev/null | head -1)"
+  [[ -n "$ultima" ]] || morir "todavia no hay corridas: lanza primero un modo en la otra terminal"
+  aviso "siguiendo $ultima"
+  # el json se reduce al mensaje y la accion para que se lea en el video.
+  # tail escribe el nombre del worker antes de cada grupo de lineas
+  cd "$ultima"
+  tail -n +1 -f worker-*.log \
+    | grep --line-buffered -E '^==>|trabajo aceptado|calidad transcodificada|apagado|retiro|arrendado|detenido|activo listo' \
+    | sed -u -E 's/.*"msg":"([^"]*)".*"accion":"([^"]*)".*/\1 [\2]/; s/.*"msg":"([^"]*)".*/\1/'
+  exit 0
+fi
+
+command -v gcloud >/dev/null || morir "falta gcloud: corre esto desde Cloud Shell"
+command -v base64 >/dev/null || morir "falta base64"
+[[ -n "$PROYECTO" && "$PROYECTO" != "(unset)" ]] || morir "define GCP_PROJECT_ID o gcloud config set project"
+
+gc() { gcloud --project "$PROYECTO" "$@"; }
+
+en_marcha() {
+  gc compute instance-groups managed list-instances "$1" --zone "$ZONA" \
     --filter 'instanceStatus=RUNNING' --format 'value(name)'
 }
 
-# ssh_a <vm> <comando>: ssh_vm entra en la primera instancia del grupo, y aqui
-# hace falta elegir cual
 ssh_a() {
   local vm="$1"
   shift
-  gc compute ssh "$vm" --zone "$ZONA" --tunnel-through-iap --quiet \
-    ${OPCIONES_SSH[@]+"${OPCIONES_SSH[@]}"} --command "$*"
+  gc compute ssh "$vm" --zone "$ZONA" --tunnel-through-iap --quiet --command "$*"
 }
 
 case "$modo" in
@@ -58,7 +92,7 @@ case "$modo" in
       --min-num-replicas 2 --max-num-replicas 3 --quiet >/dev/null
     gc compute instance-groups managed wait-until "$MIG" --zone "$ZONA" --stable --timeout 900
     aviso "$MIG con minimo 2. Instancias en marcha:"
-    workers
+    en_marcha "$MIG"
     exit 0
     ;;
   restaurar)
@@ -71,17 +105,29 @@ case "$modo" in
   *) morir "modo desconocido '$modo'" ;;
 esac
 
-mapfile -t vms < <(workers)
+mapfile -t vms < <(en_marcha "$MIG")
 [[ ${#vms[@]} -ge 2 ]] || morir "hacen falta dos workers en marcha y hay ${#vms[@]}: corre primero demo-gcp.sh preparar"
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 desde="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-evidencia="$RAIZ/docs/entrega3/evidencias/retiro-seguro/$modo-$stamp"
+evidencia="$CARPETA/$modo-$stamp"
 mkdir -p "$evidencia"
-commit="$(git -C "$RAIZ" rev-parse --short=12 HEAD)"
+commit="$(git -C "$RAIZ" rev-parse --short=12 HEAD 2>/dev/null || echo desconocido)"
 
 seguidores=()
-trap 'kill "${seguidores[@]}" 2>/dev/null || true' EXIT
+elegido=""
+detenido=false
+
+# pase lo que pase, el worker no se queda detenido: el grupo de workers no
+# tiene autohealing y una instancia viva sin contenedor cuenta como capacidad
+limpiar() {
+  kill "${seguidores[@]}" 2>/dev/null || true
+  if [[ "$detenido" == true ]]; then
+    ssh_a "$elegido" "sudo docker start $CONTENEDOR" >/dev/null || aviso "no se pudo reiniciar el worker de $elegido"
+  fi
+}
+trap limpiar EXIT
+
 for vm in "${vms[@]}"; do
   ssh_a "$vm" "sudo docker logs -f --since $desde $CONTENEDOR" >"$evidencia/worker-$vm.log" 2>&1 &
   seguidores+=("$!")
@@ -89,7 +135,6 @@ done
 
 echo "==> Sube ahora un video desde la web. Esperando a que un worker lo tome..."
 aceptado='trabajo aceptado, empieza la transcodificaci'
-elegido=""
 for _ in $(seq 1 300); do
   for vm in "${vms[@]}"; do
     if grep -q "$aceptado" "$evidencia/worker-$vm.log"; then
@@ -103,6 +148,7 @@ done
 linea="$(grep "$aceptado" "$evidencia/worker-$elegido.log" | head -1)"
 activo="$(sed -n 's/.*"activo":"\([^"]*\)".*/\1/p' <<<"$linea")"
 [[ -n "$activo" ]] || morir "no se pudo leer el activo de: $linea"
+imagen="$(ssh_a "$elegido" "sudo docker inspect -f '{{.Config.Image}} {{.Image}}' $CONTENEDOR" | tr -d '\r')"
 echo "    Lo tomo $elegido (activo $activo). Se retira en ${ESPERA_S}s."
 sleep "$ESPERA_S"
 
@@ -111,17 +157,11 @@ retiro="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 inicio=$SECONDS
 codigo="no aplica"
 case "$modo" in
-  contenedor)
-    ssh_a "$elegido" "sudo docker stop -t 10 $CONTENEDOR" >/dev/null
-    codigo="$(ssh_a "$elegido" "sudo docker inspect -f '{{.State.ExitCode}}' $CONTENEDOR")"
-    # el grupo de workers no tiene autohealing: un contenedor detenido deja la
-    # instancia viva y sin consumir
-    ssh_a "$elegido" "sudo docker start $CONTENEDOR" >/dev/null
-    ;;
-  caida)
-    ssh_a "$elegido" "sudo docker kill $CONTENEDOR" >/dev/null
-    codigo="$(ssh_a "$elegido" "sudo docker inspect -f '{{.State.ExitCode}}' $CONTENEDOR")"
-    ssh_a "$elegido" "sudo docker start $CONTENEDOR" >/dev/null
+  contenedor | caida)
+    detenido=true
+    if [[ "$modo" == contenedor ]]; then orden="docker stop -t 10"; else orden="docker kill"; fi
+    ssh_a "$elegido" "sudo $orden $CONTENEDOR" >/dev/null
+    codigo="$(ssh_a "$elegido" "sudo docker inspect -f '{{.State.ExitCode}}' $CONTENEDOR" | tr -d '\r')"
     ;;
   instancia)
     gc compute instance-groups managed delete-instances "$MIG" --zone "$ZONA" \
@@ -130,6 +170,10 @@ case "$modo" in
 esac
 duracion=$((SECONDS - inicio))
 echo "    Retirado en ${duracion}s, codigo de salida: $codigo"
+# 137 = 128 + 9: docker se canso de esperar y lo mato con sigkill
+if [[ "$modo" == contenedor && "$codigo" == 137 ]]; then
+  morir "el retiro NO fue limpio: el worker termino con SIGKILL. Registros en $evidencia"
+fi
 
 # 40 min en el modo caida: 30 de arrendamiento mas el video
 limite=1200
@@ -143,7 +187,10 @@ while [[ -z "$listo" && $SECONDS -lt $fin ]]; do
 done
 [[ -n "$listo" ]] || morir "el activo $activo no quedo listo en ${limite}s. Registros en $evidencia"
 terminados="$(grep -c . <<<"$listo")"
+espera_total=$((SECONDS - inicio))
 
+mapfile -t apis < <(en_marcha "$MIG_API")
+[[ ${#apis[@]} -ge 1 ]] || morir "$MIG_API no tiene instancias en marcha"
 echo "==> Integridad en Cloud SQL"
 sql="$(base64 <"$DIR/verificar.sql" | tr -d '\n')"
 remoto="$(cat <<REMOTO | base64 | tr -d '\n'
@@ -155,14 +202,11 @@ echo $sql | base64 -d | docker run --rm -i -e PGPASSWORD postgres:16-alpine \
   psql "host=\$(v DB_HOST) user=\$(v DB_USER) dbname=\$(v DB_NAME) sslmode=require"
 REMOTO
 )"
-ssh_vm api "echo $remoto | base64 -d | sudo bash" | tee "$evidencia/verificar.txt"
+ssh_a "${apis[0]}" "echo $remoto | base64 -d | sudo bash" | tee "$evidencia/verificar.txt"
 
 echo "==> Cola en Redis (pending, active, retry y archived; deben quedar en 0)"
-ssh_vm redis "c=mooc-redis-redis-1; for k in pending active; do echo \$k \$(sudo docker exec \$c redis-cli LLEN \"asynq:{default}:\$k\"); done; for k in retry archived; do echo \$k \$(sudo docker exec \$c redis-cli ZCARD \"asynq:{default}:\$k\"); done" \
-  | tee "$evidencia/cola.txt"
-
-kill "${seguidores[@]}" 2>/dev/null || true
-trap - EXIT
+ssh_a "$VM_REDIS" "c=mooc-redis-redis-1; for k in pending active; do echo \$k \$(sudo docker exec \$c redis-cli LLEN \"asynq:{default}:\$k\"); done; for k in retry archived; do echo \$k \$(sudo docker exec \$c redis-cli ZCARD \"asynq:{default}:\$k\"); done" \
+  | tr -d '\r' | tee "$evidencia/cola.txt"
 
 {
   echo "# Retiro de un worker: modo $modo"
@@ -170,18 +214,20 @@ trap - EXIT
   echo "| Elemento | Valor |"
   echo "|---|---|"
   echo "| Fecha (UTC) | $retiro |"
-  echo "| Entorno | GCP, $MIG en $ZONA, Cloud SQL \`$(salida bd_instancia)\` |"
-  echo "| Commit | \`$commit\` |"
+  echo "| Entorno | GCP, $MIG en $ZONA, proyecto $PROYECTO, con Cloud SQL |"
+  echo "| Commit del repositorio | \`$commit\` |"
+  echo "| Imagen del worker | \`$imagen\` |"
   echo "| Worker retirado | \`$elegido\` |"
   echo "| Activo | \`$activo\` |"
   echo "| Tiempo del retiro | ${duracion} s |"
   echo "| Codigo de salida | $codigo |"
+  echo "| Tiempo hasta \`ready\` desde el retiro | ${espera_total} s |"
   echo "| Lineas \`media: activo listo\` del activo | $terminados |"
   echo
   echo "Del worker retirado:"
   echo
   echo '```text'
-  grep -E 'retiro|vuelve a la cola|requeued_on_shutdown|worker detenido' "$evidencia/worker-$elegido.log" || true
+  grep -E 'apagado|retiro|vuelve a la cola|requeued_on_shutdown|worker detenido' "$evidencia/worker-$elegido.log" || true
   echo '```'
   echo
   echo "Del activo, en todos los workers:"

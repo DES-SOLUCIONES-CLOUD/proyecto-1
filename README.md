@@ -406,17 +406,17 @@ load/perfiles/generar.sh
 BASE_URL=https://34.28.87.172.sslip.io WORKER_CONCURRENCY=2 load/correr.sh escenario1
 ```
 
-**MinIO se descarga de quay.io, no de Docker Hub.** MinIO dejó de publicar su
-imagen de forma pública allí: `docker pull minio/minio` responde ahora «pull
-access denied … may require 'docker login'». No es un límite de descargas ni un
-fallo pasajero, y tumbó una corrida del CI. El compose apunta al registro propio
-de MinIO a través de `MINIO_IMAGE`, para que otra mudanza sea un cambio en el
+**MinIO se descarga del fork comunitario `pgsty`, que no es una imagen oficial.**
+MinIO dejó de publicar imágenes con descarga anónima: Docker Hub responde «pull
+access denied» y quay.io, «unauthorized». Eso dejó el CI sin poder levantar la
+plataforma. Se usa solo en local y en CI, con datos de prueba, porque en GCP el
+almacenamiento es Cloud Storage. El compose apunta a él a través de
+`MINIO_IMAGE` y `MINIO_MC_IMAGE`, para que otra mudanza sea un cambio en el
 `.env` y no una edición del compose.
 
-Las demás imágenes llevan versión fija —`mailpit:v1.22`, `clamav:1.4.3`,
-`k6:1.8.1`, `nginx:1.27-alpine`— porque una etiqueta móvil hace que dos
-ejecuciones del mismo commit puedan no ser la misma cosa. La de MinIO es la
-única que sigue en `:latest`, y está anotada como deuda.
+Las imágenes llevan versión fija —`mailpit:v1.22`, `clamav:1.4.3`, `k6:1.8.1`,
+`nginx:1.27-alpine` y las dos de MinIO— porque una etiqueta móvil hace que dos
+ejecuciones del mismo commit puedan no ser la misma cosa.
 
 La API dejó de publicar el puerto 8080 en el host: ahora lo hace un proxy nginx
 y las instancias quedan detrás, así que `docker compose up -d --scale api=3`

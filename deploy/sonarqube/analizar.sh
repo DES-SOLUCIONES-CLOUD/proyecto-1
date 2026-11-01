@@ -65,6 +65,17 @@ if [[ -z "${SONAR_HOST_URL:-}" ]]; then
     api qualitygates/create_condition --data-urlencode "gateName=$PUERTA" \
       -d metric=sqale_rating -d op=GT -d "error=$MANTENIBILIDAD_MINIMA" >/dev/null
   fi
+  # sonarqube agrega condiciones de codigo nuevo a toda puerta que se crea. el
+  # primer analisis no las evalua, asi que en el ci nunca se ven, pero desde el
+  # segundo fallan aunque se cumplan los umbrales, que miden todo el codigo
+  curl -fsS -u "admin:$ADMIN_PASS" -G "$SONAR_HOST_URL/api/qualitygates/show" --data-urlencode "name=$PUERTA" \
+    | "$PY" -c 'import json,sys
+for c in json.load(sys.stdin)["conditions"]:
+    if c["metric"] not in ("duplicated_lines_density", "sqale_rating"):
+        print(c["id"])' \
+    | tr -d '\r' | while read -r condicion; do
+        api qualitygates/delete_condition -d "id=$condicion" >/dev/null
+      done
   api qualitygates/set_as_default --data-urlencode "name=$PUERTA" >/dev/null
 
   SONAR_TOKEN="$(api user_tokens/generate --data-urlencode "name=analisis-$(date +%s)" \
