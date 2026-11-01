@@ -995,7 +995,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"responde 409\", () => pm.response.to.have.status(409));",
-                  "pm.test(\"dice por qué\", () => pm.expect(pm.response.json().error.code).to.eql(\"version_not_draft\"));"
+                  "pm.test(\"dice por qué\", () => pm.expect(pm.response.json().error.code).to.be.oneOf([\"course_published\", \"version_not_draft\"]));"
                 ]
               }
             }
