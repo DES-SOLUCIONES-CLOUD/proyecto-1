@@ -154,6 +154,7 @@ func (s *Service) CreateUpdateDraft(ctx context.Context, actor *user.User, cours
 		draft.Language = base.Language
 		draft.ApprovalMinScore = base.ApprovalMinScore
 		draft.ApprovalRequiredResourcesPct = base.ApprovalRequiredResourcesPct
+		draft.Portada = base.Portada
 
 		sourceModules, err = s.repo.LoadTree(ctx, *baseID)
 		if err != nil {
@@ -332,6 +333,7 @@ func (s *Service) UpdateMetadata(ctx context.Context, actor *user.User, versionI
 	v.Language = patch.Language
 	v.ApprovalMinScore = patch.ApprovalMinScore
 	v.ApprovalRequiredResourcesPct = patch.ApprovalRequiredResourcesPct
+	v.Portada = patch.Portada
 	v.UpdatedAt = time.Now().UTC()
 	return s.repo.UpdateVersionMetadata(ctx, v)
 }

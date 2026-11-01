@@ -114,13 +114,13 @@ func (r *CourseRepo) SetCurrentPublishedVersion(ctx context.Context, courseID, v
 
 const versionColumns = `id, course_id, version_number, status, title, summary, description_md,
 	coalesce(category,''), coalesce(level,''), language, approval_min_score,
-	approval_required_resources_pct, published_at, created_at, updated_at`
+	approval_required_resources_pct, portada, published_at, created_at, updated_at`
 
 func scanVersion(row pgx.Row) (*course.Version, error) {
 	var v course.Version
 	err := row.Scan(&v.ID, &v.CourseID, &v.VersionNumber, &v.Status, &v.Title, &v.Summary, &v.DescriptionMD,
 		&v.Category, &v.Level, &v.Language, &v.ApprovalMinScore, &v.ApprovalRequiredResourcesPct,
-		&v.PublishedAt, &v.CreatedAt, &v.UpdatedAt)
+		&v.Portada, &v.PublishedAt, &v.CreatedAt, &v.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -130,11 +130,11 @@ func scanVersion(row pgx.Row) (*course.Version, error) {
 func (r *CourseRepo) CreateVersion(ctx context.Context, v *course.Version) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO course_versions (id, course_id, version_number, status, title, summary, description_md,
-			category, level, language, approval_min_score, approval_required_resources_pct, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+			category, level, language, approval_min_score, approval_required_resources_pct, created_at, updated_at, portada)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
 		v.ID, v.CourseID, v.VersionNumber, v.Status, v.Title, v.Summary, v.DescriptionMD,
 		nullIfEmpty(v.Category), nullIfEmpty(v.Level), v.Language, v.ApprovalMinScore,
-		v.ApprovalRequiredResourcesPct, v.CreatedAt, v.UpdatedAt)
+		v.ApprovalRequiredResourcesPct, v.CreatedAt, v.UpdatedAt, v.Portada)
 	return err
 }
 
@@ -152,10 +152,10 @@ func (r *CourseRepo) LatestVersionNumber(ctx context.Context, courseID uuid.UUID
 func (r *CourseRepo) UpdateVersionMetadata(ctx context.Context, v *course.Version) error {
 	_, err := r.pool.Exec(ctx, `
 		UPDATE course_versions SET title=$2, summary=$3, description_md=$4, category=$5, level=$6,
-			language=$7, approval_min_score=$8, approval_required_resources_pct=$9, updated_at=$10
+			language=$7, approval_min_score=$8, approval_required_resources_pct=$9, updated_at=$10, portada=$11
 		WHERE id=$1 AND status='draft'`,
 		v.ID, v.Title, v.Summary, v.DescriptionMD, nullIfEmpty(v.Category), nullIfEmpty(v.Level),
-		v.Language, v.ApprovalMinScore, v.ApprovalRequiredResourcesPct, v.UpdatedAt)
+		v.Language, v.ApprovalMinScore, v.ApprovalRequiredResourcesPct, v.UpdatedAt, v.Portada)
 	return err
 }
 

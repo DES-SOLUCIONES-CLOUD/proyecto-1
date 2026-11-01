@@ -132,6 +132,7 @@ type versionMetadataRequest struct {
 	Language                     string  `json:"language"`
 	ApprovalMinScore             float64 `json:"approval_min_score"`
 	ApprovalRequiredResourcesPct float64 `json:"approval_required_resources_pct"`
+	Portada                      int     `json:"portada"`
 }
 
 func (h *handlers) updateVersionMetadata(w http.ResponseWriter, r *http.Request) {
@@ -144,11 +145,17 @@ func (h *handlers) updateVersionMetadata(w http.ResponseWriter, r *http.Request)
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	//solo hay 8 portadas para escoger (0 es automatica)
+	if req.Portada < 0 || req.Portada > 8 {
+		writeError(w, ErrBadRequest)
+		return
+	}
 	actor, _ := UserFromContext(r.Context())
 	patch := domain.Version{
 		Title: req.Title, Summary: req.Summary, DescriptionMD: req.DescriptionMD,
 		Category: req.Category, Level: req.Level, Language: req.Language,
 		ApprovalMinScore: req.ApprovalMinScore, ApprovalRequiredResourcesPct: req.ApprovalRequiredResourcesPct,
+		Portada: req.Portada,
 	}
 	if err := h.deps.Courses.UpdateMetadata(r.Context(), actor, versionID, patch); err != nil {
 		writeError(w, err)

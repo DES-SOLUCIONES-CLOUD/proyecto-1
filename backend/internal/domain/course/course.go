@@ -106,9 +106,11 @@ type Version struct {
 	Language                     string
 	ApprovalMinScore             float64
 	ApprovalRequiredResourcesPct float64
-	PublishedAt                  *time.Time
-	CreatedAt                    time.Time
-	UpdatedAt                    time.Time
+	// Portada es la portada de colores elegida (1 a 8); 0 es automatica.
+	Portada     int
+	PublishedAt *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 
 	Modules []Module // opcional: cargado por el repositorio cuando se necesita el árbol completo
 }
