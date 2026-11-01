@@ -264,8 +264,8 @@
   "version.subirArchivo": "Upload file",
   "version.reanudarSubida": "Resume upload",
   "version.subiendoAria": "Uploading {titulo}",
-  "version.cargaPendiente": "There is an unfinished upload. Pick the same file again and it will continue from where it stopped.",
-  "version.empezarDeNuevo": "Start over",
+  "version.cargaPendiente": "The upload of “{nombre}” ({tamano}) was interrupted. Click “Resume upload” and pick that same file: it will continue where it left off, without starting over. You have 24 hours to resume it.",
+  "version.empezarDeNuevo": "Discard and start over",
   "version.editarContenido": "Edit content",
   "version.guardarRevision": "Save revision",
   "version.guardado": "Saved",
@@ -537,5 +537,7 @@
   "bloque.task": "Tasks",
   "version.faltaArchivo": "This resource's file hasn't been uploaded yet.",
   "version.procesandoAyuda": "The file is being prepared on the server. It may take a few minutes and this page updates by itself. You can close it: processing continues and, if interrupted, resumes automatically.",
-  "version.procesamientoFallo": "The file couldn't be processed. Check that it's valid and upload it again."
+  "version.procesamientoFallo": "The file couldn't be processed. Check that it's valid and upload it again.",
+  "version.reemplazarArchivo": "Replace file",
+  "version.subiendoAviso": "If the page closes or the connection drops, you can resume the upload from here."
 }

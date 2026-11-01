@@ -264,8 +264,8 @@
   "version.subirArchivo": "Subir archivo",
   "version.reanudarSubida": "Reanudar subida",
   "version.subiendoAria": "Subiendo {titulo}",
-  "version.cargaPendiente": "Hay una subida sin terminar. Vuelve a elegir el mismo archivo y continuará desde donde se quedó.",
-  "version.empezarDeNuevo": "Empezar de nuevo",
+  "version.cargaPendiente": "La subida de «{nombre}» ({tamano}) se interrumpió. Pulsa «Reanudar subida» y elige ese mismo archivo: seguirá desde donde iba, sin empezar de cero. Tienes 24 horas para retomarla.",
+  "version.empezarDeNuevo": "Descartar y empezar de nuevo",
   "version.editarContenido": "Editar contenido",
   "version.guardarRevision": "Guardar revisión",
   "version.guardado": "Guardado",
@@ -537,5 +537,7 @@
   "bloque.task": "Tareas",
   "version.faltaArchivo": "Falta subir el archivo de este recurso.",
   "version.procesandoAyuda": "El archivo se está preparando en el servidor. Puede tardar unos minutos y esta página se actualiza sola. Puedes cerrarla: el procesamiento continúa y, si se interrumpe, se retoma automáticamente.",
-  "version.procesamientoFallo": "No se pudo procesar el archivo. Revisa que sea válido y vuelve a subirlo."
+  "version.procesamientoFallo": "No se pudo procesar el archivo. Revisa que sea válido y vuelve a subirlo.",
+  "version.reemplazarArchivo": "Reemplazar archivo",
+  "version.subiendoAviso": "Si se cierra la página o se cae la conexión, podrás retomar la subida desde aquí."
 }

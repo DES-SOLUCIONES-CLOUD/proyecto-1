@@ -8,7 +8,7 @@ import { mensajeDeError, motivoDePublicacion } from "@/lib/errores";
 import { BlockEditor } from "@/components/BlockEditor";
 import { HistorialDeRevisiones } from "@/components/HistorialDeRevisiones";
 import { Coautoria } from "@/components/Coautoria";
-import { subirArchivo, hayCargaPendiente, olvidarCarga, ErrorDeCarga } from "@/lib/carga";
+import { subirArchivo, cargaPendiente, olvidarCarga, ErrorDeCarga } from "@/lib/carga";
 import { useI18n, type Clave, type Traducir } from "@/lib/i18n";
 
 // El valor es el que entiende la API; la clave, cómo se llama en pantalla.
@@ -37,6 +37,21 @@ function mensajeDeCarga(e: unknown, t: Traducir): string {
 }
 
 const BINARY_TYPES = new Set(["image", "video", "audio", "pdf", "presentation", "file"]);
+
+//tipos de archivo que se ofrecen al elegir, segun el tipo de recurso
+//asi el profesor no elige por error un pdf para un recurso de video
+const ARCHIVOS_ACEPTADOS: Record<string, string> = {
+  image: "image/*",
+  video: "video/*",
+  audio: "audio/*",
+  pdf: "application/pdf",
+  presentation: ".pptx,.odp",
+};
+
+//convierte bytes a megas con un decimal, por ejemplo 125829120 -> "120,0 MB"
+function megas(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 //estados en los que el archivo todavia no esta listo
 const EN_PROCESO = new Set(["pending", "processing"]);
@@ -434,11 +449,20 @@ function ResourceRow({
   // Una subida a medias de este recurso, detectada al montar. El archivo no
   // se puede recuperar —ningún navegador deja releer un File de otra sesión—,
   // así que lo que se ofrece es volver a elegirlo para continuar.
-  const [pendiente, setPendiente] = useState(false);
+  //pendiente guarda el nombre y tamaño del archivo que quedo a medias
+  const [pendiente, setPendiente] = useState<{ nombre: string; tamano: number } | null>(null);
 
   useEffect(() => {
-    setPendiente(hayCargaPendiente(r.ID));
+    setPendiente(cargaPendiente(r.ID));
   }, [r.ID]);
+
+  //si el profesor intenta cerrar la pagina mientras sube, el navegador le avisa
+  useEffect(() => {
+    if (!uploading) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [uploading]);
 
   async function handleDelete() {
     if (!confirm(t("version.confirmarRecurso", { titulo: r.Title }))) return;
@@ -466,7 +490,7 @@ function ResourceRow({
           );
         },
       });
-      setPendiente(false);
+      setPendiente(null);
       setTimeout(() => {
         setUploadStatusText("");
         setUploadPercent(0);
@@ -475,7 +499,7 @@ function ResourceRow({
     } catch (e) {
       // La carga interrumpida sigue registrada: al volver a elegir el mismo
       // archivo se reanuda desde donde se quedó, sin reenviar lo que llegó.
-      setPendiente(hayCargaPendiente(r.ID));
+      setPendiente(cargaPendiente(r.ID));
       setError(mensajeDeCarga(e, t));
     } finally {
       setUploading(false);
@@ -484,7 +508,7 @@ function ResourceRow({
 
   function descartarCarga() {
     olvidarCarga(r.ID);
-    setPendiente(false);
+    setPendiente(null);
     setError("");
   }
 
@@ -512,12 +536,15 @@ function ResourceRow({
                 ? uploadStatusText || t("comun.cargando")
                 : pendiente
                   ? t("version.reanudarSubida")
-                  : t("version.subirArchivo")}
+                  : r.ObjectKey
+                    ? t("version.reemplazarArchivo")
+                    : t("version.subirArchivo")}
             </span>
             <input
               type="file"
               style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)" }}
               disabled={uploading}
+              accept={ARCHIVOS_ACEPTADOS[r.Type]}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);
@@ -547,13 +574,16 @@ function ResourceRow({
         <EditorDeContenido versionId={versionId} resource={r} onChange={onChange} />
       )}
 
+      {/*la subida anterior se corto: se explica que archivo elegir y que seguira desde donde iba*/}
       {pendiente && !uploading && (
-        <p className="muted" role="status">
-          {t("version.cargaPendiente")}{" "}
+        <div className="warning-banner" role="status">
+          <p style={{ margin: 0 }}>
+            {t("version.cargaPendiente", { nombre: pendiente.nombre, tamano: megas(pendiente.tamano) })}
+          </p>
           <button type="button" className="secondary" onClick={descartarCarga}>
             {t("version.empezarDeNuevo")}
           </button>
-        </p>
+        </div>
       )}
 
       {uploading && (
@@ -575,6 +605,12 @@ function ResourceRow({
             }}
           />
         </div>
+      )}
+      {/*texto visible con la fase y el porcentaje, ademas de la barra*/}
+      {uploading && (
+        <p className="muted" role="status" style={{ margin: 0 }}>
+          {uploadStatusText} · {uploadPercent}% — {t("version.subiendoAviso")}
+        </p>
       )}
 
       {error && <span className="error-banner">{error}</span>}
