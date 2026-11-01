@@ -407,6 +407,11 @@ export const api = {
     }),
   createTeacher: (data: { email: string; full_name: string }) =>
     request<User>("/api/v1/admin/teachers", { method: "POST", body: JSON.stringify(data) }),
+  //el admin crea una cuenta ya activa, con la contraseña que el elige
+  crearCuenta: (data: { email: string; full_name: string; role: User["role"]; password: string }) =>
+    request<User>("/api/v1/admin/users", { method: "POST", body: JSON.stringify(data) }),
+  //lo ultimo que paso en la plataforma: peticiones de todas las replicas y trabajos de los workers
+  actividad: () => request<Actividad>("/api/v1/admin/actividad"),
 
   createCourse: (data: { slug: string; title: string }) =>
     request<{ course_id: string; version_id: string; version_number: number }>("/api/v1/courses", {
@@ -725,6 +730,8 @@ export interface Version {
   Language: string;
   ApprovalMinScore: number;
   ApprovalRequiredResourcesPct: number;
+  //portada de colores elegida por el profesor (1 a 8); 0 es automatica
+  Portada?: number;
   PublishedAt?: string | null;
   Modules?: Module[];
 }
@@ -792,3 +799,31 @@ export interface Enrollment {
 }
 
 export { API_URL };
+
+//una peticion a la api, anotada por la replica que la atendio
+export interface PeticionRegistrada {
+  hora: string;
+  metodo: string;
+  ruta: string;
+  estado: number;
+  ms: number;
+  instancia: string;
+  usuario?: string;
+  rol?: string;
+}
+
+//un mensaje de un worker mientras procesa un archivo
+export interface EventoDeProcesamiento {
+  hora: string;
+  worker: string;
+  mensaje: string;
+  nivel: string;
+  atributos: Record<string, unknown>;
+}
+
+export interface Actividad {
+  instancia: string;
+  version: string;
+  peticiones: PeticionRegistrada[] | null;
+  procesamiento: EventoDeProcesamiento[] | null;
+}

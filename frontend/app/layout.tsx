@@ -12,7 +12,6 @@ import { AuthProvider } from "@/lib/auth-context";
 import { I18nProvider } from "@/lib/i18n";
 import { NavBar } from "@/components/NavBar";
 import { SaltarAlContenido } from "@/components/SaltarAlContenido";
-import { PieDePagina } from "@/components/PieDePagina";
 
 export const metadata: Metadata = {
   title: "Plataforma MOOC",
@@ -38,7 +37,6 @@ export default function RootLayout({
             <main id="main-content" className="container">
               {children}
             </main>
-            <PieDePagina />
           </AuthProvider>
         </I18nProvider>
       </body>

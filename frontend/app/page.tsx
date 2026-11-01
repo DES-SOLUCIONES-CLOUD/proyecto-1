@@ -179,7 +179,7 @@ export default function HomePage() {
           <li key={v.ID}>
             <article className="card">
               {/*portada de colores dibujada segun el curso y su categoria*/}
-              <Portada titulo={v.Title} categoria={v.Category} />
+              <Portada titulo={v.Title} categoria={v.Category} portada={v.Portada} />
               <h2>
                 <Link href={`/cursos/${v.CourseID}`}>{v.Title}</Link>
               </h2>

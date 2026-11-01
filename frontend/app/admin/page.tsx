@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useI18n, type Clave } from "@/lib/i18n";
+import { OperacionEnVivo } from "@/components/OperacionEnVivo";
 
 const ROLES: User["role"][] = ["student", "teacher", "admin"];
 const STATUSES: User["status"][] = ["pending_verification", "active", "suspended"];
@@ -74,9 +75,12 @@ export default function AdminDashboardPage() {
       )}
       {notice && <p className="success-banner">{notice}</p>}
 
-      <InviteTeacherForm
-        onInvited={() => {
-          setNotice(t("admin.profesorCreado"));
+      {/*lo que esta pasando en la plataforma, en vivo*/}
+      <OperacionEnVivo />
+
+      <CrearCuentaForm
+        onCreada={(correo) => {
+          setNotice(t("admin.cuentaCreada", { correo }));
           load(q);
         }}
       />
@@ -534,48 +538,79 @@ function Auditoria({ onError }: { onError: (m: string) => void }) {
   );
 }
 
-function InviteTeacherForm({ onInvited }: { onInvited: () => void }) {
+//el admin crea una cuenta lista para usar: nombre, correo, rol y contraseña
+//no depende del correo de verificacion, sirve para preparar las cuentas de prueba
+function CrearCuentaForm({ onCreada }: { onCreada: (correo: string) => void }) {
   const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [rol, setRol] = useState<User["role"]>("student");
+  const [clave, setClave] = useState("");
   const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setSubmitting(true);
+    setEnviando(true);
     try {
-      await api.createTeacher({ email, full_name: fullName });
+      await api.crearCuenta({ email, full_name: fullName, role: rol, password: clave });
       setEmail("");
       setFullName("");
-      onInvited();
+      setClave("");
+      onCreada(email);
     } catch (e) {
-      setError(mensajeDeError(e, t, "admin.errorProfesor"));
+      setError(mensajeDeError(e, t, "admin.errorCrearCuenta"));
     } finally {
-      setSubmitting(false);
+      setEnviando(false);
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="card stack">
       <header>
-        <h2>{t("admin.invitarProfesor")}</h2>
-        <p>{t("admin.invitarAyuda")}</p>
+        <h2>{t("admin.crearCuenta")}</h2>
+        <p>{t("admin.crearCuentaAyuda")}</p>
       </header>
-      {error && <p className="error-banner">{error}</p>}
-      <div className="row">
-        <div className="form-field" style={{ flex: 1 }}>
-          <label htmlFor="teacher-name">{t("auth.nombreCompleto")}</label>
-          <input id="teacher-name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+      {error && (
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="row" style={{ alignItems: "flex-end" }}>
+        <div className="form-field" style={{ flex: "1 1 12rem" }}>
+          <label htmlFor="cuenta-nombre">{t("auth.nombreCompleto")}</label>
+          <input id="cuenta-nombre" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </div>
-        <div className="form-field" style={{ flex: 1 }}>
-          <label htmlFor="teacher-email">{t("admin.colCorreo")}</label>
-          <input id="teacher-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <div className="form-field" style={{ flex: "1 1 12rem" }}>
+          <label htmlFor="cuenta-correo">{t("admin.colCorreo")}</label>
+          <input id="cuenta-correo" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="form-field" style={{ flex: "0 1 10rem" }}>
+          <label htmlFor="cuenta-rol">{t("admin.colRol")}</label>
+          <select id="cuenta-rol" value={rol} onChange={(e) => setRol(e.target.value as User["role"])}>
+            {ROLES.map((r) => (
+              <option key={r} value={r}>
+                {t(`rol.${r}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field" style={{ flex: "1 1 12rem" }}>
+          <label htmlFor="cuenta-clave">{t("admin.claveInicial")}</label>
+          <input
+            id="cuenta-clave"
+            type="password"
+            required
+            minLength={10}
+            autoComplete="new-password"
+            value={clave}
+            onChange={(e) => setClave(e.target.value)}
+          />
         </div>
       </div>
-      <button type="submit" disabled={submitting}>
-        {submitting ? t("profesor.creando") : t("admin.crearProfesor")}
+      <button type="submit" disabled={enviando}>
+        {enviando ? t("profesor.creando") : t("admin.crearCuentaBoton")}
       </button>
     </form>
   );

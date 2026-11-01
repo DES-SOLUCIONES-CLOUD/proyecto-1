@@ -24,9 +24,9 @@
   --color-text-muted: #59546f;
 
   /* acciones en azul cobalto; el acento es el mismo azul */
-  --color-primary: #3045c9;
+  --color-primary: #2b3fd6;
   --color-primary-contrast: #ffffff;
-  --color-accent: #3045c9;
+  --color-accent: #2b3fd6;
   --color-accent-soft: #e5e8ff;
 
   /* colores alegres de apoyo (solo adorno, nunca texto sobre fondo claro) */
@@ -42,20 +42,6 @@
   --color-success-soft: #e3f4e8;
   --color-warning: #8a3b0b;
   --color-warning-soft: #fff1d6;
-
-  /* las 6 portadas de curso: degradado de dos tonos y color del texto encima */
-  --portada-1-a: #3045c9;
-  --portada-1-b: #6f7ff2;
-  --portada-2-a: #e85d2c;
-  --portada-2-b: #ffa25f;
-  --portada-3-a: #13805f;
-  --portada-3-b: #3cc79a;
-  --portada-4-a: #b52a6c;
-  --portada-4-b: #ee6aa7;
-  --portada-5-a: #f2a516;
-  --portada-5-b: #ffd76a;
-  --portada-6-a: #0b6a83;
-  --portada-6-b: #27b5cc;
 
   --sombra: 0 1px 2px rgb(28 26 51 / 0.05), 0 8px 24px -12px rgb(28 26 51 / 0.12);
   --sombra-alta: 0 2px 4px rgb(28 26 51 / 0.06), 0 18px 40px -16px rgb(48 69 201 / 0.28);
@@ -472,47 +458,80 @@ ul {
   outline-offset: 2px;
 }
 
-/* portada de un curso: degradado de color, dos circulos de adorno, la
-   categoria en una etiqueta y un icono del tema. no hay fotos de los cursos,
-   asi que la portada se dibuja (components/Portada.tsx) */
+/* portada de un curso: el profesor escoge una de 8 (o sale una automatica).
+   cada una es un degradado vivo con un patron de adorno encima, sin iconos.
+   las capas de background van de arriba hacia abajo: primero el patron y al
+   final el degradado. */
 .portada {
-  --a: var(--portada-1-a);
-  --b: var(--portada-1-b);
   position: relative;
   aspect-ratio: 16 / 9;
   border-radius: 16px;
-  background: linear-gradient(135deg, var(--a), var(--b));
-  color: #ffffff;
   overflow: hidden;
-  isolation: isolate;
+  background-color: #3045c9;
 }
 
-.portada[data-color="2"] { --a: var(--portada-2-a); --b: var(--portada-2-b); }
-.portada[data-color="3"] { --a: var(--portada-3-a); --b: var(--portada-3-b); }
-.portada[data-color="4"] { --a: var(--portada-4-a); --b: var(--portada-4-b); }
-.portada[data-color="5"] { --a: var(--portada-5-a); --b: var(--portada-5-b); color: #3a2600; }
-.portada[data-color="6"] { --a: var(--portada-6-a); --b: var(--portada-6-b); }
-
-.portada__circulo {
-  position: absolute;
-  border-radius: 50%;
-  background: rgb(255 255 255 / 0.16);
-  z-index: -1;
+/* 1 atardecer: coral a fucsia con circulos grandes */
+.portada[data-portada="1"] {
+  background-image:
+    radial-gradient(circle at 85% 110%, rgb(255 255 255 / 0.28) 0 28%, transparent 28.5%),
+    radial-gradient(circle at 12% -10%, rgb(255 255 255 / 0.22) 0 22%, transparent 22.5%),
+    linear-gradient(135deg, #ff5e3a 0%, #ff2d87 100%);
 }
 
-.portada__circulo--grande {
-  width: 70%;
-  aspect-ratio: 1;
-  right: -18%;
-  bottom: -45%;
+/* 2 oceano: azul a turquesa con ondas */
+.portada[data-portada="2"] {
+  background-image:
+    repeating-radial-gradient(circle at 100% 100%, rgb(255 255 255 / 0.16) 0 6px, transparent 6px 22px),
+    linear-gradient(135deg, #1d4ed8 0%, #06b6d4 100%);
 }
 
-.portada__circulo--chico {
-  width: 22%;
-  aspect-ratio: 1;
-  left: 8%;
-  top: -8%;
-  background: rgb(255 255 255 / 0.12);
+/* 3 selva: verde a lima con rayas diagonales */
+.portada[data-portada="3"] {
+  background-image:
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.14) 0 14px, transparent 14px 34px),
+    linear-gradient(135deg, #059669 0%, #84cc16 100%);
+}
+
+/* 4 uva: violeta a rosa con puntos */
+.portada[data-portada="4"] {
+  background-image:
+    radial-gradient(rgb(255 255 255 / 0.32) 2.5px, transparent 3px),
+    linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+  background-size: 22px 22px, auto;
+}
+
+/* 5 sol: naranja a amarillo con un sol que sale */
+.portada[data-portada="5"] {
+  background-image:
+    radial-gradient(circle at 78% 120%, #fff3b0 0 30%, rgb(255 255 255 / 0.25) 30.5% 40%, transparent 40.5%),
+    linear-gradient(160deg, #f97316 0%, #facc15 100%);
+}
+
+/* 6 medianoche: azul oscuro a indigo con estrellas */
+.portada[data-portada="6"] {
+  background-image:
+    radial-gradient(circle at 20% 30%, #fff 0 1.5px, transparent 2px),
+    radial-gradient(circle at 70% 20%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 45% 70%, #fff 0 1.5px, transparent 2px),
+    radial-gradient(circle at 85% 60%, #fde68a 0 2px, transparent 2.5px),
+    radial-gradient(circle at 10% 85%, #fff 0 1px, transparent 1.5px),
+    linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%);
+}
+
+/* 7 menta: verde azulado a menta con cuadricula */
+.portada[data-portada="7"] {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.16) 1.5px, transparent 1.5px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.16) 1.5px, transparent 1.5px),
+    linear-gradient(135deg, #0d9488 0%, #34d399 100%);
+  background-size: 26px 26px, 26px 26px, auto;
+}
+
+/* 8 fresa: rojo a naranja con anillos */
+.portada[data-portada="8"] {
+  background-image:
+    radial-gradient(circle at 15% 50%, transparent 0 18%, rgb(255 255 255 / 0.22) 18.5% 21%, transparent 21.5% 30%, rgb(255 255 255 / 0.16) 30.5% 33%, transparent 33.5%),
+    linear-gradient(135deg, #e11d48 0%, #fb923c 100%);
 }
 
 .portada__categoria {
@@ -524,19 +543,9 @@ ul {
   padding: 0.2rem 0.7rem;
   border-radius: var(--radius-pill);
   /* fondo oscuro translucido para que la etiqueta se lea sobre cualquier color */
-  background: rgb(20 18 40 / 0.42);
+  background: rgb(20 18 40 / 0.45);
   color: #ffffff;
   backdrop-filter: blur(4px);
-}
-
-.portada__icono {
-  position: absolute;
-  right: 12%;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 34%;
-  height: auto;
-  opacity: 0.95;
 }
 
 /* version ancha, arriba del detalle del curso */
@@ -547,9 +556,63 @@ ul {
   border-radius: var(--radius);
 }
 
-.portada--ancha .portada__icono {
-  width: auto;
-  height: 70%;
+/* muestra chiquita en el selector de portada */
+.portada--muestra {
+  display: block;
+  width: 5.5rem;
+  border-radius: 10px;
+}
+
+.elegir-portada {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.elegir-portada legend {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.elegir-portada__opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.elegir-portada__opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.elegir-portada__opcion .portada--muestra {
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.15s ease, transform 0.15s ease;
+}
+
+.elegir-portada__opcion:hover .portada--muestra {
+  transform: translateY(-2px);
+}
+
+/* la elegida lleva un borde azul; con teclado tambien se ve el foco */
+.elegir-portada__opcion input:checked + .portada--muestra {
+  outline-color: var(--color-primary);
+}
+
+.elegir-portada__opcion input:focus-visible + .portada--muestra {
+  outline-color: var(--color-primary);
+  outline-style: dashed;
+}
+
+.elegir-portada__opcion input:checked ~ .elegir-portada__nombre {
+  color: var(--color-primary);
+  font-weight: 700;
 }
 
 /* temario del curso: modulos como paneles y recursos como filas limpias */
@@ -1031,7 +1094,7 @@ tbody tr:last-child td {
   border-radius: var(--radius);
   padding: 2.75rem 2.5rem;
   margin-bottom: 2rem;
-  background: linear-gradient(120deg, #2a3cb8 0%, #4a5be0 55%, #7a63e6 100%);
+  background: linear-gradient(120deg, #2b3fe0 0%, #5b3cf0 50%, #c026d3 100%);
   color: #ffffff;
   box-shadow: var(--sombra-alta);
 }
@@ -1116,21 +1179,187 @@ tbody tr:last-child td {
   }
 }
 
-/* --- pie de pagina: version desplegada y maquina que respondio --- */
-.pie {
+
+/* --- panel de operacion en vivo (solo administrador) --- */
+.operacion__datos {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.25rem 1.25rem;
-  padding: 1.25rem 1.5rem 2rem;
-  border-top: 1px solid var(--color-border);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.dato {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  min-width: 12rem;
+}
+
+.dato__titulo {
   font-size: 0.8125rem;
   color: var(--color-text-muted);
 }
 
-/* ruta del archivo dentro del bucket, en letra de codigo */
-.ruta-almacen code {
+/* punto verde que late mientras el panel esta en vivo */
+.punto-vivo,
+.punto-pausa {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.punto-vivo {
+  animation: latido 1.4s ease-in-out infinite;
+}
+
+.punto-pausa {
+  background: var(--color-border-strong);
+}
+
+@keyframes latido {
+  50% {
+    box-shadow: 0 0 0 6px rgb(22 163 74 / 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .punto-vivo {
+    animation: none;
+  }
+}
+
+/* etiqueta con el nombre de una maquina, cada una de su color */
+.maquina {
+  display: inline-block;
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  word-break: break-all;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  color: #ffffff;
+  background: #3045c9;
+  white-space: nowrap;
+}
+
+.maquina[data-color="2"], .reparto__barra [data-color="2"] { background: #c2185b; }
+.maquina[data-color="3"], .reparto__barra [data-color="3"] { background: #047857; }
+.maquina[data-color="4"], .reparto__barra [data-color="4"] { background: #6d28d9; }
+.maquina[data-color="5"], .reparto__barra [data-color="5"] { background: #b45309; }
+.maquina[data-color="6"], .reparto__barra [data-color="6"] { background: #0e7490; }
+
+.reparto {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.reparto li .maquina {
+  justify-self: start;
+}
+
+.reparto li {
+  display: grid;
+  grid-template-columns: 11rem 1fr 3rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.reparto__barra {
+  height: 0.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  overflow: hidden;
+}
+
+.reparto__barra span {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: #3045c9;
+  transition: width 0.4s ease;
+}
+
+.reparto__numero {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.operacion__columnas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr));
+  gap: 1.25rem;
+}
+
+/* lista de eventos tipo bitacora, con la hora a la izquierda */
+.bitacora {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 32rem;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.bitacora__fila {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  grid-template-areas:
+    "hora texto estado"
+    "hora texto maquina";
+  gap: 0.15rem 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+}
+
+.bitacora__fila:last-child {
+  border-bottom: 0;
+}
+
+.bitacora__hora {
+  grid-area: hora;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.bitacora__texto {
+  grid-area: texto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bitacora__texto code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.bitacora__fila .estado {
+  grid-area: estado;
+  justify-self: end;
+  align-self: start;
+  font-size: 0.75rem;
+  color: var(--color-success);
+  white-space: nowrap;
+}
+
+.bitacora__fila .estado--mal {
+  color: var(--color-danger);
+}
+
+.bitacora__fila .maquina {
+  grid-area: maquina;
+  justify-self: end;
+  align-self: start;
 }

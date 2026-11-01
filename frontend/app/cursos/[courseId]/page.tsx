@@ -88,7 +88,7 @@ export default function CourseDetailPage() {
   return (
     <div>
       {/*la misma portada de colores del catalogo, en grande*/}
-      <Portada titulo={version.Title} categoria={version.Category} ancha />
+      <Portada titulo={version.Title} categoria={version.Category} portada={version.Portada} ancha />
       <header className="page-header">
         <div>
           <h1>{version.Title}</h1>

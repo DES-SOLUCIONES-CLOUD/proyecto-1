@@ -10,6 +10,7 @@ import { HistorialDeRevisiones } from "@/components/HistorialDeRevisiones";
 import { Coautoria } from "@/components/Coautoria";
 import { subirArchivo, cargaPendiente, olvidarCarga, ErrorDeCarga } from "@/lib/carga";
 import { useI18n, type Clave, type Traducir } from "@/lib/i18n";
+import { ElegirPortada } from "@/components/Portada";
 import { Icono } from "@/components/Icono";
 
 // El valor es el que entiende la API; la clave, cómo se llama en pantalla.
@@ -232,6 +233,7 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
         language: form.Language,
         approval_min_score: Number(form.ApprovalMinScore),
         approval_required_resources_pct: Number(form.ApprovalRequiredResourcesPct),
+        portada: form.Portada ?? 0,
       } as any);
       setGuardado(true);
       onSaved();
@@ -269,6 +271,15 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
           onChange={(e) => setForm({ ...form, DescriptionMD: e.target.value })}
         />
       </div>
+      {/*el profesor escoge la portada de colores que se ve en el catalogo*/}
+      <ElegirPortada
+        valor={form.Portada ?? 0}
+        titulo={form.Title}
+        disabled={disabled}
+        onCambio={(n) => setForm({ ...form, Portada: n })}
+        etiqueta={t("version.portada")}
+        textoAutomatica={t("version.portadaAutomatica")}
+      />
       <div className="row">
         <div className="form-field">
           <label htmlFor="category">{t("version.categoria")}</label>
@@ -671,12 +682,6 @@ function ResourceRow({
         </p>
       )}
       {r.ProcessingStatus === "failed" && <p className="error-banner">{t("version.procesamientoFallo")}</p>}
-      {/*donde quedo guardado el archivo en el bucket, para buscarlo en cloud storage*/}
-      {r.ObjectKey && (
-        <p className="muted ruta-almacen">
-          {t("version.archivoEnAlmacen")} <code>{r.ObjectKey}</code>
-        </p>
-      )}
       {r.Type === "quiz" && quizListo === false && (
         <p className="warning-banner">{t("version.quizSinPreguntasAyuda")}</p>
       )}
