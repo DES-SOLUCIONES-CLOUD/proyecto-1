@@ -14,20 +14,32 @@ import (
 
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/config"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/documentos"
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/instancia"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/media"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/postgres"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/queue"
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/redisclient"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/storage"
 )
 
 func main() {
 	cfg := config.Load()
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	slog.SetDefault(log)
-	log.Info("worker iniciado", "env", cfg.Env, "redis", cfg.RedisAddr)
+	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	log := slog.New(base)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	//los mensajes del procesamiento tambien se copian a redis para el panel de operacion
+	//si redis no responde el worker sigue igual, solo que el panel no vera sus trabajos
+	if rdb, err := redisclient.Connect(ctx, cfg.RedisAddr); err == nil {
+		defer rdb.Close()
+		log = slog.New(redisclient.NuevoManejadorConActividad(base, redisclient.NuevaActividad(rdb), instancia.Nombre()))
+	} else {
+		log.Warn("worker: sin redis para el panel de actividad", "error", err)
+	}
+	slog.SetDefault(log)
+	log.Info("worker iniciado", "env", cfg.Env, "redis", cfg.RedisAddr, "instancia", instancia.Nombre())
 
 	pool, err := postgres.ConnectConMaximo(ctx, cfg.DatabaseURL, cfg.DBMaxConns)
 	if err != nil {

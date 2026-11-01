@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,8 @@ func (h *handlers) registerAdmin(mux *http.ServeMux) {
 	mux.Handle("PATCH /api/v1/admin/users/{id}/role", h.auth()(admin(http.HandlerFunc(h.updateUserRole))))
 	mux.Handle("PATCH /api/v1/admin/users/{id}/status", h.auth()(admin(http.HandlerFunc(h.updateUserStatus))))
 	mux.Handle("POST /api/v1/admin/teachers", h.auth()(admin(http.HandlerFunc(h.createTeacher))))
+	mux.Handle("POST /api/v1/admin/users", h.auth()(admin(http.HandlerFunc(h.crearCuenta))))
+	mux.Handle("GET /api/v1/admin/actividad", h.auth()(admin(http.HandlerFunc(h.actividad))))
 	mux.Handle("GET /api/v1/admin/audit", h.auth()(admin(http.HandlerFunc(h.listAudit))))
 	mux.Handle("GET /api/v1/admin/users/{id}/sessions", h.auth()(admin(http.HandlerFunc(h.listUserSessions))))
 	mux.Handle("DELETE /api/v1/admin/users/{id}/sessions", h.auth()(admin(http.HandlerFunc(h.revokeUserSessions))))
@@ -188,6 +191,34 @@ func (h *handlers) createTeacher(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u, err := h.deps.Auth.CreateTeacher(r.Context(), req.Email, req.FullName)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, userResponse{ID: u.ID.String(), Email: u.Email, FullName: u.FullName, Role: string(u.Role), Status: string(u.Status)})
+}
+
+type crearCuentaRequest struct {
+	Email    string `json:"email"`
+	FullName string `json:"full_name"`
+	Role     string `json:"role"`
+	Password string `json:"password"`
+}
+
+// crearCuenta deja que el administrador cree una cuenta activa con su
+// contraseña, sin pasar por el correo de verificación.
+func (h *handlers) crearCuenta(w http.ResponseWriter, r *http.Request) {
+	var req crearCuentaRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	//el nombre, el correo y un rol valido son obligatorios
+	if strings.TrimSpace(req.Email) == "" || strings.TrimSpace(req.FullName) == "" || !user.Role(req.Role).Valid() {
+		writeError(w, ErrBadRequest)
+		return
+	}
+	actor, _ := UserFromContext(r.Context())
+	u, err := h.deps.Auth.CrearCuentaActiva(r.Context(), actor.ID, strings.TrimSpace(req.Email), strings.TrimSpace(req.FullName), user.Role(req.Role), req.Password)
 	if err != nil {
 		writeError(w, err)
 		return

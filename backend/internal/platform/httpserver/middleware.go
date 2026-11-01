@@ -301,6 +301,8 @@ func RequireAuth(authSvc *auth.Service) func(http.Handler) http.Handler {
 				return
 			}
 			ctx := withSession(withUser(r.Context(), u), sess)
+			//para que el panel de actividad sepa quien hizo la peticion
+			anotarUsuario(ctx, u)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

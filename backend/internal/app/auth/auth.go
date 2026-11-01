@@ -367,6 +367,50 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPassword s
 	return nil
 }
 
+// CrearCuentaActiva crea una cuenta ya activa con la contraseña que elige
+// el administrador.
+//
+// es para preparar cuentas de prueba sin depender del correo: la cuenta
+// queda verificada y lista para entrar. el rol lo decide el administrador.
+func (s *Service) CrearCuentaActiva(ctx context.Context, actorID uuid.UUID, email, fullName string, rol user.Role, password string) (*user.User, error) {
+	if !rol.Valid() {
+		return nil, user.ErrAccountNotActive
+	}
+	if err := user.ValidatePasswordStrength(password); err != nil {
+		return nil, err
+	}
+	if _, err := s.users.GetByEmail(ctx, email); err == nil {
+		return nil, ErrEmailInUse
+	} else if !errors.Is(err, postgres.ErrNotFound) {
+		return nil, err
+	}
+	hash, err := security.HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	u := &user.User{
+		ID:              uuid.New(),
+		Email:           email,
+		PasswordHash:    hash,
+		FullName:        fullName,
+		Role:            rol,
+		Status:          user.StatusActive,
+		EmailVerifiedAt: &now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := s.users.Create(ctx, u); err != nil {
+		if errors.Is(err, postgres.ErrDuplicateEmail) {
+			return nil, ErrEmailInUse
+		}
+		return nil, err
+	}
+	//queda en la bitacora quien creo la cuenta y con que rol
+	s.audit(ctx, &actorID, "admin.user_created", u.ID.String(), "", map[string]any{"role": string(rol)})
+	return u, nil
+}
+
 // CreateTeacher crea una cuenta de profesor ya activa (los profesores no se
 // autorregistran) y envía un enlace de establecimiento de contraseña.
 func (s *Service) CreateTeacher(ctx context.Context, email, fullName string) (*user.User, error) {

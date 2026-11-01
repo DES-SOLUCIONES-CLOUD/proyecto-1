@@ -20,6 +20,7 @@ import (
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/antimalware"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/postgres"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/queue"
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/redisclient"
 )
 
 type Deps struct {
@@ -104,6 +105,7 @@ func NewRouter(d Deps) http.Handler {
 		Logging,
 		SecurityHeaders,
 		ServidoPor,
+		RegistrarActividad(redisclient.NuevaActividad(d.Redis)),
 		CORS(d.CORSOrigin),
 		CSRF,
 		Idempotency(d.Redis),

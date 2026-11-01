@@ -37,6 +37,9 @@ RUN apk add --no-cache \
         ttf-dejavu \
         ttf-liberation
 COPY --from=builder /out/worker /usr/local/bin/worker
+# el commit desplegado, el worker lo anota en el panel de actividad
+ARG VERSION=dev
+ENV MOOC_VERSION=$VERSION
 # LibreOffice escribe su perfil bajo HOME. Sin un HOME escribible arranca y
 # falla al crear el perfil, con un error que no menciona el permiso.
 ENV HOME=/tmp
