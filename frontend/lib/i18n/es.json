@@ -484,7 +484,7 @@
   "error.course_published": "El curso está publicado. Despublícalo para poder editarlo.",
   "error.csrf_token_mismatch": "Tu sesión se desincronizó. Recarga la página e inténtalo de nuevo.",
   "error.email_in_use": "Ya existe una cuenta con ese correo.",
-  "error.forbidden": "No tienes permiso para hacer esto.",
+  "error.forbidden": "No tienes permiso para hacer esto. Si es un curso de otro profesor, solo él (o sus coeditores) puede modificarlo.",
   "error.idempotency_in_flight": "Esa acción ya se está procesando. Espera un momento.",
   "error.internal_error": "Algo falló en el servidor. Inténtalo de nuevo en unos minutos.",
   "error.invalid_credentials": "El correo o la contraseña no son correctos.",
@@ -551,5 +551,10 @@
   "version.volverAMisCursos": "Volver a mis cursos",
   "version.errorEliminar": "No se pudo eliminar. Inténtalo de nuevo.",
   "version.errorUnidad": "No se pudo agregar la unidad",
-  "profesor.slugAyuda": "Se llena sola a partir del título. Solo minúsculas, números y guiones; no se puede repetir."
+  "profesor.slugAyuda": "Se llena sola a partir del título. Solo minúsculas, números y guiones; no se puede repetir.",
+  "acceso.requiereSesion": "Para ver esta sección necesitas iniciar sesión.",
+  "acceso.soloProfesores": "Esta sección es solo para profesores. Con tu cuenta de estudiante no puedes crear ni editar cursos.",
+  "acceso.soloAdministradores": "Esta sección es solo para administradores.",
+  "acceso.irAMisCursos": "Ir a mis cursos",
+  "acceso.irAlCatalogo": "Ir al catálogo"
 }

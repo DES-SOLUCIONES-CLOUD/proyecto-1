@@ -111,15 +111,19 @@ export default function VersionEditorPage() {
     }
   }
 
+  //por ejemplo si un profesor abre el curso de otro profesor: se explica y se ofrece volver
   if (error) {
     return (
-      <p className="error-banner" role="alert">
-        {error}
-      </p>
+      <div className="columna-estrecha">
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+        <Link href="/profesor">← {t("version.volverAMisCursos")}</Link>
+      </div>
     );
   }
   if (!version) {
-    return <p>{t("comun.cargando")}</p>;
+    return <p role="status">{t("comun.cargando")}</p>;
   }
 
   const isDraft = version.Status === "draft";

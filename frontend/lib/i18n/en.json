@@ -484,7 +484,7 @@
   "error.course_published": "The course is published. Unpublish it to edit it.",
   "error.csrf_token_mismatch": "Your session got out of sync. Reload the page and try again.",
   "error.email_in_use": "An account with that email already exists.",
-  "error.forbidden": "You don't have permission to do this.",
+  "error.forbidden": "You don't have permission to do this. If it's another teacher's course, only they (or their co-editors) can change it.",
   "error.idempotency_in_flight": "That action is already being processed. Please wait a moment.",
   "error.internal_error": "Something went wrong on the server. Try again in a few minutes.",
   "error.invalid_credentials": "The email or password is incorrect.",
@@ -551,5 +551,10 @@
   "version.volverAMisCursos": "Back to my courses",
   "version.errorEliminar": "It couldn't be deleted. Please try again.",
   "version.errorUnidad": "The unit couldn't be added",
-  "profesor.slugAyuda": "Filled in automatically from the title. Lowercase letters, numbers and hyphens only; it must be unique."
+  "profesor.slugAyuda": "Filled in automatically from the title. Lowercase letters, numbers and hyphens only; it must be unique.",
+  "acceso.requiereSesion": "You need to sign in to see this section.",
+  "acceso.soloProfesores": "This section is for teachers only. With a student account you can't create or edit courses.",
+  "acceso.soloAdministradores": "This section is for administrators only.",
+  "acceso.irAMisCursos": "Go to my courses",
+  "acceso.irAlCatalogo": "Go to the catalog"
 }
