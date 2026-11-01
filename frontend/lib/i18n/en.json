@@ -320,7 +320,7 @@
   "quizAutoria.errorGuardar": "Could not save the assessment",
   "quizAutoria.titulo": "Assessment: {recurso}",
   "quizAutoria.volver": "Back to the version",
-  "quizAutoria.aviso": "Saving replaces this resource's previous assessment entirely. Attempts that were already graded are unaffected: they keep their own snapshot of questions and options.",
+  "quizAutoria.aviso": "Saving replaces this resource's previous assessment. Attempts already graded don't change: they keep the questions they had.",
   "quizAutoria.notaMinima": "Minimum score to pass (%)",
   "quizAutoria.limiteTiempo": "Time limit (minutes, optional)",
   "quizAutoria.intentosMaximos": "Maximum attempts (optional)",
@@ -585,6 +585,7 @@
   "version.quizListo": "Has questions",
   "version.quizSinPreguntas": "No questions yet",
   "version.quizSinPreguntasAyuda": "This quiz has no questions yet. Click “Create questions” before publishing, or students won't be able to take it.",
-  "version.editarEvaluacion": "Replace questions",
-  "version.datosGuardados": "✓ Course details saved."
+  "version.editarEvaluacion": "Edit questions",
+  "version.datosGuardados": "✓ Course details saved.",
+  "quizAutoria.cargada": "These are the saved questions. Edit them and click “Save assessment”."
 }

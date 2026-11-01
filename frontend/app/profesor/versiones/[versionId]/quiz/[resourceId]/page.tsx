@@ -30,11 +30,10 @@ function preguntaVacia(): BorradorPregunta {
 /**
  * Autoría de la evaluación de un recurso de tipo quiz.
  *
- * La API no expone un GET de la definición (solo el PUT que la reemplaza),
- * porque devolverla incluiría la clave correcta. Por eso este formulario
- * siempre parte en blanco: guardar reemplaza por completo cualquier
- * definición anterior, sin afectar a los intentos ya calificados, que
- * conservan su propio snapshot congelado.
+ * Si el quiz ya tiene preguntas, el formulario las carga para editarlas (la
+ * API solo se las da al profesor dueño del curso, nunca a un estudiante).
+ * Guardar reemplaza por completo la definición anterior, sin afectar a los
+ * intentos ya calificados, que conservan su propio snapshot congelado.
  */
 export default function QuizAuthoringPage() {
   const { versionId, resourceId } = useParams<{ versionId: string; resourceId: string }>();
@@ -55,6 +54,8 @@ export default function QuizAuthoringPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  //true cuando el formulario se lleno con las preguntas que ya estaban guardadas
+  const [cargada, setCargada] = useState(false);
 
   useEffect(() => {
     api
@@ -66,6 +67,20 @@ export default function QuizAuthoringPage() {
         if (encontrado) {
           setResource(encontrado);
           if (!title) setTitle(encontrado.Title);
+          //si el quiz ya tiene preguntas, se cargan para editarlas; si no (404), el formulario queda en blanco
+          api
+            .getQuizDefinition(versionId, resourceId)
+            .then((def) => {
+              setTitle(def.title);
+              setPassScore(def.pass_score);
+              setFeedbackPolicy(def.feedback_policy);
+              setShuffleQuestions(def.shuffle_questions);
+              setTimeLimitMinutes(def.time_limit_seconds ? String(def.time_limit_seconds / 60) : "");
+              setMaxAttempts(def.max_attempts ? String(def.max_attempts) : "");
+              if (def.questions.length > 0) setQuestions(def.questions);
+              setCargada(true);
+            })
+            .catch(() => undefined);
         } else {
           setLoadError(t("quizAutoria.noEncontrado"));
         }
@@ -190,9 +205,12 @@ export default function QuizAuthoringPage() {
         <Link href={`/profesor/versiones/${versionId}`}>{t("quizAutoria.volver")}</Link>
       </div>
 
-      <p className="warning-banner" role="status">
-        {t("quizAutoria.aviso")}
-      </p>
+      {cargada && (
+        <p className="success-banner" role="status">
+          {t("quizAutoria.cargada")}
+        </p>
+      )}
+      <p className="muted">{t("quizAutoria.aviso")}</p>
 
       {error && (
         <p className="error-banner" role="alert">

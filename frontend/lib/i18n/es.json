@@ -320,7 +320,7 @@
   "quizAutoria.errorGuardar": "No se pudo guardar la evaluación",
   "quizAutoria.titulo": "Evaluación: {recurso}",
   "quizAutoria.volver": "Volver a la versión",
-  "quizAutoria.aviso": "Guardar reemplaza por completo la evaluación anterior de este recurso. Los intentos ya calificados no se ven afectados: conservan su propio snapshot de preguntas y opciones.",
+  "quizAutoria.aviso": "Al guardar se reemplaza la evaluación anterior de este recurso. Los intentos que ya se calificaron no cambian: conservan las preguntas que tenían.",
   "quizAutoria.notaMinima": "Nota mínima para aprobar (%)",
   "quizAutoria.limiteTiempo": "Límite de tiempo (minutos, opcional)",
   "quizAutoria.intentosMaximos": "Intentos máximos (opcional)",
@@ -585,6 +585,7 @@
   "version.quizListo": "Con preguntas",
   "version.quizSinPreguntas": "Sin preguntas todavía",
   "version.quizSinPreguntasAyuda": "Este quiz aún no tiene preguntas. Pulsa «Crear preguntas» antes de publicar, o los estudiantes no podrán presentarlo.",
-  "version.editarEvaluacion": "Reemplazar preguntas",
-  "version.datosGuardados": "✓ Datos del curso guardados."
+  "version.editarEvaluacion": "Editar preguntas",
+  "version.datosGuardados": "✓ Datos del curso guardados.",
+  "quizAutoria.cargada": "Estas son las preguntas guardadas. Edítalas y pulsa «Guardar evaluación»."
 }

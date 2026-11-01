@@ -529,7 +529,7 @@ function ResourceRow({
     if (r.Type !== "quiz") return;
     //si el quiz no tiene preguntas guardadas la api responde 404
     api
-      .quizResults(versionId, r.ID)
+      .getQuizDefinition(versionId, r.ID)
       .then(() => setQuizListo(true))
       .catch(() => setQuizListo(false));
   }, [r.Type, r.ID, versionId]);
