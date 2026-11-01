@@ -562,5 +562,8 @@
   "curso.irAlContenido": "Empezar o continuar el curso",
   "curso.entrarParaInscribirse": "Para inscribirte en este curso, inicia sesión con tu cuenta de estudiante.",
   "curso.soloEstudiantes": "Estás viendo el curso como profesor o administrador. Solo los estudiantes se inscriben.",
-  "curso.retiradoAyuda": "Te retiraste de este curso. Si vuelves a inscribirte, conservas el progreso que ya tenías."
+  "curso.retiradoAyuda": "Te retiraste de este curso. Si vuelves a inscribirte, conservas el progreso que ya tenías.",
+  "misCursos.avance": "{pct}% de lo obligatorio completado",
+  "misCursos.confirmarRetiro": "¿Seguro que quieres retirarte de «{titulo}»? Podrás volver a inscribirte después y conservarás tu progreso.",
+  "misCursos.esteCurso": "este curso"
 }
