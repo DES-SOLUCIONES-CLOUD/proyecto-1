@@ -247,7 +247,7 @@
   "version.idioma": "Idioma",
   "version.notaMinima": "Nota mínima de aprobación (%)",
   "version.pctObligatorios": "% de recursos obligatorios requeridos",
-  "version.guardarMetadatos": "Guardar metadatos",
+  "version.guardarMetadatos": "Guardar datos del curso",
   "version.errorGuardar": "No se pudo guardar",
   "version.nuevoModulo": "Nuevo módulo",
   "version.agregarModulo": "Agregar módulo",
@@ -585,5 +585,6 @@
   "version.quizListo": "Con preguntas",
   "version.quizSinPreguntas": "Sin preguntas todavía",
   "version.quizSinPreguntasAyuda": "Este quiz aún no tiene preguntas. Pulsa «Crear preguntas» antes de publicar, o los estudiantes no podrán presentarlo.",
-  "version.editarEvaluacion": "Reemplazar preguntas"
+  "version.editarEvaluacion": "Reemplazar preguntas",
+  "version.datosGuardados": "✓ Datos del curso guardados."
 }

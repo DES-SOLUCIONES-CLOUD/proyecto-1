@@ -213,11 +213,14 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
   const [form, setForm] = useState(version);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  //para confirmarle al profesor que sus cambios quedaron guardados
+  const [guardado, setGuardado] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError("");
+    setGuardado(false);
     try {
       await api.updateVersionMetadata(version.ID, {
         title: form.Title,
@@ -229,6 +232,7 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
         approval_min_score: Number(form.ApprovalMinScore),
         approval_required_resources_pct: Number(form.ApprovalRequiredResourcesPct),
       } as any);
+      setGuardado(true);
       onSaved();
     } catch (e) {
       setError(mensajeDeError(e, t, "version.errorGuardar"));
@@ -307,6 +311,11 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
       <button type="submit" disabled={disabled || saving}>
         {saving ? t("comun.guardando") : t("version.guardarMetadatos")}
       </button>
+      {guardado && (
+        <p className="success-banner" role="status">
+          {t("version.datosGuardados")}
+        </p>
+      )}
     </form>
   );
 }

@@ -185,7 +185,8 @@ export function QuizPlayer({ resourceId }: { resourceId: string }) {
         </div>
       )}
 
-      <ol className="stack">
+      {/*sin numeros automaticos: el numero ya va en el texto de la pregunta*/}
+      <ol className="stack" style={{ listStyle: "none", padding: 0 }}>
         {attempt.questions.map((q, i) => (
           <li key={q.stable_id} className="card">
             <p>
@@ -200,7 +201,8 @@ export function QuizPlayer({ resourceId }: { resourceId: string }) {
               <legend className="muted" style={{ fontSize: "0.85rem" }}>
                 {q.type === "single" ? t("quiz.elegirUna") : t("quiz.elegirVarias")}
               </legend>
-              <ul className="stack" style={{ gap: "0.35rem" }}>
+              {/*sin viñetas: el circulo del radio ya marca cada opcion*/}
+              <ul className="stack" style={{ gap: "0.35rem", listStyle: "none", padding: 0 }}>
                 {q.options.map((o) => {
                   const marcada = (attempt.answers[q.stable_id] ?? []).includes(o.stable_id);
                   return (
