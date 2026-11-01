@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { api, type QuizAttempt, type QuizQuestion } from "@/lib/api";
 import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
+import { Icono } from "./Icono";
 
 /**
  * Reproductor de un quiz para el estudiante.
@@ -228,7 +229,9 @@ export function QuizPlayer({ resourceId }: { resourceId: string }) {
               </p>
             )}
             {!cerrado && savingQuestion !== q.stable_id && guardadas.has(q.stable_id) && (
-              <p className="muted">✓ {t("quiz.respuestaGuardada")}</p>
+              <p className="muted">
+                <Icono nombre="listo" /> {t("quiz.respuestaGuardada")}
+              </p>
             )}
           </li>
         ))}

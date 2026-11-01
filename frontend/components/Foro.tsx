@@ -207,7 +207,7 @@ function HiloAbierto({
   }
 
   return (
-    <div className="stack" style={{ paddingLeft: "1rem", borderLeft: "3px solid var(--color-border, #e5e7eb)" }}>
+    <div className="stack" style={{ paddingLeft: "1rem", borderLeft: "2px solid var(--color-border)" }}>
       <p style={{ whiteSpace: "pre-wrap" }}>{datos.thread.body_md}</p>
 
       {error && (

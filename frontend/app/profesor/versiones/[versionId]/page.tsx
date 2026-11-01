@@ -10,6 +10,7 @@ import { HistorialDeRevisiones } from "@/components/HistorialDeRevisiones";
 import { Coautoria } from "@/components/Coautoria";
 import { subirArchivo, cargaPendiente, olvidarCarga, ErrorDeCarga } from "@/lib/carga";
 import { useI18n, type Clave, type Traducir } from "@/lib/i18n";
+import { Icono } from "@/components/Icono";
 
 // El valor es el que entiende la API; la clave, cómo se llama en pantalla.
 const RESOURCE_TYPES: ReadonlyArray<readonly [string, Clave]> = [
@@ -615,7 +616,15 @@ function ResourceRow({
           {!r.Visible && <span className="badge">{t("version.oculto")}</span>}
         </span>
         {r.Type === "quiz" && quizListo !== null && (
-          <span className="badge">{quizListo ? `✓ ${t("version.quizListo")}` : t("version.quizSinPreguntas")}</span>
+          <span className="badge">
+            {quizListo ? (
+              <>
+                <Icono nombre="listo" tamano={12} /> {t("version.quizListo")}
+              </>
+            ) : (
+              t("version.quizSinPreguntas")
+            )}
+          </span>
         )}
         {r.Type === "quiz" && (
           <Link href={`/profesor/versiones/${versionId}/quiz/${r.ID}`}>
@@ -624,7 +633,7 @@ function ResourceRow({
         )}
         {editable && BINARY_TYPES.has(r.Type) && (
           <label className="row" style={{ marginBottom: 0 }}>
-            <span className="badge" style={{ cursor: uploading ? "not-allowed" : "pointer", background: uploading ? "#3b82f6" : undefined, color: uploading ? "white" : undefined }}>
+            <span className="boton-archivo" data-subiendo={uploading}>
               {uploading
                 ? uploadStatusText || t("comun.cargando")
                 : pendiente
@@ -690,12 +699,12 @@ function ResourceRow({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuetext={uploadStatusText}
-          style={{ width: "100%", background: "#e5e7eb", borderRadius: "999px", height: "6px", overflow: "hidden" }}
+          style={{ width: "100%", background: "var(--color-surface-raised)", borderRadius: "999px", height: "6px", overflow: "hidden" }}
         >
           <div
             style={{
               width: `${uploadPercent}%`,
-              background: "#3b82f6",
+              background: "var(--color-accent)",
               height: "100%",
               transition: "width 0.3s ease-in-out",
             }}
@@ -705,7 +714,7 @@ function ResourceRow({
       {/*texto visible con la fase y el porcentaje, ademas de la barra*/}
       {uploading && (
         <p className="muted" role="status" style={{ margin: 0 }}>
-          {uploadStatusText} · {uploadPercent}% — {t("version.subiendoAviso")}
+          {uploadStatusText} · {uploadPercent}%. {t("version.subiendoAviso")}
         </p>
       )}
 

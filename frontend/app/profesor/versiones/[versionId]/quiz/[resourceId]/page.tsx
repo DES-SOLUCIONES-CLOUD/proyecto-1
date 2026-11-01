@@ -465,7 +465,7 @@ function ResultadosAgregados({ versionId, resourceId }: { versionId: string; res
                       columna de números obliga a comparar a mano. */}
                   <div
                     style={{
-                      background: "var(--color-bg-subtle, #e5e7eb)",
+                      background: "var(--color-surface-raised)",
                       borderRadius: "999px",
                       height: "6px",
                       overflow: "hidden",
@@ -475,7 +475,7 @@ function ResultadosAgregados({ versionId, resourceId }: { versionId: string; res
                       style={{
                         width: `${o.porcentaje}%`,
                         height: "100%",
-                        background: o.es_correcta ? "#16a34a" : "#94a3b8",
+                        background: o.es_correcta ? "var(--color-accent)" : "var(--color-border-strong)",
                       }}
                     />
                   </div>
