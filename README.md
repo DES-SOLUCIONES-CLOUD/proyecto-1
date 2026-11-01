@@ -329,9 +329,7 @@ siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
 ## Entrega 3 — Aplicación elástica IaaS
 
 * **URL de la aplicación (frontend y API detrás del balanceador):** [https://136.82.109.164.sslip.io/](https://136.82.109.164.sslip.io/)
-* **Verificación funcional del frontend:** [docs/entrega3/frontend-verificacion.md](docs/entrega3/frontend-verificacion.md)
 * **Deuda técnica:** [docs/entrega3/deuda-tecnica.md](docs/entrega3/deuda-tecnica.md)
-* **Informe en Word (lo completa cada integrante con su sección):** [docs/entrega3/Informe Entrega 3.docx](<docs/entrega3/Informe Entrega 3.docx>)
 
 ## Entrega 2 — Despliegue en GCP y Capacidad
 
