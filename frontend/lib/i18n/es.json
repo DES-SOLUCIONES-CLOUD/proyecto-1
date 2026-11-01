@@ -156,7 +156,7 @@
   "foro.cerrarHilo": "Cerrar el hilo",
   "foro.errorEstado": "No se pudo cambiar el estado del hilo",
   "quiz.errorAbrir": "No se pudo abrir el intento",
-  "quiz.abriendo": "Abriendo el intento…",
+  "quiz.abriendo": "Abriendo la evaluación…",
   "quiz.errorGuardarRespuesta": "No se pudo guardar la respuesta",
   "quiz.errorEnviar": "No se pudo enviar el intento",
   "quiz.confirmarFaltantes": "Faltan {n} pregunta(s) sin responder. ¿Enviar de todas formas?",
@@ -565,5 +565,16 @@
   "curso.retiradoAyuda": "Te retiraste de este curso. Si vuelves a inscribirte, conservas el progreso que ya tenías.",
   "misCursos.avance": "{pct}% de lo obligatorio completado",
   "misCursos.confirmarRetiro": "¿Seguro que quieres retirarte de «{titulo}»? Podrás volver a inscribirte después y conservarás tu progreso.",
-  "misCursos.esteCurso": "este curso"
+  "misCursos.esteCurso": "este curso",
+  "quiz.explicacion": "Esta evaluación se califica automáticamente. Tus respuestas se guardan solas mientras respondes: si se cierra la página o se cae la conexión, al volver retomas el mismo intento donde lo dejaste.",
+  "quiz.empezar": "Empezar o retomar la evaluación",
+  "quiz.intentoNumero": "Intento {n}",
+  "quiz.respondidas": "{n} de {total} preguntas respondidas",
+  "quiz.tiempoHasta": "Tienes hasta las {hora}",
+  "quiz.retomado": "Retomaste tu intento: tus respuestas anteriores siguen guardadas.",
+  "quiz.notaOculta": "Tu intento quedó enviado. La nota se mostrará cuando el profesor lo haya definido.",
+  "quiz.intentarDeNuevo": "Intentar de nuevo",
+  "quiz.elegirUna": "Elige una opción",
+  "quiz.elegirVarias": "Puedes elegir varias opciones",
+  "quiz.respuestaGuardada": "Respuesta guardada"
 }
