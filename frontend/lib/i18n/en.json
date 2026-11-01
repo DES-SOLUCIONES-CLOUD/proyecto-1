@@ -556,5 +556,11 @@
   "acceso.soloProfesores": "This section is for teachers only. With a student account you can't create or edit courses.",
   "acceso.soloAdministradores": "This section is for administrators only.",
   "acceso.irAMisCursos": "Go to my courses",
-  "acceso.irAlCatalogo": "Go to the catalog"
+  "acceso.irAlCatalogo": "Go to the catalog",
+  "curso.inscribiendo": "Enrolling…",
+  "curso.reinscribirme": "Enroll again",
+  "curso.irAlContenido": "Start or continue the course",
+  "curso.entrarParaInscribirse": "To enroll in this course, sign in with your student account.",
+  "curso.soloEstudiantes": "You're viewing this course as a teacher or administrator. Only students enroll.",
+  "curso.retiradoAyuda": "You withdrew from this course. If you enroll again, you keep the progress you already had."
 }

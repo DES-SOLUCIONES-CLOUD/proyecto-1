@@ -22,6 +22,9 @@ export default function CourseDetailPage() {
   const [version, setVersion] = useState<Version | null>(null);
   const [error, setError] = useState("");
   const [enrollMessage, setEnrollMessage] = useState("");
+  //el error va aparte del mensaje de exito para pintarlo en rojo y no en verde
+  const [enrollError, setEnrollError] = useState("");
+  const [inscribiendo, setInscribiendo] = useState(false);
   const [progress, setProgress] = useState<CourseProgress | null>(null);
 
   useEffect(() => {
@@ -44,25 +47,42 @@ export default function CourseDetailPage() {
 
   async function handleEnroll() {
     setEnrollMessage("");
+    setEnrollError("");
+    setInscribiendo(true);
     try {
       await api.enroll(courseId);
       setEnrollMessage(t("curso.inscrito"));
       loadProgress();
     } catch (e) {
-      setEnrollMessage(mensajeDeError(e, t, "curso.errorInscripcion"));
+      setEnrollError(mensajeDeError(e, t, "curso.errorInscripcion"));
+    } finally {
+      setInscribiendo(false);
     }
   }
 
   if (error) {
     return (
-      <p className="error-banner" role="alert">
-        {error}
-      </p>
+      <div className="columna-estrecha">
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+        <Link href="/">{t("acceso.irAlCatalogo")}</Link>
+      </div>
     );
   }
   if (!version) {
-    return <p>{t("curso.cargando")}</p>;
+    return <p role="status">{t("curso.cargando")}</p>;
   }
+
+  //el primer recurso visible del curso, para el boton de empezar
+  const primerRecurso = (version.Modules ?? [])
+    .flatMap((m) => m.Units ?? [])
+    .flatMap((u) => u.Resources ?? [])
+    .find((r) => r.Visible);
+  const esEstudiante = user?.role === "student";
+  //un estudiante que se retiro puede volver a inscribirse y conserva su progreso
+  const retirado = progress?.status === "withdrawn";
+  const inscrito = Boolean(progress) && !retirado;
 
   return (
     <div>
@@ -76,16 +96,37 @@ export default function CourseDetailPage() {
             <span className="badge">{version.Language}</span>
           </div>
         </div>
-        {user?.role === "student" && !progress && (
-          <div>
-            <button onClick={handleEnroll}>{t("curso.inscribirme")}</button>
-          </div>
-        )}
+        {/*lo que se ofrece depende de quien mira el curso*/}
+        <div className="stack">
+          {esEstudiante && !inscrito && (
+            <button onClick={handleEnroll} disabled={inscribiendo}>
+              {inscribiendo ? t("curso.inscribiendo") : retirado ? t("curso.reinscribirme") : t("curso.inscribirme")}
+            </button>
+          )}
+          {inscrito && primerRecurso && (
+            <Link className="boton" href={`/cursos/${courseId}/recursos/${primerRecurso.ID}`}>
+              {t("curso.irAlContenido")}
+            </Link>
+          )}
+        </div>
       </header>
+
+      {!user && (
+        <p className="warning-banner" role="status">
+          {t("curso.entrarParaInscribirse")} <Link href="/login">{t("nav.entrar")}</Link>
+        </p>
+      )}
+      {user && !esEstudiante && <p className="muted">{t("curso.soloEstudiantes")}</p>}
+      {retirado && <p className="warning-banner">{t("curso.retiradoAyuda")}</p>}
 
       {enrollMessage && (
         <p className="success-banner" role="status">
           {enrollMessage}
+        </p>
+      )}
+      {enrollError && (
+        <p className="error-banner" role="alert">
+          {enrollError}
         </p>
       )}
 
@@ -102,6 +143,13 @@ export default function CourseDetailPage() {
               })}
             </span>
           </p>
+          {/*barra de avance: muestra de un vistazo cuanto falta*/}
+          <progress
+            value={progress.required_percent}
+            max={100}
+            aria-label={t("curso.tuAvance")}
+            style={{ width: "100%" }}
+          />
           {progress.quizzes_pending > 0 && (
             <p className="muted">
               {t("curso.evaluacionesPendientes", { n: progress.quizzes_pending })}

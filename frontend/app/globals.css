@@ -454,6 +454,27 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* un enlace que se ve como boton, para acciones principales que llevan a otra pagina */
+a.boton {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+a.boton:hover {
+  filter: brightness(1.08);
+}
+
+a.boton.secondary {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+}
+
 /* Avisos. Los tres comparten forma para que se reconozcan como familia y
    difieran solo en color y en el papel que cumplen. */
 .error-banner,

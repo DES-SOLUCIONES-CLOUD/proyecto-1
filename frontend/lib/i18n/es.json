@@ -556,5 +556,11 @@
   "acceso.soloProfesores": "Esta sección es solo para profesores. Con tu cuenta de estudiante no puedes crear ni editar cursos.",
   "acceso.soloAdministradores": "Esta sección es solo para administradores.",
   "acceso.irAMisCursos": "Ir a mis cursos",
-  "acceso.irAlCatalogo": "Ir al catálogo"
+  "acceso.irAlCatalogo": "Ir al catálogo",
+  "curso.inscribiendo": "Inscribiendo…",
+  "curso.reinscribirme": "Volver a inscribirme",
+  "curso.irAlContenido": "Empezar o continuar el curso",
+  "curso.entrarParaInscribirse": "Para inscribirte en este curso, inicia sesión con tu cuenta de estudiante.",
+  "curso.soloEstudiantes": "Estás viendo el curso como profesor o administrador. Solo los estudiantes se inscriben.",
+  "curso.retiradoAyuda": "Te retiraste de este curso. Si vuelves a inscribirte, conservas el progreso que ya tenías."
 }
