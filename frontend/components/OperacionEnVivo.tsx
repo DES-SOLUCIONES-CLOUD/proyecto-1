@@ -123,7 +123,8 @@ export function OperacionEnVivo() {
           <div className="operacion__columnas">
             <div>
               <h3>{t("operacion.peticiones")}</h3>
-              <ol className="bitacora" aria-live="off">
+              {/*con tabIndex se puede bajar por la lista con el teclado*/}
+              <ol className="bitacora" aria-live="off" tabIndex={0} aria-label={t("operacion.peticiones")}>
                 {peticiones.slice(0, 60).map((p, i) => (
                   <FilaDePeticion key={`${p.hora}-${p.ruta}-${i}`} p={p} />
                 ))}
@@ -134,7 +135,7 @@ export function OperacionEnVivo() {
               {procesamiento.length === 0 ? (
                 <p className="muted">{t("operacion.sinTrabajos")}</p>
               ) : (
-                <ol className="bitacora">
+                <ol className="bitacora" tabIndex={0} aria-label={t("operacion.procesamiento")}>
                   {procesamiento.slice(0, 40).map((e, i) => (
                     <FilaDeTrabajo key={`${e.hora}-${i}`} e={e} />
                   ))}

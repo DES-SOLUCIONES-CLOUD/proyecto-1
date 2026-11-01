@@ -36,3 +36,7 @@ f6da712774986f21d3a8e8fdad329dca0573466c:deploy/sonarqube/analizar.sh:curl-auth-
 e1765a8b8a88a0a1350d0a3afb5179635b3df62a:docs/entrega3/evidencias/sonar/hallazgos.json:generic-api-key:1
 # el nombre de la metrica en metricKey de la misma exportacion: tampoco es un secreto.
 e1765a8b8a88a0a1350d0a3afb5179635b3df62a:docs/entrega3/evidencias/sonar/puerta.json:generic-api-key:1
+
+# "una-clave-de-10-o-mas" en el comentario de uso de data/catalogo/poblar.mjs:
+# es el texto de ejemplo que explica qué poner, no una contraseña real.
+0e39838e255a422623eddda5bb505efac6a4f58c:data/catalogo/poblar.mjs:generic-api-key:10
