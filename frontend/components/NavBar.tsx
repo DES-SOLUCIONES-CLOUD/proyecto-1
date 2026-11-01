@@ -33,7 +33,7 @@ export function NavBar() {
 
         {!loading && user && (
           <span className="row">
-            <span className="badge">{user.full_name} · {user.role}</span>
+            <span className="badge">{user.full_name} · {t(`rol.${user.role}`)}</span>
             <Link href="/cuenta/sesiones">{t("nav.sesiones")}</Link>
             <button className="secondary" onClick={handleLogout}>
               {t("nav.salir")}

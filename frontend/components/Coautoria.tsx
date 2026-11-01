@@ -108,7 +108,7 @@ export function Coautoria({ courseId }: { courseId: string }) {
                   <strong>{c.full_name}</strong> <span className="muted">{c.email}</span>
                 </p>
                 <p className="muted">
-                  {c.role} · {new Date(c.added_at).toLocaleDateString()}
+                  {t("coautoria.rolEditor")} · {new Date(c.added_at).toLocaleDateString()}
                 </p>
               </div>
               <button className="secondary" disabled={ocupado} onClick={() => quitar(c)}>

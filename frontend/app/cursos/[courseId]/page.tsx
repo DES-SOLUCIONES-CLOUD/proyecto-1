@@ -132,7 +132,7 @@ export default function CourseDetailPage() {
                             API lo comprueba en cada entrega. El enlace se
                             muestra igual para que se vea qué trae el curso. */}
                         <Link href={`/cursos/${courseId}/recursos/${r.ID}`}>{r.Title}</Link>{" "}
-                        <span className="badge">{r.Type}</span>
+                        <span className="badge">{t(`tipo.${r.Type}` as Clave)}</span>
                         {r.Required && <span className="badge">{t("curso.obligatorio")}</span>}
                       </li>
                     ))}

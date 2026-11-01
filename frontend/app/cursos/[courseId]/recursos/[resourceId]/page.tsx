@@ -11,7 +11,7 @@ import { VisorPDF } from "@/components/VisorPDF";
 import { QuizPlayer } from "@/components/QuizPlayer";
 import { MarcoIncrustado } from "@/components/MarcoIncrustado";
 import { useProgressReporting } from "@/lib/useProgressReporting";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type Clave } from "@/lib/i18n";
 
 /**
  * Consumo de un recurso por parte del estudiante.
@@ -120,7 +120,7 @@ export default function RecursoPage() {
         <div>
           <h1>{contenido.title}</h1>
           <p>
-            <span className="badge">{contenido.type}</span>
+            <span className="badge">{t(`tipo.${contenido.type}` as Clave)}</span>
           </p>
         </div>
         <Link href={`/cursos/${courseId}`}>{t("recurso.volver")}</Link>

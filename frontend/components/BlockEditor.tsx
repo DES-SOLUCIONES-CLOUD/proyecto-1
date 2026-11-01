@@ -167,7 +167,7 @@ export function BlockEditor({ initialMarkdown = "", draftKey = "mooc_block_draft
             <div className="row" style={{ justifyContent: "space-between", marginBottom: "0.4rem" }}>
               <div className="row" style={{ gap: "0.3rem", alignItems: "center" }}>
                 <span className="badge" style={{ textTransform: "capitalize", fontSize: "0.75rem" }}>
-                  {block.type} {block.type === "heading" ? `H${block.level}` : ""}
+                  {t(`bloque.${block.type}`)} {block.type === "heading" ? `H${block.level}` : ""}
                 </span>
                 {block.type === "heading" && (
                   <select

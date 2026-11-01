@@ -99,7 +99,7 @@ export default function VersionEditorPage() {
         </Link>
       </div>
       <p className="badge">
-        {t("version.etiqueta", { n: version.VersionNumber, estado: version.Status })}
+        {t("version.etiqueta", { n: version.VersionNumber, estado: t(`estadoVersion.${version.Status}` as Clave) })}
       </p>
 
       {/* Una sola advertencia: antes se pintaban dos banners seguidos, uno de
@@ -473,10 +473,10 @@ function ResourceRow({
     <li className="row" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.4rem" }}>
       <div className="row" style={{ alignItems: "center" }}>
         <span style={{ flex: 1 }}>
-          {r.Title} <span className="badge">{r.Type}</span>{" "}
+          {r.Title} <span className="badge">{t(`tipo.${r.Type}` as Clave)}</span>{" "}
           {r.ProcessingStatus !== "none" && (
             <span className="badge">
-              {t("version.procesamiento", { estado: r.ProcessingStatus })}
+              {t(`procesamiento.${r.ProcessingStatus}` as Clave)}
             </span>
           )}
           {!r.Visible && <span className="badge">{t("version.oculto")}</span>}

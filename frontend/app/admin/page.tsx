@@ -127,7 +127,7 @@ export default function AdminDashboardPage() {
                       <select id={`role-${u.id}`} value={u.role} onChange={(e) => handleRoleChange(u.id, e.target.value)}>
                         {ROLES.map((r) => (
                           <option key={r} value={r}>
-                            {r}
+                            {t(`rol.${r}`)}
                           </option>
                         ))}
                       </select>
@@ -139,7 +139,7 @@ export default function AdminDashboardPage() {
                       <select id={`status-${u.id}`} value={u.status} onChange={(e) => handleStatusChange(u.id, e.target.value)}>
                         {STATUSES.map((s) => (
                           <option key={s} value={s}>
-                            {s}
+                            {t(`estadoCuenta.${s}`)}
                           </option>
                         ))}
                       </select>
