@@ -1,0 +1,218 @@
+{
+  "cuentas": [
+    { "email": "laura.profesora@demo.mooc.local", "nombre": "Laura Martínez", "rol": "teacher" },
+    { "email": "carlos.profesor@demo.mooc.local", "nombre": "Carlos Rojas", "rol": "teacher" },
+    { "email": "ana.estudiante@demo.mooc.local", "nombre": "Ana Gómez", "rol": "student" }
+  ],
+  "dueno": "carlos.profesor@demo.mooc.local",
+  "cursos": [
+    {
+      "slug": "docker-para-principiantes",
+      "titulo": "Docker para principiantes",
+      "resumen": "Imágenes, contenedores, volúmenes y Compose para empaquetar y correr tus aplicaciones en cualquier máquina.",
+      "descripcion": "Aprende a empaquetar una aplicación con todo lo que necesita para correr.\n\nAl terminar sabrás **construir imágenes**, levantar contenedores, guardar datos con **volúmenes** y describir un sistema completo con **Docker Compose**.",
+      "categoria": "Infraestructura",
+      "nivel": "Introductorio",
+      "modulos": [
+        {
+          "titulo": "Contenedores",
+          "unidades": [
+            {
+              "titulo": "Imágenes y contenedores",
+              "lecciones": [
+                { "titulo": "¿Qué problema resuelve Docker?", "texto": "## El clásico \"en mi máquina sí funciona\"\n\nUna aplicación depende de una versión del lenguaje, de librerías y de configuración. Si algo de eso cambia entre tu portátil y el servidor, la aplicación falla.\n\nDocker empaqueta la aplicación **con todas sus dependencias** en una **imagen**. Esa imagen corre igual en cualquier máquina que tenga Docker.\n\n- Una **imagen** es la plantilla, de solo lectura.\n- Un **contenedor** es una imagen en ejecución.\n- Puedes correr muchos contenedores de la misma imagen." },
+                { "titulo": "Tu primer Dockerfile", "texto": "## Un Dockerfile mínimo\n\n```\nFROM node:20-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nCMD [\"node\", \"server.js\"]\n```\n\nCada instrucción crea una **capa**. Docker reutiliza las capas que no cambiaron, por eso conviene copiar primero `package.json` y después el resto del código.\n\nConstruye y corre con:\n\n```\ndocker build -t mi-app .\ndocker run -p 3000:3000 mi-app\n```" }
+              ]
+            }
+          ]
+        },
+        {
+          "titulo": "Datos y varios servicios",
+          "unidades": [
+            {
+              "titulo": "Volúmenes y Compose",
+              "lecciones": [
+                { "titulo": "Guardar datos con volúmenes", "texto": "## Los contenedores son desechables\n\nTodo lo que se escribe dentro de un contenedor se pierde al borrarlo. Para conservar datos, como los de una base de datos, se monta un **volumen**:\n\n```\ndocker run -v datos-pg:/var/lib/postgresql/data postgres:16\n```\n\nEl volumen vive fuera del contenedor y sobrevive a que lo reemplaces." },
+                { "titulo": "Docker Compose", "texto": "## Varios servicios en un archivo\n\nCon `docker-compose.yml` describes la aplicación, la base de datos y la cola en un solo lugar y los levantas con `docker compose up`.\n\nCompose crea una red para que los servicios se encuentren **por su nombre**, por ejemplo `postgres:5432`." }
+              ],
+              "quiz": {
+                "titulo": "Evaluación: Docker básico",
+                "preguntas": [
+                  { "pregunta": "¿Qué diferencia hay entre una imagen y un contenedor?", "opciones": ["La imagen es la plantilla y el contenedor es esa imagen en ejecución", "Son lo mismo con otro nombre", "El contenedor es la plantilla y la imagen la ejecución", "La imagen solo existe en la nube"], "correcta": 0 },
+                  { "pregunta": "¿Qué pasa con los datos escritos dentro de un contenedor al borrarlo, si no usa volúmenes?", "opciones": ["Se guardan en la imagen", "Se pierden", "Se copian al host automáticamente", "Se suben a un registro"], "correcta": 1 },
+                  { "pregunta": "¿Para qué sirve Docker Compose?", "opciones": ["Para comprimir imágenes", "Para describir y levantar varios servicios juntos", "Para reemplazar al Dockerfile", "Para monitorear la CPU"], "correcta": 1 }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "seguridad-en-la-nube",
+      "titulo": "Seguridad en la nube",
+      "resumen": "Identidades, permisos mínimos, secretos y redes privadas: lo esencial para no dejar la puerta abierta.",
+      "descripcion": "La mayoría de incidentes en la nube no vienen de ataques sofisticados sino de **configuraciones descuidadas**.\n\nEste curso cubre el modelo de responsabilidad compartida, el **principio de mínimo privilegio**, el manejo de secretos y el aislamiento de red.",
+      "categoria": "Seguridad",
+      "nivel": "Intermedio",
+      "modulos": [
+        {
+          "titulo": "Identidad y acceso",
+          "unidades": [
+            {
+              "titulo": "Quién puede hacer qué",
+              "lecciones": [
+                { "titulo": "Responsabilidad compartida", "texto": "## ¿De quién es cada cosa?\n\nEl proveedor protege los centros de datos, el hardware y la red física. **Tú** proteges lo que configuras encima: quién entra, qué puertos abres y dónde guardas las contraseñas.\n\nUn bucket público por error es responsabilidad del cliente, no del proveedor." },
+                { "titulo": "Mínimo privilegio", "texto": "## Solo los permisos necesarios\n\nCada persona y cada servicio debe tener **solo** los permisos que necesita para su tarea.\n\n- Usa **cuentas de servicio** distintas para la API y para los workers.\n- Prefiere roles predefinidos pequeños antes que `Owner` o `Editor`.\n- Revisa periódicamente los permisos que ya nadie usa." }
+              ]
+            }
+          ]
+        },
+        {
+          "titulo": "Secretos y redes",
+          "unidades": [
+            {
+              "titulo": "Proteger lo sensible",
+              "lecciones": [
+                { "titulo": "Manejo de secretos", "texto": "## Nunca en el repositorio\n\nLas contraseñas de la base de datos y las llaves de API van en un **gestor de secretos**, no en el código ni en el README.\n\nLa aplicación las lee al arrancar con la identidad de su máquina, sin que nadie tenga que copiarlas a mano." },
+                { "titulo": "Redes privadas", "texto": "## Menos puertas abiertas\n\nLa base de datos y la cola no necesitan IP pública. Ponlas en una **subred privada** y deja que solo el balanceador reciba tráfico de internet, siempre por **HTTPS**." }
+              ],
+              "quiz": {
+                "titulo": "Evaluación: seguridad básica",
+                "preguntas": [
+                  { "pregunta": "¿Qué dice el principio de mínimo privilegio?", "opciones": ["Dar a todos permisos de administrador para evitar bloqueos", "Dar a cada identidad solo los permisos que necesita", "Quitar todos los permisos a los servicios", "Usar una sola cuenta para todo"], "correcta": 1 },
+                  { "pregunta": "¿Dónde deberían guardarse las contraseñas de la base de datos?", "opciones": ["En el README", "En un gestor de secretos", "En el código fuente", "En un archivo público del bucket"], "correcta": 1 },
+                  { "pregunta": "¿Qué componente debería recibir el tráfico de internet?", "opciones": ["La base de datos", "La cola", "El balanceador por HTTPS", "Todas las máquinas virtuales"], "correcta": 2 }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "python-para-analisis-de-datos",
+      "titulo": "Python para análisis de datos",
+      "resumen": "Del archivo CSV a una gráfica con conclusiones: pandas, limpieza de datos y visualización para principiantes.",
+      "descripcion": "Un recorrido práctico por el flujo de análisis: **cargar**, **limpiar**, **resumir** y **graficar** datos con Python y pandas.",
+      "categoria": "Datos",
+      "nivel": "Introductorio",
+      "modulos": [
+        {
+          "titulo": "Primeros pasos con pandas",
+          "unidades": [
+            {
+              "titulo": "Cargar y explorar",
+              "lecciones": [
+                { "titulo": "DataFrames", "texto": "## La tabla de pandas\n\nUn **DataFrame** es una tabla con filas y columnas con nombre.\n\n```\nimport pandas as pd\nventas = pd.read_csv(\"ventas.csv\")\nventas.head()\n```\n\n`head()` muestra las primeras filas y `info()` el tipo de cada columna." },
+                { "titulo": "Limpiar datos", "texto": "## Datos reales, datos sucios\n\n- `dropna()` quita filas con valores vacíos.\n- `fillna(0)` los reemplaza.\n- `astype(\"int\")` cambia el tipo de una columna.\n\nAntes de sacar conclusiones, **revisa siempre** cuántos datos faltan." },
+                { "titulo": "Agrupar y graficar", "texto": "## Resumir por categoría\n\n```\nventas.groupby(\"ciudad\")[\"total\"].sum().plot(kind=\"bar\")\n```\n\nUna buena gráfica tiene **título**, ejes con unidades y responde **una sola pregunta**." }
+              ],
+              "quiz": {
+                "titulo": "Evaluación: pandas",
+                "preguntas": [
+                  { "pregunta": "¿Qué es un DataFrame?", "opciones": ["Una gráfica de barras", "Una tabla con filas y columnas con nombre", "Un archivo CSV comprimido", "Una base de datos en la nube"], "correcta": 1 },
+                  { "pregunta": "¿Qué hace dropna()?", "opciones": ["Quita las filas con valores vacíos", "Ordena la tabla", "Borra el archivo", "Agrupa por columna"], "correcta": 0 },
+                  { "pregunta": "¿Qué método agrupa filas por una columna?", "opciones": ["head", "groupby", "astype", "read_csv"], "correcta": 1 }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "git-y-github-en-equipo",
+      "titulo": "Git y GitHub en equipo",
+      "resumen": "Ramas, pull requests, revisiones y cómo resolver conflictos sin miedo cuando trabajan cuatro personas en el mismo repositorio.",
+      "descripcion": "Git es la herramienta que permite que varias personas cambien el mismo código sin pisarse. Aquí aprendes el flujo que usan los equipos: **ramas**, **pull requests** y **revisión de código**.",
+      "categoria": "Programación",
+      "nivel": "Introductorio",
+      "modulos": [
+        {
+          "titulo": "Trabajo en equipo",
+          "unidades": [
+            {
+              "titulo": "Ramas y pull requests",
+              "lecciones": [
+                { "titulo": "Commits que se entienden", "texto": "## Un commit, una idea\n\nUn buen commit hace **un solo cambio** y su mensaje dice qué hace, por ejemplo `Mostrar el avance del curso en Mis cursos`.\n\n```\ngit add .\ngit commit -m \"Mostrar el avance del curso\"\ngit push\n```" },
+                { "titulo": "Ramas", "texto": "## Trabajar sin romper main\n\nUna **rama** es una línea de trabajo aparte. Creas una, haces tus cambios y cuando están listos los integras.\n\n```\ngit switch -c mejoras-catalogo\n```" },
+                { "titulo": "Conflictos", "texto": "## Cuando dos personas tocan la misma línea\n\nGit marca el conflicto con `<<<<<<<` y `>>>>>>>`. Decides qué versión queda, borras las marcas, haces `git add` y continúas.\n\n**Consejo:** integra cambios seguido; los conflictos pequeños son fáciles." }
+              ],
+              "quiz": {
+                "titulo": "Evaluación: Git en equipo",
+                "preguntas": [
+                  { "pregunta": "¿Para qué sirve una rama?", "opciones": ["Para borrar el historial", "Para trabajar en una línea aparte sin afectar main", "Para subir archivos grandes", "Para cambiar de repositorio"], "correcta": 1 },
+                  { "pregunta": "¿Qué conviene para tener conflictos pequeños?", "opciones": ["Integrar cambios seguido", "Trabajar meses sin integrar", "No hacer commits", "Editar siempre el mismo archivo"], "correcta": 0 },
+                  { "pregunta": "¿Qué comando sube tus commits al servidor remoto?", "opciones": ["git add", "git status", "git push", "git log"], "correcta": 2 }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "diseno-de-interfaces-accesibles",
+      "titulo": "Diseño de interfaces accesibles",
+      "resumen": "Contraste, foco visible, textos alternativos y formularios claros para que todas las personas puedan usar tu aplicación.",
+      "descripcion": "Una interfaz accesible funciona con teclado, con lector de pantalla y con poca visión. Este curso resume las pautas **WCAG 2.2** más importantes con ejemplos concretos.",
+      "categoria": "Diseño",
+      "nivel": "Intermedio",
+      "modulos": [
+        {
+          "titulo": "Lo esencial de WCAG",
+          "unidades": [
+            {
+              "titulo": "Ver, oír y navegar",
+              "lecciones": [
+                { "titulo": "Contraste de color", "texto": "## Que se pueda leer\n\nEl texto normal necesita un contraste de al menos **4.5:1** con su fondo; el texto grande, **3:1**.\n\nNo uses el color como única señal: un error debe decir *qué* falló, no solo ponerse rojo." },
+                { "titulo": "Navegar con teclado", "texto": "## Sin mouse también\n\n- Todo lo que se puede hacer con el mouse se puede hacer con **Tab** y **Enter**.\n- El elemento con foco debe **verse** claramente.\n- Un enlace \"Saltar al contenido\" ahorra recorrer todo el menú." },
+                { "titulo": "Formularios claros", "texto": "## Etiquetas y errores\n\nCada campo lleva una **etiqueta visible** asociada. Los errores se anuncian con `role=\"alert\"` y explican cómo corregirlos." }
+              ],
+              "quiz": {
+                "titulo": "Evaluación: accesibilidad",
+                "preguntas": [
+                  { "pregunta": "¿Qué contraste mínimo pide WCAG AA para texto normal?", "opciones": ["2:1", "3:1", "4.5:1", "10:1"], "correcta": 2 },
+                  { "pregunta": "¿Por qué no basta con poner un error en rojo?", "opciones": ["Porque el rojo no se imprime", "Porque el color no puede ser la única señal", "Porque está prohibido usar rojo", "Porque los lectores de pantalla no leen texto"], "correcta": 1 },
+                  { "pregunta": "¿Qué permite un enlace \"Saltar al contenido\"?", "opciones": ["Ir directo al contenido sin recorrer el menú con el teclado", "Cerrar sesión", "Cambiar el idioma", "Descargar la página"], "correcta": 0 }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "redes-para-la-nube",
+      "titulo": "Redes para la nube",
+      "resumen": "VPC, subredes, reglas de firewall y balanceadores de carga explicados con el ejemplo de una aplicación real.",
+      "descripcion": "Cómo se conectan las piezas de una aplicación en la nube: **redes privadas**, **subredes**, **firewall** y el **balanceador** que reparte el tráfico entre réplicas.",
+      "categoria": "Redes",
+      "nivel": "Intermedio",
+      "modulos": [
+        {
+          "titulo": "La red de tu aplicación",
+          "unidades": [
+            {
+              "titulo": "De internet a tu máquina",
+              "lecciones": [
+                { "titulo": "VPC y subredes", "texto": "## Tu propia red\n\nUna **VPC** es una red privada dentro de la nube. Se divide en **subredes**, por ejemplo una para la API y otra para los workers.\n\nLas máquinas sin IP pública salen a internet a través de **Cloud NAT**, pero nadie puede entrar a ellas desde afuera." },
+                { "titulo": "Firewall", "texto": "## Reglas de quién habla con quién\n\nLas reglas de firewall permiten tráfico **solo** entre quien lo necesita: el balanceador hacia la API en el puerto 8080, la API hacia Redis en el 6379.\n\nTodo lo demás se niega por defecto." },
+                { "titulo": "Balanceadores de carga", "texto": "## Repartir el trabajo\n\nEl **balanceador** recibe las peticiones por HTTPS y las reparte entre las réplicas sanas. Si una réplica falla su **health check**, deja de recibir tráfico.\n\nAsí el **autoscaling** puede agregar o quitar máquinas sin que el usuario lo note." }
+              ],
+              "quiz": {
+                "titulo": "Evaluación: redes",
+                "preguntas": [
+                  { "pregunta": "¿Qué es una VPC?", "opciones": ["Un tipo de base de datos", "Una red privada dentro de la nube", "Un balanceador", "Un lenguaje de programación"], "correcta": 1 },
+                  { "pregunta": "¿Qué hace el balanceador cuando una réplica falla el health check?", "opciones": ["Le sigue enviando tráfico", "Deja de enviarle tráfico", "Apaga todas las réplicas", "Borra la base de datos"], "correcta": 1 },
+                  { "pregunta": "¿Cómo salen a internet las máquinas sin IP pública?", "opciones": ["No pueden salir", "A través de Cloud NAT", "Por el balanceador", "Por la base de datos"], "correcta": 1 }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
