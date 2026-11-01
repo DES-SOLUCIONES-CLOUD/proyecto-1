@@ -124,8 +124,15 @@ export default function VersionEditorPage() {
 
   const isDraft = version.Status === "draft";
 
+  const modulos = version.Modules ?? [];
+
+  //la pagina va en el orden en que el profesor trabaja:
+  //paso 1 datos del curso, paso 2 contenido, paso 3 publicar
   return (
     <div>
+      <p>
+        <Link href="/profesor">← {t("version.volverAMisCursos")}</Link>
+      </p>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
         <h1>{version.Title || t("version.sinTitulo")}</h1>
         <Link href={`/profesor/versiones/${versionId}/previsualizacion`}>
@@ -138,46 +145,61 @@ export default function VersionEditorPage() {
 
       {/* Una sola advertencia: antes se pintaban dos banners seguidos, uno de
           aviso y otro de error, diciendo lo mismo con distinto color. */}
-      {!isDraft && (
+      {!isDraft && !notice && (
         <p className="warning-banner" role="status">
           {t("version.inmutable")}{" "}
           <Link href="/profesor">{t("version.irADespublicar")}</Link>
         </p>
       )}
 
-      {notice && <p className="success-banner">{notice}</p>}
-      {publishErrors.length > 0 && (
-        <div className="error-banner" role="alert">
-          <strong>{t("version.motivos")}</strong>
-          <ul>
-            {publishErrors.map((d, i) => (
-              <li key={i}>{motivoDePublicacion(d, t)}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
+      {/*paso 1: datos del curso*/}
       {/*la key hace que el formulario solo se reinicie si cambia de version,
           no cada vez que la pagina se actualiza sola, asi no se borra lo que se escribe*/}
       <MetadataForm key={version.ID} version={version} disabled={!isDraft} onSaved={load} />
 
+      {/*paso 2: modulos, unidades y recursos*/}
+      <section className="stack">
+        <h2>{t("version.estructura")}</h2>
+        {isDraft && <p className="muted">{t("version.estructuraAyuda")}</p>}
+        {isDraft && <AddModuleForm versionId={versionId} nextPosition={modulos.length + 1} onAdded={load} />}
+        {modulos.length === 0 && <p className="muted">{t("version.sinModulos")}</p>}
+        <ol className="stack">
+          {modulos.map((m) => (
+            <ModuleCard key={m.ID} versionId={versionId} module={m} editable={isDraft} onChange={load} />
+          ))}
+        </ol>
+      </section>
+
+      {/*paso 3: publicar, con el resultado justo al lado del boton*/}
+      <section className="card stack">
+        <h2 style={{ marginTop: 0 }}>{t("version.pasoPublicar")}</h2>
+        {isDraft && <p className="muted">{t("version.publicarAyuda")}</p>}
+        {isDraft && <CambiosDelBorrador versionId={versionId} />}
+        {publishErrors.length > 0 && (
+          <div className="error-banner" role="alert">
+            <strong>{t("version.motivos")}</strong>
+            <ul>
+              {publishErrors.map((d, i) => (
+                <li key={i}>{motivoDePublicacion(d, t)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {notice && (
+          <p className="success-banner" role="status">
+            {notice} <Link href={`/cursos/${version.CourseID}`}>{t("version.verEnCatalogo")}</Link>
+          </p>
+        )}
+        {isDraft && (
+          <div>
+            <button onClick={handlePublish}>{t("version.publicar")}</button>
+          </div>
+        )}
+        {!isDraft && !notice && <p className="muted">{t("version.yaPublicada")}</p>}
+      </section>
+
+      {/*opcional: invitar a otros profesores a editar el curso*/}
       <Coautoria courseId={version.CourseID} />
-
-      {isDraft && (
-        <div className="card stack">
-          <CambiosDelBorrador versionId={versionId} />
-          <button onClick={handlePublish}>{t("version.publicar")}</button>
-        </div>
-      )}
-
-      <h2>{t("version.estructura")}</h2>
-      {isDraft && <AddModuleForm versionId={versionId} nextPosition={(version.Modules?.length ?? 0) + 1} onAdded={load} />}
-
-      <ol className="stack">
-        {version.Modules?.map((m) => (
-          <ModuleCard key={m.ID} versionId={versionId} module={m} editable={isDraft} onChange={load} />
-        ))}
-      </ol>
     </div>
   );
 }
@@ -346,6 +368,7 @@ function ModuleCard({
 
       {editable && <AddUnitForm versionId={versionId} moduleId={m.ID} nextPosition={(m.Units?.length ?? 0) + 1} onAdded={onChange} />}
 
+      {(m.Units ?? []).length === 0 && <p className="muted">{t("version.moduloVacio")}</p>}
       <ol className="stack">
         {m.Units?.map((u) => (
           <UnitCard key={u.ID} versionId={versionId} unit={u} editable={editable} onChange={onChange} />
@@ -417,6 +440,7 @@ function UnitCard({
         )}
       </div>
 
+      {(u.Resources ?? []).length === 0 && <p className="muted">{t("version.unidadVacia")}</p>}
       <ul className="stack">
         {u.Resources?.map((r) => (
           <ResourceRow key={r.ID} versionId={versionId} resource={r} editable={editable} onChange={onChange} />
