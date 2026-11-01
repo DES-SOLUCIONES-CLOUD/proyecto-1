@@ -67,6 +67,9 @@ const listos = new Counter("mooc_videos_listos");
 const fallosReady = new Rate("mooc_ready_fallido");
 
 export const options = {
+  // setup() publica los perfiles y espera a que queden listos: el video largo
+  // no cabe en los 60 s por defecto de k6. No cambia la carga medida.
+  setupTimeout: __ENV.SETUP_TIMEOUT || "15m",
   scenarios: {
     profesores: {
       executor: "constant-vus",
