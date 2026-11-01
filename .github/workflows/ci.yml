@@ -247,7 +247,16 @@ jobs:
             # ejercita aparte, en 99-limite-de-tasa.spec.ts, que corre el
             # último porque agota el presupuesto a propósito.
             echo "AUTH_RATE_LIMIT_PER_MINUTE=300"
+
+            # Clave de un solo uso para firmar credenciales: sin ella la API
+            # responde 503 en la credencial VC-JWT que recorre Postman. Es la
+            # semilla más la clave pública de Ed25519, los últimos 32 bytes de
+            # cada DER, igual que asegurar_clave_insignias en deploy/gcp/lib.sh.
+            openssl genpkey -algorithm ed25519 -outform DER -out /tmp/insignias.der
+            openssl pkey -inform DER -in /tmp/insignias.der -pubout -outform DER -out /tmp/insignias-pub.der
+            echo "BADGE_SIGNING_KEY=$({ tail -c 32 /tmp/insignias.der; tail -c 32 /tmp/insignias-pub.der; } | base64 -w0)"
           } >> .env
+          rm -f /tmp/insignias.der /tmp/insignias-pub.der
 
           # Comprobar que la configuración del .env LLEGA a los contenedores
           # antes de construir nada. Compose usa el .env para interpolar este
@@ -313,6 +322,11 @@ jobs:
           # limitador de autenticación y dejaría sin servicio a cualquier paso
           # posterior durante un minuto. Su comportamiento ya lo cubre
           # frontend/e2e/99-limite-de-tasa.spec.ts.
+          #
+          # Esa prueba es la última de las E2E y agota el presupuesto a
+          # propósito: sin esperar a que pase la ventana de un minuto, el login
+          # inicial de esta colección responde 429 y arrastra a todas las demás.
+          sleep 65
           npm install --no-save --prefix /tmp/newman newman
           /tmp/newman/node_modules/.bin/newman run \
             postman/plataforma-mooc.postman_collection.json \

@@ -36,10 +36,29 @@ METRICAS = [
     ("security_hotspots", "Security hotspots"),
     ("coverage", "Cobertura (%)"),
 ]
+CAMPOS_HALLAZGO = ["severity", "rule", "type", "component", "line", "message"]
 
 
 def leer(directorio: Path, nombre: str) -> dict:
     return json.loads((directorio / nombre).read_text(encoding="utf-8"))
+
+
+def limpiar_hallazgos(directorio: Path) -> None:
+    """deja en hallazgos.json solo lo que hace falta para rastrear cada hallazgo
+
+    este archivo se versiona como evidencia. los key y hash aleatorios que trae
+    la api hacen saltar a gitleaks en cada analisis, y author lleva correos
+    """
+    ruta = directorio / "hallazgos.json"
+    hallazgos = leer(directorio, "hallazgos.json")
+    limpio = {
+        "total": hallazgos.get("total"),
+        "issues": [
+            {campo: i[campo] for campo in CAMPOS_HALLAZGO if campo in i}
+            for i in hallazgos.get("issues", [])
+        ],
+    }
+    ruta.write_text(json.dumps(limpio, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
 
 
 def valor(clave: str, crudo: str) -> str:
@@ -50,6 +69,7 @@ def valor(clave: str, crudo: str) -> str:
 
 def main() -> None:
     directorio, commit, servidor = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+    limpiar_hallazgos(directorio)
     medidas = {m["metric"]: m.get("value", "-") for m in leer(directorio, "medidas.json")["component"]["measures"]}
     puerta = leer(directorio, "puerta.json")["projectStatus"]
     hallazgos = leer(directorio, "hallazgos.json")
