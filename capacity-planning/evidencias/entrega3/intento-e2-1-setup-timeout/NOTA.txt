@@ -1,1 +1,0 @@
-causa: setup() excedio 60 s (setupTimeout por defecto) a las 01:44:45Z; sin carga medida; no cuenta como corrida valida
