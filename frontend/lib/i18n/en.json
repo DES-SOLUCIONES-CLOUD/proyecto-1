@@ -548,5 +548,7 @@
   "version.publicarAyuda": "Publishing checks that the course has a title, a summary, at least one module with units and resources, and that every file is ready. If something is missing, you'll see the full list here.",
   "version.verEnCatalogo": "See it in the catalog",
   "version.yaPublicada": "This version is no longer a draft, so it can't be published again.",
-  "version.volverAMisCursos": "Back to my courses"
+  "version.volverAMisCursos": "Back to my courses",
+  "version.errorEliminar": "It couldn't be deleted. Please try again.",
+  "version.errorUnidad": "The unit couldn't be added"
 }

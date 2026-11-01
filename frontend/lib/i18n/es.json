@@ -548,5 +548,7 @@
   "version.publicarAyuda": "Al publicar se revisa que el curso tenga título, resumen, al menos un módulo con unidades y recursos, y que todos los archivos estén listos. Si falta algo, verás la lista completa aquí.",
   "version.verEnCatalogo": "Verlo en el catálogo",
   "version.yaPublicada": "Esta versión ya no es un borrador, así que no se puede publicar otra vez.",
-  "version.volverAMisCursos": "Volver a mis cursos"
+  "version.volverAMisCursos": "Volver a mis cursos",
+  "version.errorEliminar": "No se pudo eliminar. Inténtalo de nuevo.",
+  "version.errorUnidad": "No se pudo agregar la unidad"
 }

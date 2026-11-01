@@ -348,11 +348,18 @@ function ModuleCard({
   onChange: () => void;
 }) {
   const { t } = useI18n();
+  const [error, setError] = useState("");
 
   async function handleDelete() {
     if (!confirm(t("version.confirmarModulo", { titulo: m.Title }))) return;
-    await api.deleteModule(versionId, m.ID);
-    onChange();
+    //si falla, se avisa en vez de no hacer nada
+    try {
+      setError("");
+      await api.deleteModule(versionId, m.ID);
+      onChange();
+    } catch (e) {
+      setError(mensajeDeError(e, t, "version.errorEliminar"));
+    }
   }
 
   return (
@@ -365,6 +372,11 @@ function ModuleCard({
           </button>
         )}
       </div>
+      {error && (
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+      )}
 
       {editable && <AddUnitForm versionId={versionId} moduleId={m.ID} nextPosition={(m.Units?.length ?? 0) + 1} onAdded={onChange} />}
 
@@ -391,16 +403,28 @@ function AddUnitForm({
 }) {
   const { t } = useI18n();
   const [title, setTitle] = useState("");
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await api.addUnit(versionId, moduleId, { title, position: nextPosition });
-    setTitle("");
-    onAdded();
+    //si falla, se avisa en vez de no hacer nada
+    try {
+      setError("");
+      await api.addUnit(versionId, moduleId, { title, position: nextPosition });
+      setTitle("");
+      onAdded();
+    } catch (err) {
+      setError(mensajeDeError(err, t, "version.errorUnidad"));
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="row">
+      {error && (
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+      )}
       <div className="form-field" style={{ flex: 1, marginBottom: "0.5rem" }}>
         <label htmlFor={`new-unit-${moduleId}`}>{t("version.nuevaUnidad")}</label>
         <input id={`new-unit-${moduleId}`} required value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -422,11 +446,18 @@ function UnitCard({
   onChange: () => void;
 }) {
   const { t } = useI18n();
+  const [error, setError] = useState("");
 
   async function handleDelete() {
     if (!confirm(t("version.confirmarUnidad", { titulo: u.Title }))) return;
-    await api.deleteUnit(versionId, u.ID);
-    onChange();
+    //si falla, se avisa en vez de no hacer nada
+    try {
+      setError("");
+      await api.deleteUnit(versionId, u.ID);
+      onChange();
+    } catch (e) {
+      setError(mensajeDeError(e, t, "version.errorEliminar"));
+    }
   }
 
   return (
@@ -439,6 +470,11 @@ function UnitCard({
           </button>
         )}
       </div>
+      {error && (
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+      )}
 
       {(u.Resources ?? []).length === 0 && <p className="muted">{t("version.unidadVacia")}</p>}
       <ul className="stack">
@@ -490,8 +526,14 @@ function ResourceRow({
 
   async function handleDelete() {
     if (!confirm(t("version.confirmarRecurso", { titulo: r.Title }))) return;
-    await api.deleteResource(versionId, r.ID);
-    onChange();
+    //si falla, se avisa en vez de no hacer nada
+    try {
+      setError("");
+      await api.deleteResource(versionId, r.ID);
+      onChange();
+    } catch (e) {
+      setError(mensajeDeError(e, t, "version.errorEliminar"));
+    }
   }
 
   async function handleFile(file: File) {
