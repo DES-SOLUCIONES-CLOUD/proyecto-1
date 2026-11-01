@@ -11,6 +11,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/migrate ./cmd/migrate
 FROM alpine:3.20 AS api
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /out/api /usr/local/bin/api
+# el commit que se desplego, lo devuelve /api/v1/health para saber que version corre
+ARG VERSION=dev
+ENV MOOC_VERSION=$VERSION
 EXPOSE 8080
 ENTRYPOINT ["api"]
 

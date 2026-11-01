@@ -173,6 +173,7 @@ var CabecerasExpuestas = []string{
 	"ETag",
 	"X-Request-Id",
 	CabeceraIdempotenciaRepetida,
+	"X-Servido-Por",
 }
 
 func CORS(allowedOrigin string) func(http.Handler) http.Handler {

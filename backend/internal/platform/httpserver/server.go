@@ -103,6 +103,7 @@ func NewRouter(d Deps) http.Handler {
 		Recover,
 		Logging,
 		SecurityHeaders,
+		ServidoPor,
 		CORS(d.CORSOrigin),
 		CSRF,
 		Idempotency(d.Redis),

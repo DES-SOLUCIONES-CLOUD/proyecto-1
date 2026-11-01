@@ -56,6 +56,7 @@ construir() {
   aviso "construyendo $1"
   fijar_cache "$1"
   docker buildx build --platform linux/amd64 --target "$1" ${CACHE[@]+"${CACHE[@]}"} \
+    --build-arg "VERSION=$TAG" \
     -t "$REGISTRO/mooc-$1:$TAG" --push backend
 }
 construir api
@@ -70,6 +71,7 @@ aviso "construyendo frontend para $(salida url_publica)"
 fijar_cache frontend
 docker buildx build --platform linux/amd64 ${CACHE[@]+"${CACHE[@]}"} \
   --build-arg "NEXT_PUBLIC_API_URL=$(salida url_publica)" \
+  --build-arg "NEXT_PUBLIC_VERSION=$TAG" \
   -t "$REGISTRO/mooc-frontend:$TAG" --push frontend
 
 mkdir -p "$ESTADO"

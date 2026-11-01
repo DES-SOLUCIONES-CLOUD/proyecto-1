@@ -4,7 +4,12 @@ import "net/http"
 
 func (h *handlers) registerHealth(mux *http.ServeMux) {
 	salud := func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		//ademas del estado dice que maquina respondio y que version del codigo corre
+		writeJSON(w, http.StatusOK, map[string]string{
+			"status":    "ok",
+			"instancia": nombreDeInstancia(),
+			"version":   versionDesplegada(),
+		})
 	}
 	mux.HandleFunc("GET /api/v1/health", salud)
 	// El health check del balanceador de GCP y el autohealing de los MIG
