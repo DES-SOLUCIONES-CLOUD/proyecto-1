@@ -326,6 +326,12 @@ que por diseño no se crean por registro público: un administrador invita
 profesores desde http://localhost:3000/admin, y el primer administrador se
 siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
 
+## Entrega 3 — Aplicación elástica IaaS
+
+* **URL de la aplicación (frontend y API detrás del balanceador):** [https://136.82.109.164.sslip.io/](https://136.82.109.164.sslip.io/)
+* **Verificación funcional del frontend:** [docs/entrega3/frontend-verificacion.md](docs/entrega3/frontend-verificacion.md)
+* **Deuda técnica:** [docs/entrega3/deuda-tecnica.md](docs/entrega3/deuda-tecnica.md)
+
 ## Entrega 2 — Despliegue en GCP y Capacidad
 
 * **🌐 URL de la Aplicación en Producción:** [https://34.28.87.172.sslip.io/](https://34.28.87.172.sslip.io/) (`/api/v1/health` responde `{"status":"ok"}`).
