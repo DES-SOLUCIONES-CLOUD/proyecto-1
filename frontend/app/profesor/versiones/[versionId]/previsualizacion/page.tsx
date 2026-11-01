@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, ApiError, type Version } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 
 /**
@@ -25,7 +26,7 @@ export default function PrevisualizacionPage() {
     try {
       setVersion(await api.getVersion(versionId));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("previsualizacion.error"));
+      setError(mensajeDeError(e, t, "previsualizacion.error"));
     }
   }, [versionId, t]);
 

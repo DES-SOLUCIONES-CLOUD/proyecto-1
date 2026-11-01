@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, type Version, ApiError } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n, useTraductorEstable } from "@/lib/i18n";
 
 // Los filtros del catálogo (punto 10 del alcance mínimo) los resuelve la API:
@@ -43,7 +44,7 @@ export default function HomePage() {
       const res = await api.listCatalog(params);
       setCourses(res.items ?? []);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : traducir("catalogo.error"));
+      setError(mensajeDeError(e, traducir, "catalogo.error"));
     }
   }, [traducir]);
 

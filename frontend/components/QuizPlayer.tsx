@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError, type QuizAttempt, type QuizQuestion } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n, useTraductorEstable } from "@/lib/i18n";
 
 /**
@@ -33,7 +34,7 @@ export function QuizPlayer({ resourceId }: { resourceId: string }) {
       })
       .catch((e) => {
         if (!cancelado) {
-          setError(e instanceof ApiError ? e.message : traducir("quiz.errorAbrir"));
+          setError(mensajeDeError(e, traducir, "quiz.errorAbrir"));
         }
       });
     return () => {
@@ -61,7 +62,7 @@ export function QuizPlayer({ resourceId }: { resourceId: string }) {
       await api.saveQuizAnswer(attempt.attempt_id, question.stable_id, seleccion);
     } catch (e) {
       setAttempt({ ...attempt, answers: { ...attempt.answers, [question.stable_id]: previa } });
-      setError(e instanceof ApiError ? e.message : t("quiz.errorGuardarRespuesta"));
+      setError(mensajeDeError(e, t, "quiz.errorGuardarRespuesta"));
     } finally {
       setSavingQuestion(null);
     }
@@ -93,7 +94,7 @@ export function QuizPlayer({ resourceId }: { resourceId: string }) {
       // resumen justo después del envío ya vea el resultado actualizado.
       void api.recordProgress(resourceId, "close", true).catch(() => undefined);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("quiz.errorEnviar"));
+      setError(mensajeDeError(e, t, "quiz.errorEnviar"));
     } finally {
       setSubmitting(false);
     }

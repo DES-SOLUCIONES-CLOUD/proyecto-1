@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, type Course, ApiError } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 
 export default function TeacherDashboardPage() {
@@ -23,7 +24,7 @@ export default function TeacherDashboardPage() {
       const res = await api.listMyCourses();
       setCourses(res.items ?? []);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("profesor.error"));
+      setError(mensajeDeError(e, t, "profesor.error"));
     }
   }, [t]);
 
@@ -42,7 +43,7 @@ export default function TeacherDashboardPage() {
       // una pantalla que ya está cargada.
       router.push(`/profesor/versiones/${res.version_id}`);
     } catch (e) {
-      setError(e instanceof ApiError ? [e.message, ...(e.details ?? [])].join(" ") : t("profesor.errorCrear"));
+      setError(mensajeDeError(e, t, "profesor.errorCrear"));
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +130,7 @@ function CourseRow({
       const v = await api.createUpdateDraft(c.ID);
       router.push(`/profesor/versiones/${v.ID}`);
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : t("profesor.errorBorrador"));
+      onError(mensajeDeError(e, t, "profesor.errorBorrador"));
     } finally {
       setTrabajando(false);
     }
@@ -144,7 +145,7 @@ function CourseRow({
       await api.unpublishCourse(c.ID);
       await onChange();
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : t("profesor.errorDespublicar"));
+      onError(mensajeDeError(e, t, "profesor.errorDespublicar"));
     } finally {
       setTrabajando(false);
     }

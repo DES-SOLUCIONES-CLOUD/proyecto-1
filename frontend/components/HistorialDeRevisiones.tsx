@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api, ApiError, type Revision } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 
 /**
@@ -38,7 +39,7 @@ export function HistorialDeRevisiones({
       const res = await api.listRevisions(versionId, resourceId);
       setItems(res.items ?? []);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("historial.error"));
+      setError(mensajeDeError(e, t, "historial.error"));
     }
   }, [versionId, resourceId, t]);
 
@@ -51,7 +52,7 @@ export function HistorialDeRevisiones({
     try {
       setAbierta(await api.getRevision(versionId, resourceId, numero));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("historial.errorAbrir"));
+      setError(mensajeDeError(e, t, "historial.errorAbrir"));
     }
   }
 
@@ -65,7 +66,7 @@ export function HistorialDeRevisiones({
       await cargar();
       onRestaurado();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("historial.errorRestaurar"));
+      setError(mensajeDeError(e, t, "historial.errorRestaurar"));
     } finally {
       setOcupado(false);
     }

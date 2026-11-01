@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api, ApiError, type Colaborador } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 
 /**
@@ -48,9 +49,7 @@ export function Coautoria({ courseId }: { courseId: string }) {
       setError(
         err instanceof ApiError && err.code === "teacher_not_found"
           ? t("coautoria.noEsProfesor")
-          : err instanceof ApiError
-            ? err.message
-            : t("coautoria.noEsProfesor"),
+          : mensajeDeError(err, t, "coautoria.noEsProfesor"),
       );
     } finally {
       setOcupado(false);
@@ -63,7 +62,7 @@ export function Coautoria({ courseId }: { courseId: string }) {
       await api.removeCollaborator(courseId, c.user_id);
       await cargar();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("coautoria.errorQuitar"));
+      setError(mensajeDeError(err, t, "coautoria.errorQuitar"));
     } finally {
       setOcupado(false);
     }

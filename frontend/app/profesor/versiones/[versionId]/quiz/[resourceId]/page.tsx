@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, ApiError, type QuizQuestionDraft, type Resource, type ResultadosDeQuiz } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 
 type BorradorOpcion = { text_md: string; is_correct: boolean };
@@ -69,7 +70,7 @@ export default function QuizAuthoringPage() {
           setLoadError(t("quizAutoria.noEncontrado"));
         }
       })
-      .catch((e) => setLoadError(e instanceof ApiError ? e.message : t("quizAutoria.errorVersion")));
+      .catch((e) => setLoadError(mensajeDeError(e, t, "quizAutoria.errorVersion")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versionId, resourceId]);
 
@@ -164,7 +165,7 @@ export default function QuizAuthoringPage() {
       if (e instanceof ApiError && e.details?.length) {
         setError(e.details.join(" "));
       } else {
-        setError(e instanceof ApiError ? e.message : t("quizAutoria.errorGuardar"));
+        setError(mensajeDeError(e, t, "quizAutoria.errorGuardar"));
       }
     } finally {
       setSaving(false);

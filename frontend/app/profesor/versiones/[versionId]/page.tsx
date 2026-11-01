@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, type Version, type Module, type Unit, type Clasificacion, ApiError } from "@/lib/api";
+import { mensajeDeError, motivoDePublicacion } from "@/lib/errores";
 import { BlockEditor } from "@/components/BlockEditor";
 import { HistorialDeRevisiones } from "@/components/HistorialDeRevisiones";
 import { Coautoria } from "@/components/Coautoria";
@@ -32,7 +33,7 @@ const RESOURCE_TYPES: ReadonlyArray<readonly [string, Clave]> = [
  */
 function mensajeDeCarga(e: unknown, t: Traducir): string {
   if (e instanceof ErrorDeCarga) return t(`carga.error.${e.clave}`, e.datos);
-  return e instanceof Error ? e.message : t("carga.error.generico");
+  return mensajeDeError(e, t, "carga.error.generico");
 }
 
 const BINARY_TYPES = new Set(["image", "video", "audio", "pdf", "presentation", "file"]);
@@ -50,7 +51,7 @@ export default function VersionEditorPage() {
       const v = await api.getVersion(versionId);
       setVersion(v);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("version.error"));
+      setError(mensajeDeError(e, t, "version.error"));
     }
   }, [versionId, t]);
 
@@ -66,10 +67,12 @@ export default function VersionEditorPage() {
       setNotice(t("version.publicada"));
       load();
     } catch (e) {
+      //si la api dice que falta algo, se muestra la lista completa de motivos
+      //si fue otro error se muestra igual en la lista, sin borrar toda la pagina
       if (e instanceof ApiError && e.details?.length) {
         setPublishErrors(e.details);
       } else {
-        setError(e instanceof ApiError ? e.message : t("version.errorPublicar"));
+        setPublishErrors([mensajeDeError(e, t, "version.errorPublicar")]);
       }
     }
   }
@@ -114,7 +117,7 @@ export default function VersionEditorPage() {
           <strong>{t("version.motivos")}</strong>
           <ul>
             {publishErrors.map((d, i) => (
-              <li key={i}>{d}</li>
+              <li key={i}>{motivoDePublicacion(d, t)}</li>
             ))}
           </ul>
         </div>
@@ -168,7 +171,7 @@ function MetadataForm({ version, disabled, onSaved }: { version: Version; disabl
       } as any);
       onSaved();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("version.errorGuardar"));
+      setError(mensajeDeError(e, t, "version.errorGuardar"));
     } finally {
       setSaving(false);
     }
@@ -261,7 +264,7 @@ function AddModuleForm({ versionId, nextPosition, onAdded }: { versionId: string
       setTitle("");
       onAdded();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("version.errorModulo"));
+      setError(mensajeDeError(e, t, "version.errorModulo"));
     }
   }
 
@@ -583,7 +586,7 @@ function EditorDeContenido({
       setRecarga((n) => n + 1);
       onChange();
     } catch (e) {
-      setEstado(e instanceof ApiError ? e.message : t("version.errorGuardar"));
+      setEstado(mensajeDeError(e, t, "version.errorGuardar"));
     }
   }
 
@@ -761,7 +764,7 @@ function AddResourceForm({
       setExternalUrl("");
       onAdded();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("version.errorRecurso"));
+      setError(mensajeDeError(e, t, "version.errorRecurso"));
     }
   }
 

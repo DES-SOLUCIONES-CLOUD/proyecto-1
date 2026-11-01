@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n } from "@/lib/i18n";
 
 export default function RegisterPage() {
@@ -22,7 +23,7 @@ export default function RegisterPage() {
       await api.register({ email, password, full_name: fullName });
       setDone(true);
     } catch (e) {
-      setError(e instanceof ApiError ? [e.message, ...(e.details ?? [])].join(" ") : t("auth.registro.error"));
+      setError(mensajeDeError(e, t, "auth.registro.error"));
     } finally {
       setSubmitting(false);
     }

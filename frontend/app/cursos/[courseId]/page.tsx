@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, type Version, type CourseProgress, ApiError } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n, type Clave } from "@/lib/i18n";
 
@@ -27,7 +28,7 @@ export default function CourseDetailPage() {
     api
       .getPublishedCourse(courseId)
       .then(setVersion)
-      .catch((e) => setError(e instanceof ApiError ? e.message : t("curso.error")));
+      .catch((e) => setError(mensajeDeError(e, t, "curso.error")));
   }, [courseId, t]);
 
   const loadProgress = useCallback(() => {
@@ -48,7 +49,7 @@ export default function CourseDetailPage() {
       setEnrollMessage(t("curso.inscrito"));
       loadProgress();
     } catch (e) {
-      setEnrollMessage(e instanceof ApiError ? e.message : t("curso.errorInscripcion"));
+      setEnrollMessage(mensajeDeError(e, t, "curso.errorInscripcion"));
     }
   }
 

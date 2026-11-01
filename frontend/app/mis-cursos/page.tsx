@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type Enrollment, ApiError } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useAuth } from "@/lib/auth-context";
 import { ListaPersonal } from "@/components/ListaPersonal";
 import { useI18n, type Clave, type Traducir } from "@/lib/i18n";
@@ -55,7 +56,7 @@ export default function MyCoursesPage() {
       const res = await api.listMyEnrollments();
       setItems(res.items ?? []);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("misCursos.error"));
+      setError(mensajeDeError(e, t, "misCursos.error"));
     }
   }
 
@@ -64,7 +65,7 @@ export default function MyCoursesPage() {
       await api.withdraw(courseId);
       load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("misCursos.errorRetirar"));
+      setError(mensajeDeError(e, t, "misCursos.errorRetirar"));
     }
   }
 

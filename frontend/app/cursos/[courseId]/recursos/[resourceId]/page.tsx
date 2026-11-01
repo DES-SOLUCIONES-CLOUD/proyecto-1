@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, ApiError, type ResourceContent } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { ReproductorHLS, type PistaDeSubtitulos } from "@/components/ReproductorHLS";
 import { Foro } from "@/components/Foro";
 import { VisorPDF } from "@/components/VisorPDF";
@@ -57,7 +58,7 @@ export default function RecursoPage() {
         } else if (e instanceof ApiError && e.status === 404) {
           setError(t("recurso.sinAcceso"));
         } else {
-          setError(e instanceof ApiError ? e.message : t("recurso.error"));
+          setError(mensajeDeError(e, t, "recurso.error"));
         }
       }
     })();

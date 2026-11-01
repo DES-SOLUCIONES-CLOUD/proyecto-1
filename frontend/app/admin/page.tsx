@@ -11,6 +11,7 @@ import {
   type Session,
   type User,
 } from "@/lib/api";
+import { mensajeDeError } from "@/lib/errores";
 import { useI18n, type Clave } from "@/lib/i18n";
 
 const ROLES: User["role"][] = ["student", "teacher", "admin"];
@@ -34,7 +35,7 @@ export default function AdminDashboardPage() {
       const res = await api.listUsers(search ? { q: search } : {});
       setUsers(res.items ?? []);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("admin.errorUsuarios"));
+      setError(mensajeDeError(e, t, "admin.errorUsuarios"));
     }
   }
 
@@ -44,7 +45,7 @@ export default function AdminDashboardPage() {
       await api.updateUserRole(id, role);
       load(q);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("admin.errorRol"));
+      setError(mensajeDeError(e, t, "admin.errorRol"));
     }
   }
 
@@ -54,7 +55,7 @@ export default function AdminDashboardPage() {
       await api.updateUserStatus(id, status);
       load(q);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("admin.errorEstado"));
+      setError(mensajeDeError(e, t, "admin.errorEstado"));
     }
   }
 
@@ -178,7 +179,7 @@ function PanelDeMetricas({ onError }: { onError: (m: string) => void }) {
     api
       .platformMetrics()
       .then(setMetricas)
-      .catch((e) => onError(e instanceof ApiError ? e.message : t("admin.errorMetricas")));
+      .catch((e) => onError(mensajeDeError(e, t, "admin.errorMetricas")));
   }, [onError, t]);
 
   if (!metricas) return null;
@@ -248,7 +249,7 @@ function ListaBlancaDeIframes({ onError }: { onError: (m: string) => void }) {
       setItems(res.items ?? []);
       setSandbox(res.sandbox);
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : t("admin.errorDestinos"));
+      onError(mensajeDeError(e, t, "admin.errorDestinos"));
     }
   }, [onError, t]);
 
@@ -272,7 +273,7 @@ function ListaBlancaDeIframes({ onError }: { onError: (m: string) => void }) {
       setSubdominios(false);
       await cargar();
     } catch (err) {
-      onError(err instanceof ApiError ? err.message : t("admin.errorAutorizar"));
+      onError(mensajeDeError(err, t, "admin.errorAutorizar"));
     } finally {
       setOcupado(false);
     }
@@ -287,7 +288,7 @@ function ListaBlancaDeIframes({ onError }: { onError: (m: string) => void }) {
       await api.removeIframeDestino(d.id);
       await cargar();
     } catch (err) {
-      onError(err instanceof ApiError ? err.message : t("admin.errorQuitarDestino"));
+      onError(mensajeDeError(err, t, "admin.errorQuitarDestino"));
     } finally {
       setOcupado(false);
     }
@@ -411,7 +412,7 @@ function SesionesDeUsuario({ usuario, onError }: { usuario: User; onError: (m: s
       const { items } = await api.listUserSessions(usuario.id);
       setSesiones(items ?? []);
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : t("sesiones.error"));
+      onError(mensajeDeError(e, t, "sesiones.error"));
     } finally {
       setOcupado(false);
     }
@@ -423,7 +424,7 @@ function SesionesDeUsuario({ usuario, onError }: { usuario: User; onError: (m: s
       await api.revokeUserSessions(usuario.id);
       await cargar();
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : t("sesiones.errorRevocarTodas"));
+      onError(mensajeDeError(e, t, "sesiones.errorRevocarTodas"));
     } finally {
       setOcupado(false);
     }
@@ -461,7 +462,7 @@ function Auditoria({ onError }: { onError: (m: string) => void }) {
         const { items } = await api.listAudit(filtro ? { action: filtro, limit: 50 } : { limit: 50 });
         setEntradas(items ?? []);
       } catch (e) {
-        onError(e instanceof ApiError ? e.message : t("admin.errorAuditoria"));
+        onError(mensajeDeError(e, t, "admin.errorAuditoria"));
       }
     },
     [onError, t],
@@ -551,7 +552,7 @@ function InviteTeacherForm({ onInvited }: { onInvited: () => void }) {
       setFullName("");
       onInvited();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("admin.errorProfesor"));
+      setError(mensajeDeError(e, t, "admin.errorProfesor"));
     } finally {
       setSubmitting(false);
     }
