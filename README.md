@@ -196,7 +196,7 @@ publicación de una versión nueva.
 |   |-- internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola
 |   `-- migrations/         Migraciones SQL de PostgreSQL
 |-- frontend/           Next.js 16 (App Router), React 18, TypeScript y CSS propio
-|-- docs/               OpenAPI, arquitectura local, demostración y Entrega 2 (`docs/entrega2/`)
+|-- docs/               OpenAPI, arquitectura local, Entrega 2 (`docs/entrega2/`) y Entrega 3 (`docs/entrega3/`)
 |-- postman/            Colección que recorre los nueve segmentos de la demostración
 |-- load/               k6: Etapa 1, Escenarios 1 y 2 de capacidad, métricas
 |-- deploy/             Despliegue en GCP: Terraform, scripts y un compose por VM
@@ -329,7 +329,10 @@ siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
 ## Entrega 3 — Aplicación elástica IaaS
 
 * **URL de la aplicación (frontend y API detrás del balanceador):** [https://136.82.109.164.sslip.io/](https://136.82.109.164.sslip.io/)
-* **Deuda técnica:** [docs/entrega3/deuda-tecnica.md](docs/entrega3/deuda-tecnica.md)
+* **Verificación funcional del frontend:** [docs/entrega3/frontend-verificacion.md](docs/entrega3/frontend-verificacion.md) *(Matriz de rutas, flujos de estudiante y profesor, recorrido conectado en GCP, 5 estados de interfaz y control de acceso por rol)*.
+* **Deuda técnica y calidad de código:** [docs/entrega3/deuda-tecnica.md](docs/entrega3/deuda-tecnica.md) *(Diagnóstico formal, SonarQube 10.7, análisis de código e inventario de deuda)*.
+* **Documento formal de arquitectura (PDF):** [docs/entrega3/Documento.pdf](docs/entrega3/Documento.pdf).
+* **Índice y evidencias de Entrega 3:** [docs/entrega3/](docs/entrega3/README.md).
 
 ## Entrega 2 — Despliegue en GCP y Capacidad
 
