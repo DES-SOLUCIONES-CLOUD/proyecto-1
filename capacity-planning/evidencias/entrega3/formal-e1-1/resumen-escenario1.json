@@ -1,0 +1,547 @@
+{
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(50)",
+      "p(90)",
+      "p(95)",
+      "p(99)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 1057246.194816
+  },
+  "metrics": {
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 51.29507579999996,
+        "p(99)": 160.10141831999985,
+        "avg": 21.980152073276997,
+        "min": 4.283114,
+        "med": 12.77941,
+        "max": 4268.673787,
+        "p(50)": 12.77941,
+        "p(90)": 26.215198999999995
+      }
+    },
+    "iterations": {
+      "values": {
+        "count": 50106,
+        "rate": 47.392934820371046
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "checks": {
+      "contains": "default",
+      "values": {
+        "rate": 1,
+        "passes": 219981,
+        "fails": 0
+      },
+      "thresholds": {
+        "rate>0.99": {
+          "ok": true
+        }
+      },
+      "type": "rate"
+    },
+    "mooc_intentos_calificados": {
+      "values": {
+        "rate": 3.149692111759781,
+        "count": 3330
+      },
+      "type": "counter",
+      "contains": "default"
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.000004819555829734732,
+        "passes": 1,
+        "fails": 207487
+      },
+      "thresholds": {
+        "rate<0.005": {
+          "ok": true
+        }
+      }
+    },
+    "mooc_progreso_aceptado": {
+      "contains": "default",
+      "values": {
+        "rate": 0.9999733134073442,
+        "passes": 37471,
+        "fails": 1
+      },
+      "thresholds": {
+        "rate>0.99": {
+          "ok": true
+        }
+      },
+      "type": "rate"
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 1.0766773999999997,
+        "p(99)": 2.5190328700000015,
+        "avg": 0.2944366358295364,
+        "min": 0,
+        "med": 0.101333,
+        "max": 209.057148,
+        "p(50)": 0.101333,
+        "p(90)": 0.6079472000000018
+      }
+    },
+    "http_req_blocked": {
+      "contains": "time",
+      "values": {
+        "min": 0.000188,
+        "med": 0.000601,
+        "max": 225.583082,
+        "p(50)": 0.000601,
+        "p(90)": 0.000843,
+        "p(95)": 0.00096,
+        "p(99)": 0.001294,
+        "avg": 0.01731427645935978
+      },
+      "type": "trend"
+    },
+    "http_req_duration{escenario:consumo}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 29.010064200000027,
+        "p(95)": 60.01881610000012,
+        "p(99)": 169.1677705400001,
+        "avg": 26.589036504355075,
+        "min": 2.834445,
+        "med": 18.258087500000002,
+        "max": 4222.67251,
+        "p(50)": 18.258087500000002
+      },
+      "thresholds": {
+        "p(95)<600": {
+          "ok": true
+        },
+        "p(99)<1200": {
+          "ok": true
+        }
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 302,
+        "min": 164,
+        "max": 302
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 0.1670576,
+        "p(99)": 0.25966382000000005,
+        "avg": 0.07452081358921947,
+        "min": 0.012918,
+        "med": 0.058209,
+        "max": 15.773705,
+        "p(50)": 0.058209,
+        "p(90)": 0.1313315000000001
+      }
+    },
+    "iteration_duration": {
+      "values": {
+        "p(50)": 2838.5861285,
+        "p(90)": 7041.714229,
+        "p(95)": 7952.5563105,
+        "p(99)": 9902.682696549984,
+        "avg": 3827.3527614980535,
+        "min": 341.528029,
+        "med": 2838.5861285,
+        "max": 14505.07276
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "http_req_duration{escenario:login}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(50)": 352.599082,
+        "p(90)": 400.557548,
+        "p(95)": 1503.817953,
+        "p(99)": 1660.1200219999987,
+        "avg": 449.5208035248227,
+        "min": 340.943811,
+        "med": 352.599082,
+        "max": 2249.516519
+      },
+      "thresholds": {
+        "p(95)<2000": {
+          "ok": true
+        }
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 26329241,
+        "rate": 24903.60441030697
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 510671768,
+        "rate": 483020.67248288915
+      }
+    },
+    "http_req_duration{escenario:catalogo}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 38.287828399999974,
+        "p(99)": 140.08281667999998,
+        "avg": 16.333766157209737,
+        "min": 4.296736,
+        "med": 8.882628,
+        "max": 3035.4459,
+        "p(50)": 8.882628,
+        "p(90)": 19.551716400000004
+      },
+      "thresholds": {
+        "p(95)<400": {
+          "ok": true
+        },
+        "p(99)<800": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_duration{escenario:quiz}": {
+      "contains": "time",
+      "values": {
+        "p(50)": 11.15747,
+        "p(90)": 26.76209910000001,
+        "p(95)": 53.47694799999999,
+        "p(99)": 155.4888093000001,
+        "avg": 21.330265218151535,
+        "min": 4.283114,
+        "med": 11.15747,
+        "max": 4268.673787
+      },
+      "thresholds": {
+        "p(95)<900": {
+          "ok": true
+        },
+        "p(99)<1800": {
+          "ok": true
+        }
+      },
+      "type": "trend"
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 207488,
+        "rate": 196.25324831375778
+      }
+    },
+    "group_duration": {
+      "contains": "time",
+      "values": {
+        "p(95)": 4887.0329905,
+        "p(99)": 5731.629076199999,
+        "avg": 1207.2269411169214,
+        "min": 5.022713,
+        "med": 32.78924,
+        "max": 10000.946877,
+        "p(50)": 32.78924,
+        "p(90)": 4440.772639
+      },
+      "type": "trend"
+    },
+    "mooc_login_limitado": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "passes": 0,
+        "fails": 141,
+        "rate": 0
+      },
+      "thresholds": {
+        "rate<0.01": {
+          "ok": true
+        }
+      }
+    },
+    "mooc_inscripciones": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 210,
+        "rate": 0.19862923227313933
+      }
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 160.10131444000004,
+        "avg": 21.98005979947286,
+        "min": 2.834445,
+        "med": 12.779373,
+        "max": 4268.673787,
+        "p(50)": 12.779373,
+        "p(90)": 26.215114000000014,
+        "p(95)": 51.29494659999998
+      }
+    },
+    "http_req_connecting": {
+      "contains": "time",
+      "values": {
+        "p(50)": 0,
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 0,
+        "avg": 0.002342232384523442,
+        "min": 0,
+        "med": 0,
+        "max": 17.228865
+      },
+      "type": "trend"
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(50)": 0,
+        "p(90)": 0,
+        "p(95)": 0,
+        "p(99)": 0,
+        "avg": 0.01195319460402528,
+        "min": 0,
+        "med": 0,
+        "max": 13.703473
+      }
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 2.754103,
+        "med": 12.1919755,
+        "max": 4268.503978,
+        "p(50)": 12.1919755,
+        "p(90)": 25.826276500000006,
+        "p(95)": 50.399654449999986,
+        "p(99)": 159.36522893000003,
+        "avg": 21.611102350054004
+      }
+    },
+    "mooc_nota_intento": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "med": 20,
+        "max": 80,
+        "p(50)": 20,
+        "p(90)": 60,
+        "p(95)": 60,
+        "p(99)": 80,
+        "avg": 25.11111111111111,
+        "min": 0
+      }
+    },
+    "vus": {
+      "values": {
+        "value": 2,
+        "min": 0,
+        "max": 301
+      },
+      "type": "gauge",
+      "contains": "default"
+    }
+  },
+  "setup_data": {
+    "cantidades": {
+      "perfiles_multimedia": [
+        "corto",
+        "medio",
+        "largo"
+      ],
+      "profesores": 3,
+      "recursos": 27,
+      "usuarios": 404,
+      "cursos": 1,
+      "estudiantes": 400,
+      "inscripciones": 0,
+      "intentos": 0
+    },
+    "cuentas": 400,
+    "estudiantes_inscritos": false,
+    "niveles": [
+      50,
+      100,
+      200,
+      300
+    ]
+  },
+  "root_group": {
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [
+      {
+        "path": "::inscripción",
+        "id": "dd964c189c74630c55852f74ba58a4cb",
+        "groups": [],
+        "checks": [
+            {
+              "id": "219b399f2042dc6195001a524b93ab99",
+              "passes": 22066,
+              "fails": 0,
+              "name": "inscripción aceptada o ya inscrito",
+              "path": "::inscripción::inscripción aceptada o ya inscrito"
+            }
+          ],
+        "name": "inscripción"
+      },
+      {
+        "name": "consumo",
+        "path": "::consumo",
+        "id": "298e6ef3bbfac8c3fd1df5abe4444c52",
+        "groups": [],
+        "checks": [
+            {
+              "id": "51a52bb7ac768e0300ed4de7112616ec",
+              "passes": 18736,
+              "fails": 0,
+              "name": "contenido responde 200",
+              "path": "::consumo::contenido responde 200"
+            },
+            {
+              "fails": 0,
+              "name": "apertura registrada",
+              "path": "::consumo::apertura registrada",
+              "id": "a9e12011b00f170139a0b777b3a71827",
+              "passes": 18736
+            },
+            {
+              "passes": 18736,
+              "fails": 0,
+              "name": "resumen de progreso responde 200",
+              "path": "::consumo::resumen de progreso responde 200",
+              "id": "b7b75b51afd180e9e39260d34265f871"
+            }
+          ]
+      },
+      {
+        "id": "e73103c955b2ffd728613f8172fc6640",
+        "groups": [],
+        "checks": [
+            {
+              "fails": 0,
+              "name": "catálogo responde 200",
+              "path": "::catálogo::catálogo responde 200",
+              "id": "186ffdc7640ecfdfff6c906af19f4e96",
+              "passes": 27899
+            },
+            {
+              "name": "catálogo trae cursos",
+              "path": "::catálogo::catálogo trae cursos",
+              "id": "aecf04f80bc760fad50d19620b41bbf7",
+              "passes": 27899,
+              "fails": 0
+            },
+            {
+              "name": "búsqueda responde 200",
+              "path": "::catálogo::búsqueda responde 200",
+              "id": "2410dd1a94ba0317ecedfcc2fde0ee5e",
+              "passes": 27899,
+              "fails": 0
+            },
+            {
+              "name": "detalle responde 200",
+              "path": "::catálogo::detalle responde 200",
+              "id": "8822a721955b8499d2968288b3f9991d",
+              "passes": 27899,
+              "fails": 0
+            }
+          ],
+        "name": "catálogo",
+        "path": "::catálogo"
+      },
+      {
+        "name": "quiz",
+        "path": "::quiz",
+        "id": "2946e99f499861c4c81ca3de1e2a56b7",
+        "groups": [],
+        "checks": [
+            {
+              "name": "intento abierto",
+              "path": "::quiz::intento abierto",
+              "id": "236e60b8c9dc0ad04f673a5dc72709b7",
+              "passes": 3330,
+              "fails": 0
+            },
+            {
+              "name": "el intento no expone la respuesta correcta",
+              "path": "::quiz::el intento no expone la respuesta correcta",
+              "id": "5e794e5bf72e2119717e6aa24002087c",
+              "passes": 3330,
+              "fails": 0
+            },
+            {
+              "name": "respuesta guardada",
+              "path": "::quiz::respuesta guardada",
+              "id": "e5fa0f5394e4e17255d60e1a4eecc4e4",
+              "passes": 16650,
+              "fails": 0
+            },
+            {
+              "name": "intento calificado",
+              "path": "::quiz::intento calificado",
+              "id": "b7e22e5f3d7a1fc22cbae96526013ebe",
+              "passes": 3330,
+              "fails": 0
+            },
+            {
+              "name": "el reenvío devuelve la misma nota",
+              "path": "::quiz::el reenvío devuelve la misma nota",
+              "id": "0bf213da24a5ec28ed18bf6d87d4436e",
+              "passes": 3330,
+              "fails": 0
+            }
+          ]
+      }
+    ],
+    "checks": [
+      {
+        "path": "::login responde 200",
+        "id": "f5fb605e0679388c8a3fa46833e32321",
+        "passes": 141,
+        "fails": 0,
+        "name": "login responde 200"
+      }
+    ]
+  }
+}

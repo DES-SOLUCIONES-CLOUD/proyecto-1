@@ -10,8 +10,9 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-RAIZ="$(cd "$DIR/.." && pwd)"
 SALIDA="${SALIDA:-$DIR/salida}"
+ZONA="${GCP_ZONE:-us-central1-a}"
+VM_REDIS="${VM_REDIS:-mooc-redis}"
 corrida=""
 minutos=15
 desde=""
@@ -56,7 +57,10 @@ serie() {
     >"$tmp/${nombre}.json" || {
     echo "AVISO: sin datos de $nombre" >&2
     echo "[]" >"$tmp/${nombre}.json"
+    return 0
   }
+  # La API responde bien aunque la métrica no exista para este recurso.
+  [[ "$(cat "$tmp/${nombre}.json")" != "[]" ]] || echo "AVISO: serie vacía: $nombre" >&2
 }
 
 echo "recogiendo métricas $desde → $hasta (proyecto $proyecto)" >&2
@@ -69,21 +73,22 @@ serie disco_lectura 'metric.type="compute.googleapis.com/instance/disk/read_byte
 serie disco_escritura 'metric.type="compute.googleapis.com/instance/disk/write_bytes_count"'
 serie cpu_sql 'metric.type="cloudsql.googleapis.com/database/cpu/utilization"'
 serie memoria_sql 'metric.type="cloudsql.googleapis.com/database/memory/utilization"'
-serie conexiones_sql 'metric.type="cloudsql.googleapis.com/database/network/connections"'
+serie conexiones_sql 'metric.type="cloudsql.googleapis.com/database/postgresql/num_backends"'
 serie lb_peticiones 'metric.type="loadbalancing.googleapis.com/https/backend_request_count"'
 serie tamano_mig 'metric.type="compute.googleapis.com/instance_group/size"'
 
 echo null >"$tmp/cola.json"
-if [[ -x "$RAIZ/deploy/gcp/remoto.sh" ]]; then
-  # Foto al cerrar. La serie completa la deja observar.sh.
-  programa="$(base64 -w0 "$DIR/cola-en-redis.sh")"
-  if cola_raw="$("$RAIZ/deploy/gcp/remoto.sh" redis "echo $programa | base64 -d | bash -s -- 0" 2>/dev/null)"; then
-    printf '%s\n' "$cola_raw" | python3 -c '
+# Foto al cerrar. La serie completa la deja observar.sh.
+programa="$(base64 -w0 "$DIR/cola-en-redis.sh")"
+if cola_raw="$(gcloud compute ssh "$VM_REDIS" --project "$proyecto" --zone "$ZONA" --tunnel-through-iap --quiet \
+    --command "echo $programa | base64 -d | bash -s -- 0" 2>/dev/null)"; then
+  printf '%s\n' "$cola_raw" | python3 -c '
 import json,sys
 claves=["ts_utc","cola","pending","active","scheduled","retry","archived","antiguedad_s"]
 print(json.dumps({"fuente":"redis/asynq","colas":[dict(zip(claves,l.split(","))) for l in sys.stdin.read().split()]}))
 ' >"$tmp/cola.json" || echo null >"$tmp/cola.json"
-  fi
+else
+  echo "AVISO: sin foto de la cola (ssh a $VM_REDIS)" >&2
 fi
 
 python3 - "$SALIDA" "$corrida" "$desde" "$hasta" "$proyecto" "$tmp" <<'PY'

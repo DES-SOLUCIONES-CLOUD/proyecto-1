@@ -1,11 +1,15 @@
 // Escenario 3B de capacidad (Entrega 3): ciclo de autoscaling de los workers.
 //
 // Reutiliza el flujo de subida de escenario2.js (firma, PUT al bucket,
-// confirmar), pero a diferencia de ese guion NO espera a `ready`: confirma y
-// pasa de inmediato al siguiente video. El objetivo es sostener la cola
-// asynq llena —y, en consecuencia, los workers existentes ocupados
-// transcodificando varios videos a la vez— el tiempo suficiente para que el
-// autoscaler del MIG de workers decida crear instancias adicionales.
+// confirmar), pero no espera a `ready`: confirma y sigue. La llegada de
+// trabajos va a tasa fija, en trabajos por minuto, y se detiene al bajar la
+// demanda para que la cola pueda drenar y se observe la reducción.
+//
+// La tasa no puede quedar libre. En el piloto del 2026-10-31, 8 VU sin pausa
+// encolaron 9.020 trabajos en 20 minutos y 3 workers procesaban unos 8 por
+// minuto: la cola necesitaba más de 17 horas para drenar y el ciclo nunca
+// cerraba. TASA_PICO=20 durante 6 minutos son unos 120 trabajos, unos 15
+// minutos de drenaje a esa capacidad.
 //
 // Funciona sin importar qué señal haya quedado configurada (CPU o
 // profundidad de cola, ver docs/entrega3/arquitectura.md): encolar más
@@ -13,16 +17,12 @@
 // cada worker ocupado transcodificando sostiene su CPU mientras la cola
 // sigue creciendo detrás.
 //
-// VUS_PICO por defecto es 8. Cada VU en el pico es un "profesor" subiendo
-// videos sin parar; en el reposo baja a VUS_REPOSO para dejar que la cola
-// drene y observar la reducción.
-//
 // La profundidad de cola NO la reporta k6 (vive en Redis, no en la API): la
 // serie sale de load/observar.sh y la reconciliación de los trabajos
 // aceptados, de load/reconciliar-3b.sql.
 //
 //   BASE_URL=https://<balanceador> \
-//   VUS_REPOSO=1 VUS_PICO=8 RAMPA=20s MESETA_INICIAL=3m MESETA_ALTA=6m MESETA_BAJA=15m \
+//   TASA_PICO=20 VUS_PICO=8 RAMPA=20s MESETA_INICIAL=3m MESETA_ALTA=6m MESETA_BAJA=15m \
 //   k6 run load/escenario3b.js
 
 import http from "k6/http";
@@ -36,7 +36,8 @@ const BASE = __ENV.BASE_URL || "http://localhost:8080";
 const ESCENARIO = __ENV.ESCENARIO || "/salida/escenario.json";
 const SALIDA = __ENV.SALIDA || "/salida";
 
-const VUS_REPOSO = Number(__ENV.VUS_REPOSO || 1);
+// Trabajos por minuto en la meseta; VUS_PICO solo limita los VU disponibles.
+const TASA_PICO = Number(__ENV.TASA_PICO || 20);
 const VUS_PICO = Number(__ENV.VUS_PICO || 8);
 const RAMPA = __ENV.RAMPA || "20s";
 const MESETA_ALTA = __ENV.MESETA_ALTA || "6m";
@@ -66,15 +67,18 @@ const confirmacion = new Trend("mooc_confirmacion_3b", true);
 export const options = {
   scenarios: {
     ciclo_workers: {
-      executor: "ramping-vus",
+      executor: "ramping-arrival-rate",
       exec: "subirSinEsperar",
-      startVUs: VUS_REPOSO,
+      startRate: 0,
+      timeUnit: "1m",
+      preAllocatedVUs: VUS_PICO,
+      maxVUs: VUS_PICO,
       stages: [
-        { duration: MESETA_INICIAL, target: VUS_REPOSO }, // 1. reposo: cola casi vacía
-        { duration: RAMPA, target: VUS_PICO }, // 2. rampa: empieza a encolar
-        { duration: MESETA_ALTA, target: VUS_PICO }, // 3. meseta alta: fuerza el scale-out
-        { duration: RAMPA, target: VUS_REPOSO }, // 4. deja de encolar
-        { duration: MESETA_BAJA, target: VUS_REPOSO }, // 5. reposo: observa el drenaje y el scale-in
+        { duration: MESETA_INICIAL, target: 0 }, // 1. reposo: cola vacía, un worker
+        { duration: RAMPA, target: TASA_PICO }, // 2. rampa: empieza a encolar
+        { duration: MESETA_ALTA, target: TASA_PICO }, // 3. meseta alta: fuerza el scale-out
+        { duration: RAMPA, target: 0 }, // 4. deja de encolar
+        { duration: MESETA_BAJA, target: 0 }, // 5. reposo: observa el drenaje y el scale-in
       ],
     },
   },
@@ -125,7 +129,7 @@ export function setup() {
   console.log("");
   console.log("Escenario 3B — ciclo de autoscaling de workers");
   console.log("================================================");
-  console.log(`VUs (profesores subiendo sin parar): reposo ${VUS_REPOSO} -> pico ${VUS_PICO} -> reposo ${VUS_REPOSO}`);
+  console.log(`Llegada de trabajos: 0 -> ${TASA_PICO}/min -> 0 (hasta ${VUS_PICO} VU)`);
   console.log(`Fases (hora prevista, UTC):`);
   for (const m of marcas) console.log(`  ${m.fase.padEnd(16)} ${m.inicio}`);
   console.log("");

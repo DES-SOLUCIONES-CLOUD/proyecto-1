@@ -1,5 +1,8 @@
 -- Reconciliación del Escenario 3B: compara lo aceptado con su estado final.
--- Los cursos de la corrida se reconocen por su slug e3b-*.
+-- Los cursos de la corrida se reconocen por su slug e3b-* y por la hora de
+-- inicio, para no mezclar corridas:
+--
+--   psql -v desde=2026-10-31T19:05:20Z ... < load/reconciliar-3b.sql
 --
 -- Comparar la suma de la consulta 1 con mooc_trabajos_encolados del resumen
 -- de k6. Se corre al terminar el drenaje; las consultas 2 y 3 deben salir
@@ -15,6 +18,7 @@ WITH activos AS (
     JOIN course_versions cv ON cv.id = m.course_version_id
     JOIN courses c ON c.id = cv.course_id
    WHERE c.slug LIKE 'e3b-%'
+     AND ma.created_at >= :'desde'
 )
 SELECT status, count(*) AS activos FROM activos GROUP BY status ORDER BY status;
 
@@ -33,11 +37,13 @@ SELECT ma.id, ma.status, ma.processing_started_at
   JOIN course_versions cv ON cv.id = m.course_version_id
   JOIN courses c ON c.id = cv.course_id
  WHERE c.slug LIKE 'e3b-%'
+   AND ma.created_at >= :'desde'
    AND ma.status NOT IN ('ready', 'failed');
 
 \echo '4. Fallos diagnosticables'
 SELECT failure_reason, count(*) AS activos
   FROM media_assets
  WHERE status = 'failed'
+   AND created_at >= :'desde'
  GROUP BY failure_reason
  ORDER BY activos DESC;

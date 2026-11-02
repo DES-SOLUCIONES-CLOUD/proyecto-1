@@ -1,0 +1,75 @@
+{
+  "corrida": "escenario3b-20261031T214245Z",
+  "desde": "2026-10-31T21:42:45Z",
+  "hasta": "2026-10-31T21:50:17Z",
+  "proyecto": "plasma-sol-513002-k6",
+  "series": {
+    "cpu_vm": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "memoria_vm": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "red_entrada": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "red_salida": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "disco_lectura": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "disco_escritura": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "cpu_sql": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "memoria_sql": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "conexiones_sql": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "lb_peticiones": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    },
+    "tamano_mig": {
+      "resumen": {
+        "n": 0
+      },
+      "crudo_n": 0
+    }
+  },
+  "cola": null
+}
