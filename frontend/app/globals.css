@@ -402,7 +402,9 @@ ul {
   min-width: 0;
 }
 
+/* relative: toda la tarjeta es clicable gracias al enlace del titulo */
 .rejilla .card {
+  position: relative;
   height: 100%;
   margin: 0;
   display: flex;
@@ -434,11 +436,6 @@ ul {
 .rejilla .card h2 {
   margin-top: 0.5rem;
   margin-bottom: 0;
-}
-
-/* toda la tarjeta es clicable gracias al enlace del titulo */
-.rejilla .card {
-  position: relative;
 }
 
 .rejilla .card h2 a {

@@ -15,7 +15,7 @@ function aSlug(titulo: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") //quita tildes
     .replace(/[^a-z0-9]+/g, "-") //todo lo que no sea letra o numero se vuelve guion
-    .replace(/^-+|-+$/g, ""); //sin guiones al inicio ni al final
+    .replace(/(^-+)|(-+$)/g, ""); //sin guiones al inicio ni al final
 }
 
 export default function TeacherDashboardPage() {
