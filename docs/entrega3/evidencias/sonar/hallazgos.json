@@ -1,5 +1,5 @@
 {
- "total": 155,
+ "total": 196,
  "issues": [
   {
    "severity": "CRITICAL",
@@ -46,8 +46,8 @@
    "rule": "go:S3776",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:backend/internal/app/courses/courses.go",
-   "line": 110,
-   "message": "Refactor this method to reduce its Cognitive Complexity from 28 to the 15 allowed."
+   "line": 111,
+   "message": "Refactor this method to reduce its Cognitive Complexity from 37 to the 15 allowed."
   },
   {
    "severity": "CRITICAL",
@@ -62,7 +62,7 @@
    "rule": "typescript:S2004",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 107,
+   "line": 123,
    "message": "Refactor this code to not nest functions more than 4 levels deep."
   },
   {
@@ -94,7 +94,7 @@
    "rule": "go:S3776",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:backend/internal/domain/course/course.go",
-   "line": 201,
+   "line": 205,
    "message": "Refactor this method to reduce its Cognitive Complexity from 26 to the 15 allowed."
   },
   {
@@ -158,7 +158,7 @@
    "rule": "typescript:S3776",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/lib/carga.ts",
-   "line": 218,
+   "line": 230,
    "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
   },
   {
@@ -174,7 +174,7 @@
    "rule": "typescript:S2004",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 115,
+   "line": 131,
    "message": "Refactor this code to not nest functions more than 4 levels deep."
   },
   {
@@ -206,7 +206,7 @@
    "rule": "typescript:S3776",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 156,
+   "line": 157,
    "message": "Refactor this function to reduce its Cognitive Complexity from 34 to the 15 allowed."
   },
   {
@@ -302,15 +302,23 @@
    "rule": "typescript:S2004",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 119,
+   "line": 135,
    "message": "Refactor this code to not nest functions more than 4 levels deep."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/NavegacionDelCurso.tsx",
+   "line": 76,
+   "message": "Mark the props of the component as read-only."
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 105,
+   "line": 155,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -318,7 +326,7 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/Foro.tsx",
-   "line": 16,
+   "line": 17,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -326,16 +334,32 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 173,
+   "line": 177,
    "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S3358",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/cursos/[courseId]/page.tsx",
+   "line": 106,
+   "message": "Extract this nested ternary operation into an independent statement."
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/cuenta/sesiones/page.tsx",
-   "line": 76,
+   "line": 77,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/Icono.tsx",
+   "line": 3,
+   "message": "Mark the props of the component as read-only."
   },
   {
    "severity": "MAJOR",
@@ -350,31 +374,39 @@
    "rule": "typescript:S6479",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 274,
-   "message": "Do not use Array index in keys"
-  },
-  {
-   "severity": "MAJOR",
-   "rule": "typescript:S6479",
-   "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 117,
-   "message": "Do not use Array index in keys"
-  },
-  {
-   "severity": "MAJOR",
-   "rule": "typescript:S6479",
-   "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 362,
+   "line": 293,
    "message": "Do not use Array index in keys"
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
+   "line": 195,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
+   "line": 368,
+   "message": "Do not use Array index in keys"
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/cursos/[courseId]/page.tsx",
+   "line": 75,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/previsualizacion/page.tsx",
-   "line": 40,
+   "line": 42,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -382,7 +414,7 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 453,
+   "line": 457,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -390,15 +422,23 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 354,
+   "line": 358,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 100,
+   "message": "Do not use Array index in keys"
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S3358",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 266,
+   "line": 272,
    "message": "Extract this nested ternary operation into an independent statement."
   },
   {
@@ -406,8 +446,24 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/QuizPlayer.tsx",
-   "line": 18,
+   "line": 20,
    "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
+   "line": 695,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 41,
+   "message": "Do not use Array index in keys"
   },
   {
    "severity": "MAJOR",
@@ -421,24 +477,16 @@
    "severity": "MAJOR",
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 537,
+   "component": "mooc-plataforma:frontend/components/Portada.tsx",
+   "line": 51,
    "message": "Mark the props of the component as read-only."
-  },
-  {
-   "severity": "MAJOR",
-   "rule": "typescript:S6819",
-   "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 192,
-   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 392,
+   "line": 411,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -446,7 +494,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 612,
+   "line": 797,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -470,31 +518,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 182,
-   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
-  },
-  {
-   "severity": "MAJOR",
-   "rule": "typescript:S6759",
-   "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 321,
-   "message": "Mark the props of the component as read-only."
-  },
-  {
-   "severity": "MAJOR",
-   "rule": "typescript:S3358",
-   "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 491,
-   "message": "Extract this nested ternary operation into an independent statement."
-  },
-  {
-   "severity": "MAJOR",
-   "rule": "typescript:S6819",
-   "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/app/profesor/page.tsx",
-   "line": 93,
+   "line": 198,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -502,7 +526,47 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/QuizPlayer.tsx",
-   "line": 124,
+   "line": 151,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/mis-cursos/page.tsx",
+   "line": 23,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
+   "line": 418,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S3358",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
+   "line": 650,
+   "message": "Extract this nested ternary operation into an independent statement."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/page.tsx",
+   "line": 119,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/QuizPlayer.tsx",
+   "line": 163,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -510,23 +574,23 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/restablecer-contrasena/page.tsx",
-   "line": 42,
+   "line": 43,
    "message": "Mark the props of the component as read-only."
   },
   {
    "severity": "MAJOR",
-   "rule": "typescript:S6479",
+   "rule": "typescript:S6759",
    "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 364,
-   "message": "Do not use Array index in keys"
+   "component": "mooc-plataforma:frontend/app/profesor/layout.tsx",
+   "line": 6,
+   "message": "Mark the props of the component as read-only."
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S3358",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 236,
+   "line": 242,
    "message": "Extract this nested ternary operation into an independent statement."
   },
   {
@@ -534,7 +598,7 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/HistorialDeRevisiones.tsx",
-   "line": 20,
+   "line": 21,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -542,7 +606,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/cursos/[courseId]/page.tsx",
-   "line": 86,
+   "line": 126,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -550,7 +614,7 @@
    "rule": "typescript:S1854",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 20,
+   "line": 21,
    "message": "Remove this useless assignment to variable \"locale\"."
   },
   {
@@ -566,7 +630,7 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/layout.tsx",
-   "line": 13,
+   "line": 21,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -574,7 +638,7 @@
    "rule": "typescript:S3358",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 252,
+   "line": 258,
    "message": "Extract this nested ternary operation into an independent statement."
   },
   {
@@ -582,7 +646,7 @@
    "rule": "typescript:S3358",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 244,
+   "line": 250,
    "message": "Extract this nested ternary operation into an independent statement."
   },
   {
@@ -590,7 +654,7 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 280,
+   "line": 364,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -606,7 +670,7 @@
    "rule": "typescript:S6479",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 325,
+   "line": 344,
    "message": "Do not use Array index in keys"
   },
   {
@@ -614,7 +678,7 @@
    "rule": "typescript:S4624",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/lib/api.ts",
-   "line": 368,
+   "line": 379,
    "message": "Refactor this code to not use nested template literals."
   },
   {
@@ -622,7 +686,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 349,
+   "line": 353,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -630,7 +694,23 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/cursos/[courseId]/recursos/[resourceId]/page.tsx",
-   "line": 249,
+   "line": 252,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/OperacionEnVivo.tsx",
+   "line": 152,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
+   "line": 727,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -638,7 +718,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/cursos/[courseId]/recursos/[resourceId]/page.tsx",
-   "line": 102,
+   "line": 107,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -651,6 +731,14 @@
   },
   {
    "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 10,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/insignias/[code]/page.tsx",
@@ -659,10 +747,18 @@
   },
   {
    "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/QuizPlayer.tsx",
+   "line": 227,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/Coautoria.tsx",
-   "line": 15,
+   "line": 16,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -670,7 +766,7 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 725,
+   "line": 910,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -686,8 +782,16 @@
    "rule": "typescript:S4624",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/lib/api.ts",
-   "line": 584,
+   "line": 600,
    "message": "Refactor this code to not use nested template literals."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
+   "line": 128,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
    "severity": "MAJOR",
@@ -699,10 +803,26 @@
   },
   {
    "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 106,
+   "message": "Do not use Array index in keys"
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
+   "line": 370,
+   "message": "Do not use Array index in keys"
+  },
+  {
+   "severity": "MAJOR",
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 335,
+   "line": 341,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -710,7 +830,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/page.tsx",
-   "line": 155,
+   "line": 164,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -718,7 +838,7 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 235,
+   "line": 239,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -726,7 +846,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 518,
+   "line": 680,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -734,15 +854,39 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 647,
+   "line": 832,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/OperacionEnVivo.tsx",
+   "line": 183,
    "message": "Mark the props of the component as read-only."
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/SoloParaRol.tsx",
+   "line": 19,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
+   "line": 327,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/page.tsx",
-   "line": 152,
+   "line": 161,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -750,15 +894,23 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/cursos/[courseId]/recursos/[resourceId]/page.tsx",
-   "line": 113,
+   "line": 118,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/NavegacionDelCurso.tsx",
+   "line": 51,
+   "message": "Mark the props of the component as read-only."
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S3358",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 271,
+   "line": 277,
    "message": "Extract this nested ternary operation into an independent statement."
   },
   {
@@ -766,16 +918,8 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 40,
+   "line": 41,
    "message": "Mark the props of the component as read-only."
-  },
-  {
-   "severity": "MAJOR",
-   "rule": "typescript:S6819",
-   "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/components/QuizPlayer.tsx",
-   "line": 110,
-   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
    "severity": "MAJOR",
@@ -787,10 +931,26 @@
   },
   {
    "severity": "MAJOR",
+   "rule": "typescript:S6478",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/mis-cursos/page.tsx",
+   "line": 116,
+   "message": "Move this component definition out of the parent component and pass data as props."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 21,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/cursos/[courseId]/recursos/[resourceId]/page.tsx",
-   "line": 223,
+   "line": 226,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -798,7 +958,7 @@
    "rule": "typescript:S3358",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 233,
+   "line": 239,
    "message": "Extract this nested ternary operation into an independent statement."
   },
   {
@@ -806,8 +966,24 @@
    "rule": "typescript:S3358",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/page.tsx",
-   "line": 170,
+   "line": 208,
    "message": "Extract this nested ternary operation into an independent statement."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 101,
+   "message": "Do not use Array index in keys"
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 76,
+   "message": "Do not use Array index in keys"
   },
   {
    "severity": "MAJOR",
@@ -819,10 +995,18 @@
   },
   {
    "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/admin/layout.tsx",
+   "line": 5,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
    "rule": "typescript:S3358",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/cursos/[courseId]/recursos/[resourceId]/page.tsx",
-   "line": 250,
+   "line": 253,
    "message": "Extract this nested ternary operation into an independent statement."
   },
   {
@@ -830,7 +1014,15 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/Foro.tsx",
-   "line": 144,
+   "line": 145,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/SoloParaRol.tsx",
+   "line": 13,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -838,7 +1030,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 527,
+   "line": 706,
    "message": "Use <progress> instead of the \"progressbar\" role to ensure accessibility across all devices."
   },
   {
@@ -846,7 +1038,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 671,
+   "line": 856,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -854,7 +1046,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 448,
+   "line": 467,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -862,7 +1054,7 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 563,
+   "line": 748,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -870,7 +1062,7 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 396,
+   "line": 518,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -878,7 +1070,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/previsualizacion/page.tsx",
-   "line": 66,
+   "line": 68,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -886,15 +1078,31 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 424,
+   "line": 430,
    "message": "Mark the props of the component as read-only."
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S6479",
    "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 33,
+   "message": "Do not use Array index in keys"
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 70,
+   "message": "Do not use Array index in keys"
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/components/BlockEditor.tsx",
-   "line": 452,
+   "line": 458,
    "message": "Do not use Array index in keys"
   },
   {
@@ -902,7 +1110,7 @@
    "rule": "typescript:S6819",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
-   "line": 202,
+   "line": 221,
    "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
@@ -915,10 +1123,34 @@
   },
   {
    "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/quiz/[resourceId]/page.tsx",
+   "line": 209,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/cursos/[courseId]/page.tsx",
+   "line": 118,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 99,
+   "message": "Do not use Array index in keys"
+  },
+  {
+   "severity": "MAJOR",
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 251,
+   "line": 335,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -926,8 +1158,24 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 403,
+   "line": 543,
    "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/admin/page.tsx",
+   "line": 407,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6819",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/OperacionEnVivo.tsx",
+   "line": 83,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
    "severity": "MAJOR",
@@ -939,34 +1187,42 @@
   },
   {
    "severity": "MAJOR",
-   "rule": "typescript:S6819",
+   "rule": "typescript:S6479",
    "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/app/cursos/[courseId]/page.tsx",
-   "line": 110,
-   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
+   "line": 189,
+   "message": "Do not use Array index in keys"
   },
   {
    "severity": "MAJOR",
-   "rule": "typescript:S6759",
+   "rule": "typescript:S6819",
    "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/app/profesor/page.tsx",
-   "line": 104,
-   "message": "Mark the props of the component as read-only."
+   "component": "mooc-plataforma:frontend/app/cursos/[courseId]/page.tsx",
+   "line": 162,
+   "message": "Use <output> instead of the \"status\" role to ensure accessibility across all devices."
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S3358",
    "type": "CODE_SMELL",
-   "component": "mooc-plataforma:frontend/components/Coautoria.tsx",
-   "line": 51,
+   "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
+   "line": 652,
    "message": "Extract this nested ternary operation into an independent statement."
   },
   {
    "severity": "MAJOR",
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/page.tsx",
+   "line": 130,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 353,
+   "line": 462,
    "message": "Mark the props of the component as read-only."
   },
   {
@@ -982,8 +1238,24 @@
    "rule": "typescript:S6759",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/profesor/versiones/[versionId]/page.tsx",
-   "line": 146,
+   "line": 213,
    "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6759",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/Portada.tsx",
+   "line": 28,
+   "message": "Mark the props of the component as read-only."
+  },
+  {
+   "severity": "MAJOR",
+   "rule": "typescript:S6479",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 78,
+   "message": "Do not use Array index in keys"
   },
   {
    "severity": "MINOR",
@@ -998,8 +1270,16 @@
    "rule": "typescript:S6582",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/page.tsx",
-   "line": 190,
+   "line": 200,
    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+  },
+  {
+   "severity": "MINOR",
+   "rule": "typescript:S6594",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/lib/actividad.ts",
+   "line": 51,
+   "message": "Use the \"RegExp.exec()\" method instead."
   },
   {
    "severity": "MINOR",
@@ -1014,7 +1294,7 @@
    "rule": "typescript:S6606",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 526,
+   "line": 530,
    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator."
   },
   {
@@ -1024,6 +1304,14 @@
    "component": "mooc-plataforma:frontend/lib/markdown.ts",
    "line": 58,
    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read."
+  },
+  {
+   "severity": "MINOR",
+   "rule": "typescript:S6845",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/OperacionEnVivo.tsx",
+   "line": 138,
+   "message": "`tabIndex` should only be declared on interactive elements."
   },
   {
    "severity": "MINOR",
@@ -1038,7 +1326,7 @@
    "rule": "typescript:S6606",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:frontend/app/admin/page.tsx",
-   "line": 524,
+   "line": 528,
    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator."
   },
   {
@@ -1051,10 +1339,18 @@
   },
   {
    "severity": "MINOR",
+   "rule": "typescript:S6845",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/OperacionEnVivo.tsx",
+   "line": 127,
+   "message": "`tabIndex` should only be declared on interactive elements."
+  },
+  {
+   "severity": "MINOR",
    "rule": "docker:S7018",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:backend/Dockerfile",
-   "line": 27,
+   "line": 30,
    "message": "Sort these package names alphanumerically."
   },
   {
@@ -1104,6 +1400,14 @@
    "component": "mooc-plataforma:backend/internal/domain/subtitulo/subtitulo.go",
    "line": 90,
    "message": "Complete the task associated to this TODO comment."
+  },
+  {
+   "severity": "INFO",
+   "rule": "typescript:S1135",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/lib/errores.ts",
+   "line": 79,
+   "message": "Complete the task associated to this \"TODO\" comment."
   },
   {
    "severity": "INFO",
@@ -1190,7 +1494,7 @@
    "rule": "go:S1135",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:backend/internal/app/courses/courses.go",
-   "line": 474,
+   "line": 483,
    "message": "Complete the task associated to this TODO comment."
   },
   {
@@ -1214,7 +1518,7 @@
    "rule": "go:S1135",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:backend/internal/app/courses/courses.go",
-   "line": 28,
+   "line": 29,
    "message": "Complete the task associated to this TODO comment."
   },
   {
@@ -1227,11 +1531,35 @@
   },
   {
    "severity": "INFO",
+   "rule": "typescript:S1135",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/app/profesor/page.tsx",
+   "line": 17,
+   "message": "Complete the task associated to this \"TODO\" comment."
+  },
+  {
+   "severity": "INFO",
+   "rule": "go:S1135",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:backend/internal/platform/httpserver/actividad.go",
+   "line": 43,
+   "message": "Complete the task associated to this TODO comment."
+  },
+  {
+   "severity": "INFO",
    "rule": "go:S1135",
    "type": "CODE_SMELL",
    "component": "mooc-plataforma:backend/internal/platform/postgres/courses_repo.go",
    "line": 484,
    "message": "Complete the task associated to this TODO comment."
+  },
+  {
+   "severity": "INFO",
+   "rule": "typescript:S1135",
+   "type": "CODE_SMELL",
+   "component": "mooc-plataforma:frontend/components/TextoConFormato.tsx",
+   "line": 8,
+   "message": "Complete the task associated to this \"TODO\" comment."
   },
   {
    "severity": "INFO",
