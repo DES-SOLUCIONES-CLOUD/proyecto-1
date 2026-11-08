@@ -1,0 +1,48 @@
+flowchart LR
+  U([Navegador]) -->|HTTPS 443| LB
+
+  subgraph GCP["Proyecto plasma-sol-513002-k6 · us-central1"]
+    LB["Balanceador de aplicaciones externo<br/>IP global · &lt;ip&gt;.sslip.io · TLS 1.2+"]
+
+    subgraph RUN["Cloud Run (máx. 3 instancias por servicio)"]
+      FE["mooc-frontend<br/>Next.js · público<br/>SA mooc-frontend (sin permisos)"]
+      API["mooc-api<br/>API REST · público<br/>SA mooc-web"]
+      WK["mooc-worker<br/>FFmpeg · LibreOffice<br/>ingress interno · solo IAM<br/>SA mooc-worker"]
+    end
+
+    LB -->|"/* · NEG serverless"| FE
+    LB -->|"/api/* · NEG serverless"| API
+
+    subgraph PS["Cloud Pub/Sub"]
+      T[["topic mooc-tareas"]]
+      S["suscripción push mooc-tareas-push<br/>ack 600 s · backoff 10-300 s · 5 entregas"]
+      DLQ[["topic mooc-tareas-dlq<br/>+ sub mooc-tareas-dlq-sub"]]
+    end
+
+    API -->|"publish (roles/pubsub.publisher)"| T
+    T --> S
+    S -->|"POST /pubsub/push<br/>token OIDC de mooc-pubsub-push<br/>(roles/run.invoker)"| WK
+    S -.->|"agotados"| DLQ
+
+    subgraph VPC["VPC mooc-vpc (Direct VPC egress)"]
+      SQL[("Cloud SQL PostgreSQL 16<br/>IP privada · TLS")]
+      R[("VM mooc-redis 10.0.1.5<br/>Redis + Mailpit")]
+    end
+
+    API -->|5432| SQL
+    WK -->|"5432 · estado de la tarea"| SQL
+    API -->|"6379 idempotencia / límites<br/>1025 SMTP"| R
+    WK -->|"6379 panel de actividad"| R
+
+    GCS[("Cloud Storage<br/>objetos (privado) · hls (lectura pública)")]
+    API -->|"firma PUT/GET (HMAC mooc-web)"| GCS
+    WK -->|"lee original, escribe HLS/PDF (HMAC mooc-worker)"| GCS
+    U -.->|"PUT/GET firmados · HLS"| GCS
+
+    SM["Secret Manager<br/>bd-password · hmac-* · admin · badge"]
+    SM -.->|"secretKeyRef al arrancar"| API
+    SM -.->|"secretKeyRef al arrancar"| WK
+
+    AR["Artifact Registry<br/>mooc-api · mooc-worker · mooc-frontend"]
+    AR -.-> RUN
+  end
