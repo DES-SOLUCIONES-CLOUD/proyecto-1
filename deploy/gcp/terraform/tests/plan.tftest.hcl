@@ -5,8 +5,9 @@ mock_provider "google" {
   mock_resource "google_compute_subnetwork" { defaults = { id = "projects/mi-proyecto/regions/us-central1/subnetworks/s" } }
   mock_resource "google_compute_address" { defaults = { address = "10.0.1.5" } }
   mock_resource "google_compute_global_address" { defaults = { address = "203.0.113.10", id = "projects/mi-proyecto/global/addresses/mooc-lb-ip" } }
-  mock_resource "google_compute_instance_group_manager" { defaults = { id = "projects/mi-proyecto/zones/us-central1-a/instanceGroupManagers/mig", instance_group = "projects/mi-proyecto/zones/us-central1-a/instanceGroups/mig" } }
-  mock_resource "google_compute_instance_template" { defaults = { self_link_unique = "projects/mi-proyecto/global/instanceTemplates/t?uniqueId=1" } }
+  mock_resource "google_cloud_run_v2_service" { defaults = { uri = "https://mooc-worker-abc-uc.a.run.app" } }
+  mock_resource "google_pubsub_topic" { defaults = { id = "projects/mi-proyecto/topics/t" } }
+  mock_resource "google_pubsub_subscription" { defaults = { id = "projects/mi-proyecto/subscriptions/s" } }
   mock_resource "google_sql_database_instance" { defaults = { service_account_email_address = "p123@gcp-sa-cloud-sql.iam.gserviceaccount.com", private_ip_address = "10.30.0.3" } }
 }
 mock_provider "random" {}
@@ -68,48 +69,42 @@ run "completo" {
   }
   # Ningún archivo de los metadatos lleva finales CRLF.
   assert {
-    condition = alltrue([for m in [google_compute_instance.redis.metadata, google_compute_instance_template.api.metadata, google_compute_instance_template.worker.metadata] :
-    alltrue([for v in values(m) : !strcontains(v, "\r")])])
+    condition     = alltrue([for v in values(google_compute_instance.redis.metadata) : !strcontains(v, "\r")])
     error_message = "metadatos con CRLF"
   }
 
-  # Ninguna plantilla tiene IP externa.
+  # Entrega 4: tres servicios de Cloud Run con máximo 3 instancias.
   assert {
-    condition     = length(google_compute_instance_template.api.network_interface[0].access_config) == 0 && length(google_compute_instance_template.worker.network_interface[0].access_config) == 0
-    error_message = "plantillas sin ip externa"
+    condition = alltrue([for s in [google_cloud_run_v2_service.api, google_cloud_run_v2_service.frontend, google_cloud_run_v2_service.worker] :
+    s.template[0].scaling[0].max_instance_count == 3])
+    error_message = "máximo de instancias"
   }
-  # La plantilla de API lleva DATABASE_URL (sus partes) y REDIS_ADDR.
+  # Workers: una tarea por instancia, solo tráfico interno y solo la cuenta de
+  # la suscripción los invoca.
   assert {
-    condition     = strcontains(google_compute_instance_template.api.metadata["mooc-env"], "REDIS_ADDR=10.0.1.5:6379") && strcontains(google_compute_instance_template.api.metadata["mooc-env"], "DB_HOST=10.30.0.3") && google_compute_instance_template.api.metadata["mooc-rol"] == "api"
+    condition = (google_cloud_run_v2_service.worker.template[0].max_instance_request_concurrency == 1 &&
+      google_cloud_run_v2_service.worker.ingress == "INGRESS_TRAFFIC_INTERNAL_ONLY" &&
+    google_cloud_run_v2_service_iam_member.worker_invocador.member == data.google_service_account.pubsub_push.member)
+    error_message = "workers protegidos"
+  }
+  # Suscripción push autenticada, con dead-letter y ack deadline = timeout.
+  assert {
+    condition = (google_pubsub_subscription.push.push_config[0].oidc_token[0].service_account_email == data.google_service_account.pubsub_push.email &&
+      google_pubsub_subscription.push.push_config[0].push_endpoint == "https://mooc-worker-abc-uc.a.run.app/pubsub/push" &&
+      google_pubsub_subscription.push.dead_letter_policy[0].max_delivery_attempts == 5 &&
+    google_pubsub_subscription.push.ack_deadline_seconds == 600)
+    error_message = "suscripción push"
+  }
+  # Ningún secreto va como valor en claro en las variables de los servicios.
+  assert {
+    condition = alltrue([for e in google_cloud_run_v2_service.api.template[0].containers[0].env :
+    !contains(["DB_PASSWORD", "S3_SECRET_KEY", "BADGE_SIGNING_KEY", "ADMIN_PASSWORD"], e.name) || e.value == null || e.value == ""])
+    error_message = "secretos en claro"
+  }
+  # La API llega a Redis y a Cloud SQL por la VPC.
+  assert {
+    condition     = contains([for e in google_cloud_run_v2_service.api.template[0].containers[0].env : "${e.name}=${coalesce(e.value, "-")}"], "REDIS_ADDR=10.0.1.5:6379") && contains([for e in google_cloud_run_v2_service.api.template[0].containers[0].env : "${e.name}=${coalesce(e.value, "-")}"], "DB_HOST=10.30.0.3")
     error_message = "env de la api"
-  }
-  assert {
-    condition     = strcontains(google_compute_instance_template.worker.metadata["mooc-env"], "REDIS_ADDR=10.0.1.5:6379") && strcontains(google_compute_instance_template.worker.metadata["mooc-env"], "WORKER_CONCURRENCY=2")
-    error_message = "env del worker"
-  }
-  # Autoscalers: 1 a 3, CPU 60 %, cooldown 120 s.
-  assert {
-    condition = alltrue([for a in [google_compute_autoscaler.api, google_compute_autoscaler.workers] :
-      a.autoscaling_policy[0].min_replicas == 1 && a.autoscaling_policy[0].max_replicas == 3 &&
-    a.autoscaling_policy[0].cpu_utilization[0].target == 0.6 && a.autoscaling_policy[0].cooldown_period == 120])
-    error_message = "autoscalers"
-  }
-  assert {
-    condition     = google_compute_instance_group_manager.api.name == "mig-api" && google_compute_instance_group_manager.workers.name == "mig-workers"
-    error_message = "nombres de los MIG"
-  }
-  # Health check del balanceador: /healthz en el 8080, 5 s, 3 s, 2 fallos.
-  assert {
-    condition = (google_compute_health_check.api.http_health_check[0].request_path == "/healthz" &&
-      google_compute_health_check.api.http_health_check[0].port == 8080 &&
-      google_compute_health_check.api.check_interval_sec == 5 &&
-      google_compute_health_check.api.timeout_sec == 3 &&
-    google_compute_health_check.api.unhealthy_threshold == 2)
-    error_message = "health check"
-  }
-  assert {
-    condition     = google_compute_backend_service.api.port_name == "http-api" && google_compute_backend_service.frontend.port_name == "http-web"
-    error_message = "puertos con nombre"
   }
   assert {
     condition     = google_compute_global_forwarding_rule.https.port_range == "443" && google_compute_global_forwarding_rule.http.port_range == "80"
@@ -118,11 +113,6 @@ run "completo" {
   assert {
     condition     = google_compute_managed_ssl_certificate.web.managed[0].domains[0] == "203.0.113.10.sslip.io" && google_compute_ssl_policy.tls12.min_tls_version == "TLS_1_2"
     error_message = "certificado y TLS"
-  }
-  # Solo los rangos de los health checks y del balanceador llegan a la API.
-  assert {
-    condition     = toset(google_compute_firewall.health_checks.source_ranges) == toset(["130.211.0.0/22", "35.191.0.0/16"])
-    error_message = "firewall de health checks"
   }
 }
 

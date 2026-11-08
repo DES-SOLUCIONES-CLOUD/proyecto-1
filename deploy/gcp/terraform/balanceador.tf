@@ -1,78 +1,53 @@
-# Balanceador de aplicaciones externo global (EXTERNAL_MANAGED) delante del
-# MIG de API. Sustituye al Nginx con IP pública de la Entrega 2.
+# Balanceador de aplicaciones externo global (EXTERNAL_MANAGED). En la
+# Entrega 4 entrega a Cloud Run mediante NEG serverless en lugar de a un MIG:
 #
 #   Internet -> IP global :443 (TLS) -> mapa de URL
-#                 /api/*  -> backend service API      -> mig-api :8080
-#                 resto   -> backend service frontend -> mig-api :3000
+#                 /api/*  -> backend service -> NEG serverless -> mooc-api
+#                 resto   -> backend service -> NEG serverless -> mooc-frontend
 #               IP global :80 -> redirección a https
 #
-# API y frontend van en las mismas instancias y bajo el mismo origen, como en
-# la Entrega 2: sin CORS entre ellos, y las cookies de sesión (Secure,
-# SameSite) y el token CSRF siguen funcionando igual. La IP global está en
-# main.tf y la regla de firewall que deja entrar al balanceador, en
-# computo.tf.
-
-# --- Health checks -------------------------------------------------------------
+# Se conserva para que la API y el frontend sigan bajo el MISMO origen
+# (https://<IP>.sslip.io): las cookies de sesión (Secure, SameSite=Lax) y el
+# token CSRF funcionan igual que antes. Con dos URLs *.run.app serían dos
+# sitios distintos (run.app está en la Public Suffix List) y el navegador no
+# enviaría la cookie de sesión en las llamadas a la API.
 #
-# El del balanceador decide a qué instancias se envía tráfico: estricto, para
-# sacar rápido de la rotación una instancia que no responde. No la borra (eso
-# es el autohealing, computo.tf).
+# Sin health checks: con NEG serverless la disponibilidad la gestiona Cloud
+# Run (sondas de arranque de cada servicio).
 
-resource "google_compute_health_check" "api" {
-  name                = "${var.prefijo}-hc-api"
-  description         = "GET /healthz en el 8080 de cada instancia de mig-api."
-  check_interval_sec  = 5
-  timeout_sec         = 3
-  healthy_threshold   = 2
-  unhealthy_threshold = 2
-
-  http_health_check {
-    port         = 8080
-    request_path = "/healthz"
-  }
-
-  log_config {
-    enable = true
+resource "google_compute_region_network_endpoint_group" "api" {
+  name                  = "${var.prefijo}-neg-api"
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+  cloud_run {
+    service = google_cloud_run_v2_service.api.name
   }
 }
 
-resource "google_compute_health_check" "frontend" {
-  name                = "${var.prefijo}-hc-frontend"
-  description         = "GET / en el 3000 de cada instancia de mig-api (Next.js)."
-  check_interval_sec  = 5
-  timeout_sec         = 3
-  healthy_threshold   = 2
-  unhealthy_threshold = 2
-
-  http_health_check {
-    port         = 3000
-    request_path = "/"
+resource "google_compute_region_network_endpoint_group" "frontend" {
+  name                  = "${var.prefijo}-neg-frontend"
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+  cloud_run {
+    service = google_cloud_run_v2_service.frontend.name
   }
 }
 
 # --- Backend services ----------------------------------------------------------
+#
+# Nombres nuevos (bs-run-*) para que Terraform cree estos, mueva el mapa de URL
+# y después borre los de la Entrega 3, sin dejar el balanceador sin destino.
+# Con NEG serverless no se fija timeout_sec ni puerto: el tiempo máximo es el
+# del servicio de Cloud Run.
 
 resource "google_compute_backend_service" "api" {
-  name                  = "${var.prefijo}-bs-api"
-  description           = "API REST /api/v1 en mig-api."
+  name                  = "${var.prefijo}-bs-run-api"
+  description           = "API REST /api/v1 en Cloud Run."
   load_balancing_scheme = "EXTERNAL_MANAGED"
-  protocol              = "HTTP"
-  port_name             = "http-api"
-  # Tiempo máximo de una respuesta. Las dos rutas que verifican una carga
-  # (checksum, MIME y antivirus sobre el archivo entero) tienen 600 s en el
-  # mapa de URL, como tenían en el Nginx de la Entrega 2.
-  timeout_sec   = 60
-  health_checks = [google_compute_health_check.api.id]
-  # Al sacar una instancia (scale-in, reemplazo), las peticiones en curso
-  # tienen este margen para terminar. La API además atiende SIGTERM con un
-  # cierre ordenado.
-  connection_draining_timeout_sec = 30
+  protocol              = "HTTPS"
 
   backend {
-    group           = google_compute_instance_group_manager.api.instance_group
-    balancing_mode  = "UTILIZATION"
-    max_utilization = 0.8
-    capacity_scaler = 1.0
+    group = google_compute_region_network_endpoint_group.api.id
   }
 
   log_config {
@@ -82,20 +57,13 @@ resource "google_compute_backend_service" "api" {
 }
 
 resource "google_compute_backend_service" "frontend" {
-  name                            = "${var.prefijo}-bs-frontend"
-  description                     = "Frontend Next.js en mig-api."
-  load_balancing_scheme           = "EXTERNAL_MANAGED"
-  protocol                        = "HTTP"
-  port_name                       = "http-web"
-  timeout_sec                     = 30
-  health_checks                   = [google_compute_health_check.frontend.id]
-  connection_draining_timeout_sec = 30
+  name                  = "${var.prefijo}-bs-run-frontend"
+  description           = "Frontend Next.js en Cloud Run."
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  protocol              = "HTTPS"
 
   backend {
-    group           = google_compute_instance_group_manager.api.instance_group
-    balancing_mode  = "UTILIZATION"
-    max_utilization = 0.8
-    capacity_scaler = 1.0
+    group = google_compute_region_network_endpoint_group.frontend.id
   }
 }
 
@@ -103,7 +71,7 @@ resource "google_compute_backend_service" "frontend" {
 
 resource "google_compute_url_map" "https" {
   name            = "${var.prefijo}-lb"
-  description     = "/api/* a la API, el resto al frontend."
+  description     = "/api/* a la API, el resto al frontend (Cloud Run)."
   default_service = google_compute_backend_service.frontend.id
 
   host_rule {
@@ -115,33 +83,9 @@ resource "google_compute_url_map" "https" {
     name            = "rutas"
     default_service = google_compute_backend_service.frontend.id
 
-    # Confirmar una carga verifica el archivo entero en el servidor y puede
-    # tardar minutos con un video grande. Plantillas de ruta y no regex: el
-    # balanceador solo admite un subconjunto de RE2 (sin clases negadas como
-    # [^/]), y {x=*} ya coincide con exactamente un segmento. Varias
-    # match_rules en la misma regla equivalen a un O.
-    route_rules {
-      priority = 1
-      service  = google_compute_backend_service.api.id
-      match_rules {
-        path_template_match = "/api/v1/courses/versions/{version=*}/resources/{recurso=*}/confirm-upload"
-      }
-      match_rules {
-        path_template_match = "/api/v1/courses/versions/{version=*}/resources/{recurso=*}/multipart/complete"
-      }
-      route_action {
-        timeout {
-          seconds = 600
-        }
-      }
-    }
-
-    route_rules {
-      priority = 2
-      service  = google_compute_backend_service.api.id
-      match_rules {
-        prefix_match = "/api/"
-      }
+    path_rule {
+      paths   = ["/api/*"]
+      service = google_compute_backend_service.api.id
     }
   }
 }

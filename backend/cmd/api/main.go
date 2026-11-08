@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/app/admin"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/app/auth"
@@ -29,6 +31,7 @@ import (
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/postgres"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/queue"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/redisclient"
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/registro"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/security"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/storage"
 
@@ -37,6 +40,10 @@ import (
 
 func main() {
 	cfg := config.Load()
+	// Registros en JSON con "severity" y "message": Cloud Logging los parsea
+	// como entradas estructuradas y se pueden filtrar por jsonPayload.accion.
+	// Los log.Printf existentes también pasan por aquí.
+	slog.SetDefault(slog.New(registro.NuevoManejadorJSON(os.Stdout)))
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -66,8 +73,24 @@ func main() {
 	}
 
 	m := mailer.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom)
-	queueClient := queue.NewClient(cfg.RedisAddr)
-	defer queueClient.Close()
+
+	// Transporte de los trabajos asíncronos. Con Pub/Sub (Cloud Run) no hay
+	// inspector de asynq: las colas y la dead-letter se ven en Pub/Sub.
+	var encolador queue.Encolador
+	var inspector *asynq.Inspector
+	switch cfg.QueueBackend {
+	case "pubsub":
+		if cfg.GCPProject == "" || cfg.PubSubTopic == "" {
+			log.Fatalf("api: QUEUE_BACKEND=pubsub exige GOOGLE_CLOUD_PROJECT y PUBSUB_TOPIC")
+		}
+		encolador = queue.NuevoPublicadorPubSub(cfg.GCPProject, cfg.PubSubTopic, slog.Default())
+		log.Printf("api: trabajos asíncronos por Pub/Sub (projects/%s/topics/%s)", cfg.GCPProject, cfg.PubSubTopic)
+	default:
+		queueClient := queue.NewClient(cfg.RedisAddr)
+		defer queueClient.Close()
+		encolador = queue.NuevoEncolador(queueClient)
+		inspector = queue.NewInspector(cfg.RedisAddr)
+	}
 
 	userRepo := postgres.NewUserRepo(pool)
 	courseRepo := postgres.NewCourseRepo(pool)
@@ -113,8 +136,8 @@ func main() {
 		Credenciales:  emisorDeCredenciales(cfg),
 		Exportacion:   postgres.NewExportacionRepo(pool),
 		Auditor:       userRepo,
-		Redis:         rdb, Queue: queue.NuevoEncolador(queueClient),
-		Inspector:  queue.NewInspector(cfg.RedisAddr),
+		Redis:         rdb, Queue: encolador,
+		Inspector:  inspector,
 		CORSOrigin: cfg.PublicBaseURL, CookieSecure: cfg.CookieSecure,
 		AuthRateLimitPerMinute: cfg.AuthRateLimitPerMinute,
 		ProxiesDeConfianza:     cfg.TrustedProxyHops,

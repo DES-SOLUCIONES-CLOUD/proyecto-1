@@ -315,15 +315,12 @@ jobs:
             echo
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # La configuración de las instancias (.env, compose) está en las
-      # plantillas de Terraform; desplegar solo cambia las imágenes.
-      - name: Desplegar en los MIG
+      # Entrega 4: la configuración de los servicios está en Terraform
+      # (cloudrun.tf); desplegar solo cambia las imágenes de las revisiones.
+      # La API migra la base al arrancar.
+      - name: Desplegar en Cloud Run
         if: env.ACCION != 'publicar'
-        run: bash deploy/gcp/desplegar-vm.sh "$MOOC_TAG"
-
-      - name: Migrar la base
-        if: env.ACCION != 'publicar'
-        run: bash deploy/gcp/migrar.sh
+        run: bash deploy/gcp/desplegar-imagenes.sh "$MOOC_TAG"
 
       - name: Resumen
         id: resumen

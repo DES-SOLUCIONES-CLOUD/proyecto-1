@@ -1,14 +1,24 @@
-// Command worker consume los trabajos asíncronos (transcodificación,
-// badges) publicados por la API a través de la cola en Redis, con
-// reintentos con backoff y dead-letter queue gestionados por asynq.
+// Command worker consume los trabajos asíncronos (transcodificación y
+// conversión de presentaciones) que publica la API.
+//
+// Tiene dos modos, con los mismos manejadores:
+//
+//   - QUEUE_BACKEND=asynq (por defecto): consume la cola de Redis, con
+//     reintentos con backoff y dead-letter queue gestionados por asynq.
+//   - QUEUE_BACKEND=pubsub (Cloud Run): servidor HTTP que recibe las entregas
+//     de la suscripción push de Pub/Sub en /pubsub/push. El ack es la
+//     respuesta 2xx, que se envía después de persistir el resultado.
 package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/hibiken/asynq"
 
@@ -19,12 +29,13 @@ import (
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/postgres"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/queue"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/redisclient"
+	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/registro"
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/storage"
 )
 
 func main() {
 	cfg := config.Load()
-	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	base := registro.NuevoManejadorJSON(os.Stdout)
 	log := slog.New(base)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -39,7 +50,7 @@ func main() {
 		log.Warn("worker: sin redis para el panel de actividad", "error", err)
 	}
 	slog.SetDefault(log)
-	log.Info("worker iniciado", "env", cfg.Env, "redis", cfg.RedisAddr, "instancia", instancia.Nombre())
+	log.Info("worker iniciado", "env", cfg.Env, "redis", cfg.RedisAddr, "instancia", instancia.Nombre(), "transporte", cfg.QueueBackend)
 
 	pool, err := postgres.ConnectConMaximo(ctx, cfg.DatabaseURL, cfg.DBMaxConns)
 	if err != nil {
@@ -87,6 +98,11 @@ func main() {
 	mux.HandleFunc(queue.TaskProcessMedia, processor.HandleProcessMedia)
 	mux.HandleFunc(queue.TaskConvertDocument, convertidor.HandleConvertDocument)
 
+	if cfg.QueueBackend == "pubsub" {
+		servirPush(ctx, cfg, log, mux, retirar)
+		return
+	}
+
 	srv := queue.NewServer(cfg.RedisAddr, cfg.WorkerConcurrency, log)
 
 	// start y no run: run tiene su propio manejador de sigterm y apaga el
@@ -107,5 +123,46 @@ func main() {
 	srv.Stop()
 	retirar()
 	srv.Shutdown()
+	log.Info("worker detenido")
+}
+
+// servirPush atiende las entregas de la suscripción push de Pub/Sub.
+//
+// Cloud Run manda SIGTERM al retirar una instancia (scale-in, nueva revisión)
+// y da 10 s antes de matarla. El orden es el mismo que con asynq: cortar los
+// trabajos en curso (retirar) para que liberen su activo y respondan 503
+// (nack: Pub/Sub reentrega a otra instancia sin efectos duplicados), y luego
+// cerrar el servidor esperando esas respuestas.
+func servirPush(ctx context.Context, cfg config.Config, log *slog.Logger, mux *asynq.ServeMux, retirar context.CancelFunc) {
+	rutas := http.NewServeMux()
+	rutas.Handle(queue.RutaPush, &queue.ManejadorPush{
+		Manejador: mux, Log: log, MaxEntregas: queue.MaxEntregas(),
+	})
+	rutas.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	srv := &http.Server{
+		Addr:              ":" + cfg.Port,
+		Handler:           rutas,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	go func() {
+		log.Info("worker: esperando entregas de Pub/Sub", "puerto", cfg.Port, "ruta", queue.RutaPush)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("worker: servidor http", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	<-ctx.Done()
+	log.Info("worker: senal de apagado recibida, retiro seguro en curso", "accion", "worker.retiro")
+	retirar()
+	cierre, cancelar := context.WithTimeout(context.Background(), queue.PlazoDeRetiro)
+	defer cancelar()
+	if err := srv.Shutdown(cierre); err != nil {
+		log.Warn("worker: cierre del servidor http", "error", err)
+	}
 	log.Info("worker detenido")
 }

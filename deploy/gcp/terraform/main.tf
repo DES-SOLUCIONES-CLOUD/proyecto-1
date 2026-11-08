@@ -1,10 +1,11 @@
-# Infraestructura de la Entrega 3 en GCP: un balanceador de aplicaciones
-# externo delante de un grupo administrado (MIG) de API, otro MIG de workers,
-# una VM fija con Redis (la cola), Cloud SQL for PostgreSQL por IP privada,
-# Cloud Storage por su API XML compatible con S3 y Artifact Registry.
+# Infraestructura de la Entrega 4 en GCP: un balanceador de aplicaciones
+# externo delante de tres servicios de Cloud Run (frontend, API y workers),
+# Pub/Sub entre la API y los workers, una VM fija con Redis, Cloud SQL for
+# PostgreSQL por IP privada, Cloud Storage por su API XML compatible con S3 y
+# Artifact Registry.
 #
 # Este archivo tiene lo común y la red; el resto está repartido por tema:
-# computo.tf (VM de Redis, y plantillas, MIGs y autoscalers), balanceador.tf,
+# computo.tf (VM de Redis), cloudrun.tf, pubsub.tf, balanceador.tf,
 # basedatos.tf, almacenamiento.tf, identidades.tf, costos.tf.
 
 data "google_project" "actual" {}
@@ -144,7 +145,10 @@ resource "google_compute_firewall" "redis" {
   network                 = google_compute_network.vpc.id
   direction               = "INGRESS"
   priority                = 1000
-  source_service_accounts = [data.google_service_account.web.email, data.google_service_account.worker.email]
+  # Entrega 4: la API y los workers son Cloud Run con Direct VPC egress, que
+  # sale con IP de las subredes api y workers. Las reglas por cuenta de
+  # servicio no aplican a ese tráfico, así que el origen son las subredes.
+  source_ranges           = [var.cidr_api, var.cidr_workers]
   target_service_accounts = [data.google_service_account.redis.email]
 
   # Redis no tiene contraseña (la API y el worker no la soportan): lo
@@ -162,7 +166,7 @@ resource "google_compute_firewall" "smtp" {
   network                 = google_compute_network.vpc.id
   direction               = "INGRESS"
   priority                = 1000
-  source_service_accounts = [data.google_service_account.web.email]
+  source_ranges           = [var.cidr_api]
   target_service_accounts = [data.google_service_account.redis.email]
 
   allow {
@@ -181,11 +185,7 @@ resource "google_compute_firewall" "ssh_iap" {
   # Internet y quién entra lo decide IAM (roles/iap.tunnelResourceAccessor y
   # OS Login), no una llave repartida.
   source_ranges = ["35.235.240.0/20"]
-  target_service_accounts = [
-    data.google_service_account.web.email,
-    data.google_service_account.worker.email,
-    data.google_service_account.redis.email,
-  ]
+  target_service_accounts = [data.google_service_account.redis.email]
 
   allow {
     protocol = "tcp"
@@ -203,8 +203,9 @@ resource "google_compute_firewall" "sql_permitir" {
   network                 = google_compute_network.vpc.id
   direction               = "EGRESS"
   priority                = 900
-  destination_ranges      = [local.rango_psa]
-  target_service_accounts = [data.google_service_account.web.email, data.google_service_account.worker.email]
+  destination_ranges = [local.rango_psa]
+  # Las salidas de Cloud Run llevan estas etiquetas de red (cloudrun.tf).
+  target_tags = [local.tag_run_api, local.tag_run_worker]
 
   allow {
     protocol = "tcp"

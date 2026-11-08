@@ -17,17 +17,55 @@ output "prefijo" {
   value = var.prefijo
 }
 
-output "mig_api" {
-  value = google_compute_instance_group_manager.api.name
+output "run_tag" {
+  description = "Etiqueta de las imágenes que corren en Cloud Run."
+  value       = var.run_tag
 }
 
-output "mig_workers" {
-  value = google_compute_instance_group_manager.workers.name
+output "run_api" {
+  value = google_cloud_run_v2_service.api.name
 }
 
-output "imagen_tag" {
-  description = "Etiqueta móvil que arrancan las instancias (desplegar-vm.sh la mueve)."
-  value       = var.imagen_tag
+output "run_frontend" {
+  value = google_cloud_run_v2_service.frontend.name
+}
+
+output "run_worker" {
+  value = google_cloud_run_v2_service.worker.name
+}
+
+output "url_run_api" {
+  description = "URL directa del backend en Cloud Run (la de uso normal es url_publica/api)."
+  value       = google_cloud_run_v2_service.api.uri
+}
+
+output "url_run_frontend" {
+  value = google_cloud_run_v2_service.frontend.uri
+}
+
+output "url_run_worker" {
+  description = "Solo alcanzable por Pub/Sub (ingress interno + IAM)."
+  value       = google_cloud_run_v2_service.worker.uri
+}
+
+output "pubsub_topic" {
+  value = google_pubsub_topic.tareas.name
+}
+
+output "pubsub_suscripcion" {
+  value = google_pubsub_subscription.push.name
+}
+
+output "pubsub_dlq" {
+  value = google_pubsub_subscription.dlq.name
+}
+
+output "sa_frontend" {
+  value = data.google_service_account.frontend.email
+}
+
+output "sa_pubsub_push" {
+  value = data.google_service_account.pubsub_push.email
 }
 
 output "vm_redis" {
