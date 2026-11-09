@@ -15,7 +15,7 @@ flowchart LR
 
     subgraph PS["Cloud Pub/Sub"]
       T[["topic mooc-tareas"]]
-      S["suscripción push mooc-tareas-push<br/>ack 600 s · backoff 10-300 s · 5 entregas"]
+      S["suscripción push mooc-tareas-push<br/>ack 600 s · backoff 10-300 s · 10 entregas"]
       DLQ[["topic mooc-tareas-dlq<br/>+ sub mooc-tareas-dlq-sub"]]
     end
 

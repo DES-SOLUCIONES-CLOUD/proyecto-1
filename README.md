@@ -196,7 +196,7 @@ publicación de una versión nueva.
 |   |-- internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola
 |   `-- migrations/         Migraciones SQL de PostgreSQL
 |-- frontend/           Next.js 16 (App Router), React 18, TypeScript y CSS propio
-|-- docs/               OpenAPI, arquitectura local, Entrega 2 (`docs/entrega2/`) y Entrega 3 (`docs/entrega3/`)
+|-- docs/               OpenAPI, arquitectura local, Entregas 2, 3 y 4 (`docs/entrega2/`, `docs/entrega3/`, `docs/entrega4/`)
 |-- postman/            Colección que recorre los nueve segmentos de la demostración
 |-- load/               k6: Etapa 1, Escenarios 1 y 2 de capacidad, métricas
 |-- deploy/             Despliegue en GCP: Terraform, scripts y un compose por VM
@@ -325,6 +325,14 @@ Para la autoría y la administración hace falta un profesor o un administrador,
 que por diseño no se crean por registro público: un administrador invita
 profesores desde http://localhost:3000/admin, y el primer administrador se
 siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
+
+## Entrega 4 — Cloud Run y Cloud Pub/Sub
+
+* **URL de la aplicación:** [https://136.82.109.164.sslip.io/](https://136.82.109.164.sslip.io/) (frontend) y [`/api/v1/health`](https://136.82.109.164.sslip.io/api/v1/health) (backend), en Cloud Run detrás del balanceador.
+* **Guía de despliegue, configuración de servicios, Pub/Sub y permisos:** [docs/entrega4/README.md](docs/entrega4/README.md).
+* **Diagrama:** [docs/entrega4/arquitectura.png](docs/entrega4/arquitectura.png).
+* **Evidencias (URLs, límites, recorrido de una tarea, escalamiento):** [docs/entrega4/evidencias.md](docs/entrega4/evidencias.md).
+* **Video de sustentación:** _pendiente_.
 
 ## Entrega 3 — Aplicación elástica IaaS
 

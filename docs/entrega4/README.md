@@ -14,6 +14,7 @@ lo que cambia es dónde corre cada pieza y el transporte de los trabajos.
 | Evidencias | [`evidencias.md`](evidencias.md) |
 | Verificación de escalamiento | [`evidencias.md#escalamiento`](evidencias.md#escalamiento), scripts en [`load/entrega4/`](../../load/entrega4/) |
 | Infraestructura como código | [`deploy/gcp/terraform/cloudrun.tf`](../../deploy/gcp/terraform/cloudrun.tf), [`pubsub.tf`](../../deploy/gcp/terraform/pubsub.tf), [`balanceador.tf`](../../deploy/gcp/terraform/balanceador.tf) |
+| URL pública | https://136.82.109.164.sslip.io (API: `/api/v1/health`) |
 | Video de sustentación | _enlace pendiente (máx. 20 min)_ |
 
 ---
@@ -61,7 +62,7 @@ que 3.
 |---|---|---|---|
 | Responsabilidad | Servir la interfaz (Next.js standalone) | API REST, autenticación, firma de cargas, publicar tareas | Recibir mensajes push y ejecutar FFmpeg / LibreOffice |
 | Imagen | `mooc-frontend:<commit>` | `mooc-api:<commit>` | `mooc-worker:<commit>` |
-| Instancias mín. / **máx.** | 0 / **3** | 0 / **3** | 0 / **3** |
+| Instancias mín. / **máx.** (revisión y servicio) | 0 / **3** | 0 / **3** | 0 / **3** |
 | CPU / memoria | 1 vCPU / 512 MiB | 1 vCPU / 512 MiB | 2 vCPU / 4 GiB |
 | Concurrencia (peticiones por instancia) | 80 | 80 | **1** (una tarea por instancia) |
 | Tiempo máximo de solicitud | 60 s | 600 s (confirmar una carga verifica el archivo entero) | 600 s (= ack deadline) |
@@ -71,6 +72,8 @@ que 3.
 | Cuenta de servicio | `mooc-frontend` (sin roles) | `mooc-web` | `mooc-worker` |
 | Red de salida | Internet | Direct VPC egress, subred `mooc-api`, `PRIVATE_RANGES_ONLY` | Direct VPC egress, subred `mooc-workers`, `PRIVATE_RANGES_ONLY` |
 | Sonda de arranque | TCP 3000 | `GET /healthz` (la API migra la base al arrancar) | `GET /healthz` |
+
+![Escalamiento del servicio de workers en la consola](evidencias/08-consola-worker-max-3.jpg)
 
 **Mínimo 0.** No se exige mantener instancias activas: sin tráfico ningún
 servicio cobra cómputo. El costo es el arranque en frío (unos segundos) de la
@@ -93,7 +96,7 @@ una tarea (por eso 4 GiB).
 | Recurso | Configuración |
 |---|---|
 | Topic `mooc-tareas` | Retención de 1 día: si los workers no pueden arrancar, las tareas esperan. |
-| Suscripción push `mooc-tareas-push` | Endpoint `https://mooc-worker-….run.app/pubsub/push`; **token OIDC** de `mooc-pubsub-push` con audiencia = URL del servicio; ack deadline 600 s; retry policy 10 s a 300 s; **dead-letter** tras 5 entregas. |
+| Suscripción push `mooc-tareas-push` | Endpoint `https://mooc-worker-….run.app/pubsub/push`; **token OIDC** de `mooc-pubsub-push` con audiencia = URL del servicio; ack deadline 600 s; retry policy 10 s a 300 s; **dead-letter** tras 10 entregas (con los workers llenos Cloud Run responde `429` y Pub/Sub lo cuenta como intento; ver [evidencias](evidencias.md)). |
 | Topic `mooc-tareas-dlq` + `mooc-tareas-dlq-sub` | Mensajes agotados, para inspeccionarlos (`gcloud pubsub subscriptions pull mooc-tareas-dlq-sub`). |
 
 **Recorrido de una tarea** (código en
@@ -124,7 +127,7 @@ una tarea (por eso 4 GiB).
 |---|---|---|
 | Éxito (estado persistido) | `204` | ack |
 | Error permanente (original ilegible: ya marcado `failed`) o tipo desconocido | `204` | ack, sin reintentos inútiles |
-| Error transitorio (BD, Storage) | `500` | nack: reentrega con backoff; en la 5.ª, dead-letter y registro `queue.task_dead_letter` |
+| Error transitorio (BD, Storage) | `500` | nack: reentrega con backoff; en la 10.ª, dead-letter y registro `queue.task_dead_letter` |
 | Activo arrendado por otra entrega en curso | `503` | nack: vuelve más tarde |
 | Instancia en retiro (SIGTERM de Cloud Run) | `503` | El worker corta FFmpeg, libera el activo y Pub/Sub reentrega a otra instancia |
 
@@ -192,6 +195,7 @@ cp deploy/gcp/terraform/terraform.tfvars.example deploy/gcp/terraform/terraform.
 # 3. imágenes + infraestructura + revisiones de Cloud Run, todo con el commit como etiqueta
 deploy/gcp/desplegar-run.sh
 #    = publicar.sh           construye api, worker, frontend (con la URL del balanceador) y las sube
+#                            (sin Docker local o desde Cloud Shell: deploy/gcp/publicar-cloudbuild.sh)
 #                            a us-central1-docker.pkg.dev/plasma-sol-513002-k6/mooc/mooc-*:<commit>
 #    + desplegar-infra.sh    habilita run y pubsub, terraform apply: Cloud Run, Pub/Sub, IAM, NEG, firewall
 #    + desplegar-imagenes.sh gcloud run services update --image ...:<commit> (worker, api, frontend)
@@ -236,7 +240,7 @@ gcloud pubsub subscriptions create mooc-tareas-push --topic mooc-tareas \
   --push-endpoint "$URL/pubsub/push" \
   --push-auth-service-account mooc-pubsub-push@$P.iam.gserviceaccount.com --push-auth-token-audience "$URL" \
   --ack-deadline 600 --min-retry-delay 10s --max-retry-delay 300s \
-  --dead-letter-topic mooc-tareas-dlq --max-delivery-attempts 5
+  --dead-letter-topic mooc-tareas-dlq --max-delivery-attempts 10
 
 gcloud pubsub topics add-iam-policy-binding mooc-tareas \
   --member serviceAccount:mooc-web@$P.iam.gserviceaccount.com --role roles/pubsub.publisher
