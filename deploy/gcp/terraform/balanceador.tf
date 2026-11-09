@@ -46,6 +46,10 @@ resource "google_compute_backend_service" "api" {
   load_balancing_scheme = "EXTERNAL_MANAGED"
   protocol              = "HTTPS"
 
+  lifecycle {
+    create_before_destroy = true
+  }
+
   backend {
     group = google_compute_region_network_endpoint_group.api.id
   }
@@ -61,6 +65,10 @@ resource "google_compute_backend_service" "frontend" {
   description           = "Frontend Next.js en Cloud Run."
   load_balancing_scheme = "EXTERNAL_MANAGED"
   protocol              = "HTTPS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 
   backend {
     group = google_compute_region_network_endpoint_group.frontend.id
