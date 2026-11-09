@@ -35,20 +35,17 @@ resource "google_compute_region_network_endpoint_group" "frontend" {
 
 # --- Backend services ----------------------------------------------------------
 #
-# Nombres nuevos (bs-run-*) para que Terraform cree estos, mueva el mapa de URL
-# y después borre los de la Entrega 3, sin dejar el balanceador sin destino.
+# Recursos y nombres nuevos (run_*, bs-run-*): Terraform los crea, mueve el
+# mapa de URL y después borra los de la Entrega 3, sin dejar el balanceador
+# sin destino.
 # Con NEG serverless no se fija timeout_sec ni puerto: el tiempo máximo es el
 # del servicio de Cloud Run.
 
-resource "google_compute_backend_service" "api" {
+resource "google_compute_backend_service" "run_api" {
   name                  = "${var.prefijo}-bs-run-api"
   description           = "API REST /api/v1 en Cloud Run."
   load_balancing_scheme = "EXTERNAL_MANAGED"
   protocol              = "HTTPS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
 
   backend {
     group = google_compute_region_network_endpoint_group.api.id
@@ -60,15 +57,11 @@ resource "google_compute_backend_service" "api" {
   }
 }
 
-resource "google_compute_backend_service" "frontend" {
+resource "google_compute_backend_service" "run_frontend" {
   name                  = "${var.prefijo}-bs-run-frontend"
   description           = "Frontend Next.js en Cloud Run."
   load_balancing_scheme = "EXTERNAL_MANAGED"
   protocol              = "HTTPS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
 
   backend {
     group = google_compute_region_network_endpoint_group.frontend.id
@@ -80,7 +73,7 @@ resource "google_compute_backend_service" "frontend" {
 resource "google_compute_url_map" "https" {
   name            = "${var.prefijo}-lb"
   description     = "/api/* a la API, el resto al frontend (Cloud Run)."
-  default_service = google_compute_backend_service.frontend.id
+  default_service = google_compute_backend_service.run_frontend.id
 
   host_rule {
     hosts        = ["*"]
@@ -89,11 +82,11 @@ resource "google_compute_url_map" "https" {
 
   path_matcher {
     name            = "rutas"
-    default_service = google_compute_backend_service.frontend.id
+    default_service = google_compute_backend_service.run_frontend.id
 
     path_rule {
       paths   = ["/api/*"]
-      service = google_compute_backend_service.api.id
+      service = google_compute_backend_service.run_api.id
     }
   }
 }
