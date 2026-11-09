@@ -77,6 +77,12 @@ class Sesion:
                     time.sleep(20)
                     continue
                 return e.code, texto
+            except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+                # fallos de red del lado del generador (DNS, reset): se reintenta
+                if intento < intentos:
+                    time.sleep(2 * intento)
+                    continue
+                return "red", str(e)
 
     def login(self, email, clave):
         estado, cuerpo = self.pedir("POST", "/api/v1/auth/login", {"email": email, "password": clave})
@@ -177,8 +183,13 @@ def fase_workers(args):
             sys.exit(f"upload-url: {estado} {firma}")
         put = urllib.request.Request(firma["upload_url"], data=contenido, method="PUT")
         put.add_header("Content-Type", "video/mp4")
-        with urllib.request.urlopen(put, timeout=300) as res:
-            res.read()
+        for intento in range(5):
+            try:
+                with urllib.request.urlopen(put, timeout=300) as res:
+                    res.read()
+                break
+            except urllib.error.URLError:
+                time.sleep(2 * (intento + 1))
         recursos.append({"id": rid})
     print(f"{ahora()} workers: {len(recursos)} originales subidos al bucket; confirmando todas las cargas")
 

@@ -226,11 +226,11 @@ func (t *TokenDeMetadatos) Token(ctx context.Context) (string, error) {
 }
 
 // MaxEntregas lee de PUBSUB_MAX_ENTREGAS el max_delivery_attempts de la
-// suscripción (5 por defecto), para que el worker sepa cuándo una entrega es
+// suscripción (10 por defecto), para que el worker sepa cuándo una entrega es
 // la última antes de la dead-letter.
 func MaxEntregas() int {
 	if n, err := strconv.Atoi(os.Getenv("PUBSUB_MAX_ENTREGAS")); err == nil && n > 0 {
 		return n
 	}
-	return 5
+	return 10
 }

@@ -91,7 +91,7 @@ run "completo" {
   assert {
     condition = (google_pubsub_subscription.push.push_config[0].oidc_token[0].service_account_email == data.google_service_account.pubsub_push.email &&
       google_pubsub_subscription.push.push_config[0].push_endpoint == "https://mooc-worker-abc-uc.a.run.app/pubsub/push" &&
-      google_pubsub_subscription.push.dead_letter_policy[0].max_delivery_attempts == 5 &&
+      google_pubsub_subscription.push.dead_letter_policy[0].max_delivery_attempts == 10 &&
     google_pubsub_subscription.push.ack_deadline_seconds == 600)
     error_message = "suscripción push"
   }

@@ -338,5 +338,9 @@ variable "worker_ingress" {
 variable "pubsub_max_entregas" {
   description = "Entregas de un mensaje antes de mandarlo a la dead-letter (5 a 100)."
   type        = number
-  default     = 5
+  # Con los 3 workers ocupados, Cloud Run rechaza la entrega push con 429 antes
+  # de que llegue al contenedor, y Pub/Sub la cuenta como intento: en la
+  # verificación de escalamiento hubo mensajes que llegaron en el 4.º intento.
+  # 10 deja margen para colas más largas sin mandar tareas sanas a la DLQ.
+  default = 10
 }
