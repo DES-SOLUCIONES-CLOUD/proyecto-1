@@ -102,6 +102,14 @@ resource "google_cloud_run_v2_service" "api" {
   # frontend (las cookies SameSite=Lax lo necesitan).
   ingress = "INGRESS_TRAFFIC_ALL"
 
+  # Límite a nivel de servicio (todas las revisiones juntas), además del de
+  # cada revisión (template.scaling). Sin él la consola muestra el valor por
+  # defecto del servicio aunque cada revisión tenga 3.
+  scaling {
+    min_instance_count = var.run_api.min
+    max_instance_count = var.run_api.max
+  }
+
   template {
     service_account                  = data.google_service_account.web.email
     timeout                          = "${var.run_api.timeout}s"
@@ -200,6 +208,14 @@ resource "google_cloud_run_v2_service" "frontend" {
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
 
+  # Límite a nivel de servicio (todas las revisiones juntas), además del de
+  # cada revisión (template.scaling). Sin él la consola muestra el valor por
+  # defecto del servicio aunque cada revisión tenga 3.
+  scaling {
+    min_instance_count = var.run_frontend.min
+    max_instance_count = var.run_frontend.max
+  }
+
   template {
     # Cuenta propia y sin ningún permiso: el frontend no toca la base, los
     # buckets ni los secretos. Cloud Run baja la imagen con su agente de
@@ -257,6 +273,14 @@ resource "google_cloud_run_v2_service" "worker" {
   # además (abajo) solo la cuenta de la suscripción puede invocarlo. Desde
   # Internet la URL responde 404 aunque se tenga un token.
   ingress = var.worker_ingress
+
+  # Límite a nivel de servicio (todas las revisiones juntas), además del de
+  # cada revisión (template.scaling). Sin él la consola muestra el valor por
+  # defecto del servicio aunque cada revisión tenga 3.
+  scaling {
+    min_instance_count = var.run_worker.min
+    max_instance_count = var.run_worker.max
+  }
 
   template {
     service_account = data.google_service_account.worker.email

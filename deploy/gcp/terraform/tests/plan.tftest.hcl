@@ -76,7 +76,7 @@ run "completo" {
   # Entrega 4: tres servicios de Cloud Run con máximo 3 instancias.
   assert {
     condition = alltrue([for s in [google_cloud_run_v2_service.api, google_cloud_run_v2_service.frontend, google_cloud_run_v2_service.worker] :
-    s.template[0].scaling[0].max_instance_count == 3])
+    s.template[0].scaling[0].max_instance_count == 3 && s.scaling[0].max_instance_count == 3])
     error_message = "máximo de instancias"
   }
   # Workers: una tarea por instancia, solo tráfico interno y solo la cuenta de
