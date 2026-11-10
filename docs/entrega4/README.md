@@ -1,4 +1,4 @@
-# Entrega 4 — Despliegue en Cloud Run y Cloud Pub/Sub
+# Entrega 4: Despliegue en Cloud Run y Cloud Pub/Sub
 
 La plataforma MOOC de las entregas anteriores corre ahora en **tres servicios
 de Cloud Run** (frontend, backend y workers) con imágenes de Artifact Registry,
@@ -272,14 +272,6 @@ load/entrega4/metricas.sh 30
 ```
 
 Los resultados de la corrida están en [`evidencias.md`](evidencias.md).
-
-## 7. Guion del video (≤ 20 min)
-
-| Min. | Qué se muestra |
-|---|---|
-| 0-2 | Arquitectura (diagrama) y qué cambió frente a la Entrega 3 |
-| 2-5 | Aplicación desplegada: login, catálogo, el profesor sube un video |
-| 5-9 | Recorrido de la tarea: confirmación `202`, mensaje en Pub/Sub, entrega push al worker, registros `published → received → acked` con el mismo `message_id`, recurso «Listo» y reproducción HLS |
 | 9-12 | Configuración: los tres servicios en la consola (máx. 3, CPU, memoria, concurrencia, timeout), topic, suscripción (OIDC, dead-letter) |
 | 12-16 | Escalamiento: corrida de `escalamiento.py`, gráfico de instancias por servicio y de mensajes pendientes |
 | 16-19 | Acceso y permisos: cuentas de servicio, `run.invoker` del worker, ingress interno (`curl` → 404), secretos en Secret Manager |
