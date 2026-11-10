@@ -278,3 +278,69 @@ variable "presupuesto_moneda" {
   type        = string
   default     = "USD"
 }
+
+# --- Entrega 4: Cloud Run y Pub/Sub ---------------------------------------------
+
+variable "run_tag" {
+  description = "Etiqueta de las imágenes que despliegan los servicios de Cloud Run (el commit; desplegar-run.sh la pasa). Una etiqueta nueva crea una revisión nueva."
+  type        = string
+  default     = "desplegada"
+}
+
+# Configuración de cada servicio. max = 3 es el límite del enunciado; un
+# contenedor por instancia es como funciona Cloud Run (sin sidecars aquí).
+variable "run_api" {
+  description = "Backend: región = var.region; min/max instancias, CPU, memoria, peticiones simultáneas por instancia y tiempo máximo de solicitud (s)."
+  type = object({
+    min = number, max = number, cpu = string, memoria = string, concurrencia = number, timeout = number
+  })
+  # 600 s: confirmar una carga verifica el archivo entero (checksum, MIME,
+  # antivirus), como tenía la ruta en el balanceador de la Entrega 3.
+  default = { min = 0, max = 3, cpu = "1", memoria = "512Mi", concurrencia = 80, timeout = 600 }
+  validation {
+    condition     = var.run_api.max <= 3 && var.run_api.min <= var.run_api.max
+    error_message = "El enunciado fija un máximo de 3 instancias por servicio."
+  }
+}
+
+variable "run_frontend" {
+  description = "Frontend: igual que run_api."
+  type = object({
+    min = number, max = number, cpu = string, memoria = string, concurrencia = number, timeout = number
+  })
+  default = { min = 0, max = 3, cpu = "1", memoria = "512Mi", concurrencia = 80, timeout = 60 }
+  validation {
+    condition     = var.run_frontend.max <= 3 && var.run_frontend.min <= var.run_frontend.max
+    error_message = "El enunciado fija un máximo de 3 instancias por servicio."
+  }
+}
+
+variable "run_worker" {
+  description = "Workers: igual que run_api. timeout es también el ack deadline de la suscripción (máximo 600)."
+  type = object({
+    min = number, max = number, cpu = string, memoria = string, concurrencia = number, timeout = number
+  })
+  # 2 vCPU y 4 GiB: FFmpeg usa toda la CPU y /tmp (originales y segmentos)
+  # vive en la memoria de la instancia.
+  default = { min = 0, max = 3, cpu = "2", memoria = "4Gi", concurrencia = 1, timeout = 600 }
+  validation {
+    condition     = var.run_worker.max <= 3 && var.run_worker.min <= var.run_worker.max && var.run_worker.timeout <= 600 && var.run_worker.timeout >= 10
+    error_message = "Máximo 3 instancias; timeout entre 10 y 600 s (límites del ack deadline de Pub/Sub)."
+  }
+}
+
+variable "worker_ingress" {
+  description = "Ingress del servicio de workers. INTERNAL_ONLY: Pub/Sub del proyecto entra, Internet no."
+  type        = string
+  default     = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+}
+
+variable "pubsub_max_entregas" {
+  description = "Entregas de un mensaje antes de mandarlo a la dead-letter (5 a 100)."
+  type        = number
+  # Con los 3 workers ocupados, Cloud Run rechaza la entrega push con 429 antes
+  # de que llegue al contenedor, y Pub/Sub la cuenta como intento: en la
+  # verificación de escalamiento hubo mensajes que llegaron en el 4.º intento.
+  # 10 deja margen para colas más largas sin mandar tareas sanas a la DLQ.
+  default = 10
+}

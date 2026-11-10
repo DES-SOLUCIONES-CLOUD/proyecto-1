@@ -2,6 +2,7 @@
 package config
 
 import (
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -94,6 +95,16 @@ type Config struct {
 	// correcto depende de la memoria de la máquina: 5 cabe en un portátil,
 	// pero en una VM de 2 GiB varios FFmpeg a la vez acaban en el OOM killer.
 	WorkerConcurrency int
+
+	// QueueBackend elige el transporte de los trabajos asíncronos: "asynq"
+	// (Redis, local y Entregas 2-3) o "pubsub" (Cloud Pub/Sub, Entrega 4).
+	QueueBackend string
+	// GCPProject y PubSubTopic son el proyecto y el topic donde la API
+	// publica cuando QueueBackend es "pubsub".
+	GCPProject  string
+	PubSubTopic string
+	// Port es el puerto HTTP del worker en modo push (Cloud Run pasa PORT).
+	Port string
 }
 
 // Load construye la configuración a partir de variables de entorno, con valores
@@ -105,7 +116,7 @@ func Load() Config {
 	return Config{
 		Env:         getEnv("APP_ENV", "development"),
 		HTTPPort:    getEnv("API_PORT", "8080"),
-		DatabaseURL: getEnv("DATABASE_URL", ""),
+		DatabaseURL: databaseURL(),
 		DBMaxConns:  getInt("DB_MAX_CONNS", 20),
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 
@@ -141,7 +152,37 @@ func Load() Config {
 		AuthRateLimitPerMinute: getInt("AUTH_RATE_LIMIT_PER_MINUTE", 10),
 		TrustedProxyHops:       getInt("TRUSTED_PROXY_HOPS", 1),
 		WorkerConcurrency:      getInt("WORKER_CONCURRENCY", 5),
+
+		QueueBackend: getEnv("QUEUE_BACKEND", "asynq"),
+		GCPProject:   getEnv("GOOGLE_CLOUD_PROJECT", ""),
+		PubSubTopic:  getEnv("PUBSUB_TOPIC", ""),
+		Port:         getEnv("PORT", "8080"),
 	}
+}
+
+// databaseURL usa DATABASE_URL si está definida y, si no, la arma con
+// DB_HOST, DB_USER, DB_NAME, DB_PASSWORD y DB_SSLMODE.
+//
+// En Cloud Run la contraseña llega como variable desde Secret Manager
+// (DB_PASSWORD) y el resto como configuración; Cloud Run no compone una
+// variable con otra, y guardar la URL entera como secreto obligaría a
+// rotarla también cuando cambia el host.
+func databaseURL() string {
+	if v := os.Getenv("DATABASE_URL"); v != "" {
+		return v
+	}
+	host := os.Getenv("DB_HOST")
+	if host == "" {
+		return ""
+	}
+	u := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(getEnv("DB_USER", "mooc"), os.Getenv("DB_PASSWORD")),
+		Host:     host + ":" + getEnv("DB_PORT", "5432"),
+		Path:     "/" + getEnv("DB_NAME", "mooc"),
+		RawQuery: "sslmode=" + getEnv("DB_SSLMODE", "require"),
+	}
+	return u.String()
 }
 
 func getEnv(key, fallback string) string {

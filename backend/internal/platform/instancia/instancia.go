@@ -23,6 +23,18 @@ var nombre = sync.OnceValue(func() string {
 	if n := os.Getenv("MOOC_INSTANCIA"); n != "" {
 		return n
 	}
+	// en cloud run no hay vm: el servidor de metadatos da el id de la
+	// instancia del contenedor, y se antepone el servicio (K_SERVICE) para
+	// que en el panel se lea mooc-worker-1a2b3c4d
+	if servicio := os.Getenv("K_SERVICE"); servicio != "" {
+		if id := metadato("instance/id"); id != "" {
+			if len(id) > 8 {
+				id = id[len(id)-8:]
+			}
+			return servicio + "-" + id
+		}
+		return servicio
+	}
 	if n := nombreEnGCP(); n != "" {
 		return n
 	}
@@ -32,11 +44,14 @@ var nombre = sync.OnceValue(func() string {
 
 // pide el nombre de la vm al servidor de metadatos de google, con poco tiempo de espera
 // para que en local (donde no existe) no demore el arranque
-func nombreEnGCP() string {
+func nombreEnGCP() string { return metadato("instance/name") }
+
+// metadato lee una ruta del servidor de metadatos de google
+func metadato(ruta string) string {
 	ctx, cancelar := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancelar()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		"http://169.254.169.254/computeMetadata/v1/instance/name", nil)
+		"http://169.254.169.254/computeMetadata/v1/"+ruta, nil)
 	if err != nil {
 		return ""
 	}

@@ -163,6 +163,9 @@ APIS=(
   logging.googleapis.com
   monitoring.googleapis.com
   billingbudgets.googleapis.com
+  # Entrega 4
+  run.googleapis.com
+  pubsub.googleapis.com
 )
 
 # habilitar_apis <proyecto> <api>...: habilita solo las que faltan. Listar

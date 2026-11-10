@@ -27,6 +27,18 @@ data "google_service_account" "redis" {
   account_id = "${var.prefijo}-redis"
 }
 
+# Entrega 4. El frontend de Cloud Run corre con una cuenta sin permisos, y la
+# suscripción push firma sus entregas con mooc-pubsub-push, que solo puede
+# invocar el servicio de workers (cloudrun.tf). Las dos las crea
+# bootstrap-ci.sh, igual que las demás.
+data "google_service_account" "frontend" {
+  account_id = "${var.prefijo}-frontend"
+}
+
+data "google_service_account" "pubsub_push" {
+  account_id = "${var.prefijo}-pubsub-push"
+}
+
 # Estados anteriores a este cambio tienen las cuentas como recursos. Se
 # olvidan sin borrarlas: siguen existiendo y ahora se leen como data.
 removed {

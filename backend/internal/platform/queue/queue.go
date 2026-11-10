@@ -142,6 +142,11 @@ func EsperaAntesDeReintentar(n int, err error, t *asynq.Task) time.Duration {
 // Devuelve la forma variádica que espera slog en lugar de una estructura: el
 // uso es siempre pasarlo a un logger, y envolverlo solo añadiría un paso.
 func AtributosDeLaTarea(ctx context.Context) []any {
+	// Entregada por la suscripción push de Pub/Sub: el identificador es el
+	// del mensaje y el intento, el deliveryAttempt de la entrega.
+	if e, ok := entregaDe(ctx); ok {
+		return []any{"message_id", e.MessageID, "intento", e.Intento}
+	}
 	id, _ := asynq.GetTaskID(ctx)
 	cola, _ := asynq.GetQueueName(ctx)
 	intento, _ := asynq.GetRetryCount(ctx)

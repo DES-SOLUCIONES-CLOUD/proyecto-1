@@ -223,6 +223,11 @@ ROLES=(
   roles/iap.tunnelResourceAccessor
   # Despliegue: OS Login con sudo (desplegar-vm.sh corre en-vm.sh como root).
   roles/compute.osAdminLogin
+  # Entrega 4, cloudrun.tf: los tres servicios de Cloud Run y su IAM de
+  # invocación (allUsers en frontend y API, la cuenta push en workers).
+  roles/run.admin
+  # Entrega 4, pubsub.tf: topics, suscripciones y su IAM.
+  roles/pubsub.admin
 )
 # Sin roles de Logging ni de Monitoring: la plantilla no crea alertas,
 # paneles ni sumideros; solo da logWriter y metricWriter a las VM (abajo).
@@ -259,7 +264,7 @@ done
 # en las VM, el firewall, las claves HMAC y los permisos sobre buckets y
 # secretos. mooc-deployer puede usarlas (actAs: crear la VM con ellas y
 # entrar por OS Login) pero no cambiar su IAM ni crear otras.
-for rol_vm in web worker redis; do
+for rol_vm in web worker redis frontend pubsub-push; do
   cuenta="$PREFIJO-$rol_vm@$PROYECTO.iam.gserviceaccount.com"
   if ! gcloud iam service-accounts describe "$cuenta" --project "$PROYECTO" >/dev/null 2>&1; then
     aviso "creando la cuenta de servicio $cuenta"
@@ -276,6 +281,14 @@ for rol_vm in web worker redis; do
         gcloud iam service-accounts create "$PREFIJO-redis" --project "$PROYECTO" \
           --display-name "MOOC Redis" \
           --description "VM fija de Redis y Mailpit: solo registros, métricas e imágenes." ;;
+      frontend)
+        gcloud iam service-accounts create "$PREFIJO-frontend" --project "$PROYECTO" \
+          --display-name "MOOC Frontend (Cloud Run)" \
+          --description "Servicio de Cloud Run del frontend: sin permisos sobre recursos." ;;
+      pubsub-push)
+        gcloud iam service-accounts create "$PREFIJO-pubsub-push" --project "$PROYECTO" \
+          --display-name "MOOC Pub/Sub push" \
+          --description "Identidad OIDC de la suscripción push: solo roles/run.invoker sobre el servicio de workers." ;;
     esac
     for _ in $(seq 1 20); do
       gcloud iam service-accounts describe "$cuenta" --project "$PROYECTO" >/dev/null 2>&1 && break
