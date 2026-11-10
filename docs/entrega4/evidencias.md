@@ -1,4 +1,4 @@
-# Entrega 4 — Evidencias de funcionamiento
+# Entrega 4: Evidencias de funcionamiento
 
 Corrida del **9 de noviembre de 2026** (horas en UTC; Colombia = UTC−5) en el
 proyecto `plasma-sol-513002-k6`, región `us-central1`, con las imágenes del
@@ -52,7 +52,7 @@ Una tarea de la corrida de escalamiento, mensaje `23332739804199509`
 
 | Hora (UTC) | Servicio | Evento | Intento |
 |---|---|---|---|
-| 23:28:36.720 | mooc-api | `queue.task_published` (la API ya respondió `202` al profesor) | — |
+| 23:28:36.720 | mooc-api | `queue.task_published` (la API ya respondió `202` al profesor) | - |
 | 23:28:37.370 | mooc-worker | `queue.task_received` (push autenticado aceptado por Cloud Run) | 1 |
 | 23:29:16.857 | mooc-worker | `queue.task_acked`: HLS subido, activo y recurso `ready` en Cloud SQL, respuesta `204` | 1 |
 
