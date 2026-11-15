@@ -332,7 +332,7 @@ siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
 * **Guía de despliegue, configuración de servicios, Pub/Sub y permisos:** [docs/entrega4/README.md](docs/entrega4/README.md).
 * **Diagrama:** [docs/entrega4/arquitectura.png](docs/entrega4/arquitectura.png).
 * **Evidencias (URLs, límites, recorrido de una tarea, escalamiento):** [docs/entrega4/evidencias.md](docs/entrega4/evidencias.md).
-* **Video de sustentación:** _pendiente_.
+* **Video de sustentación:** [https://youtu.be/mtxQV3lMSkEy](https://youtu.be/mtxQV3lMSkEy)
 
 ## Entrega 3 — Aplicación elástica IaaS
 

@@ -15,7 +15,7 @@ lo que cambia es dónde corre cada pieza y el transporte de los trabajos.
 | Verificación de escalamiento | [`evidencias.md#escalamiento`](evidencias.md#escalamiento), scripts en [`load/entrega4/`](../../load/entrega4/) |
 | Infraestructura como código | [`deploy/gcp/terraform/cloudrun.tf`](../../deploy/gcp/terraform/cloudrun.tf), [`pubsub.tf`](../../deploy/gcp/terraform/pubsub.tf), [`balanceador.tf`](../../deploy/gcp/terraform/balanceador.tf) |
 | URL pública | https://136.82.109.164.sslip.io (API: `/api/v1/health`) |
-| Video de sustentación | _enlace pendiente (máx. 20 min)_ |
+| Video de sustentación | [https://youtu.be/mtxQV3lMSkEy](https://youtu.be/mtxQV3lMSkEy) |
 
 ---
 
