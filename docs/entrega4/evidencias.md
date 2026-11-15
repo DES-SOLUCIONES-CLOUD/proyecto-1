@@ -71,6 +71,40 @@ la reintenta con backoff. Ninguna produjo efectos duplicados: 9 recursos, 9
 dejó en **10 entregas** antes de la dead-letter (`pubsub_max_entregas`), para
 que una cola más larga no mande tareas sanas a la DLQ.
 
+## Reentrega de una tarea sin efectos duplicados
+
+Prueba del **15 de noviembre de 2026** (horas en UTC). Se subió un video de
+3 minutos (`contenedores-y-balanceo-clase-completa.mp4`) y, mientras el worker
+lo transcodificaba, se publicó a mano en `mooc-tareas` (consola de Pub/Sub,
+*Publicar mensaje*) la misma tarea: cuerpo `{"media_asset_id":"<id del activo>"}`
+y atributo `tipo=media:process`, como si Pub/Sub la entregara dos veces.
+
+Consulta usada en el Explorador de registros:
+
+```
+resource.type="cloud_run_revision" AND jsonPayload.accion=~"queue.task_" OR jsonPayload.message=~"duplicada" OR jsonPayload.message=~"activo listo"
+```
+
+| Hora (UTC) | Mensaje | Intento | Evento |
+|---|---|---|---|
+| 19:10:24 | `23388198233083796` (original) | - | `pubsub: tarea publicada` (mooc-api) |
+| 19:10:24 | `23388198233083796` | 1 | `pubsub: tarea recibida` (mooc-worker) |
+| 19:11:53 → 19:13:08 | `23477274751712006` (copia) | 1 a 5 | `tarea recibida` → `activo arrendado: la entrega se aplaza hasta que venza el arrendamiento` → `no se confirma (nack)` (503) |
+| 19:13:18 | `23388198233083796` | 1 | `media: activo listo` → `tarea terminada y persistida, se confirma (ack)` |
+| 19:13:42 | `23477274751712006` | 6 | `media: entrega duplicada descartada` → `se confirma (ack)` |
+
+La copia nunca tomó el activo mientras la primera entrega lo tenía reclamado:
+respondió 503 y Pub/Sub la reentregó con backoff (intentos 1 a 5). Cuando la
+primera entrega guardó el resultado y confirmó, el siguiente intento de la copia
+encontró el activo `ready`, lo descartó y confirmó. El video se transcodificó
+una sola vez.
+
+**Cola de mensajes fallidos.** En la misma sesión, un mensaje publicado a mano
+con un cuerpo JSON inválido (`23475518708542162`, el id sin comillas) falló en
+sus 10 entregas (`trabajo fallido: se reintentará con backoff`, 500) y en la
+décima se registró `trabajo agotado: pasa a la dead-letter queue`: llegó a
+`mooc-tareas-dlq`, como indica la política de la suscripción.
+
 ## Escalamiento
 
 ### Workers: 9 tareas a la vez (mensajes pendientes)

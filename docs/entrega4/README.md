@@ -11,7 +11,7 @@ lo que cambia es dónde corre cada pieza y el transporte de los trabajos.
 |---|---|
 | Guía de despliegue | [Sección 5](#5-guía-reproducible-de-despliegue) |
 | Diagrama | [`arquitectura.png`](arquitectura.png) (fuente: [`arquitectura.mmd`](arquitectura.mmd)) |
-| Evidencias | [`evidencias.md`](evidencias.md) |
+| Evidencias | [`evidencias.md`](evidencias.md) (incluye la prueba de reentrega sin duplicados del 15 de noviembre) |
 | Verificación de escalamiento | [`evidencias.md#escalamiento`](evidencias.md#escalamiento), scripts en [`load/entrega4/`](../../load/entrega4/) |
 | Infraestructura como código | [`deploy/gcp/terraform/cloudrun.tf`](../../deploy/gcp/terraform/cloudrun.tf), [`pubsub.tf`](../../deploy/gcp/terraform/pubsub.tf), [`balanceador.tf`](../../deploy/gcp/terraform/balanceador.tf) |
 | URL pública | https://136.82.109.164.sslip.io (API: `/api/v1/health`) |
@@ -272,7 +272,3 @@ load/entrega4/metricas.sh 30
 ```
 
 Los resultados de la corrida están en [`evidencias.md`](evidencias.md).
-| 9-12 | Configuración: los tres servicios en la consola (máx. 3, CPU, memoria, concurrencia, timeout), topic, suscripción (OIDC, dead-letter) |
-| 12-16 | Escalamiento: corrida de `escalamiento.py`, gráfico de instancias por servicio y de mensajes pendientes |
-| 16-19 | Acceso y permisos: cuentas de servicio, `run.invoker` del worker, ingress interno (`curl` → 404), secretos en Secret Manager |
-| 19-20 | Cierre |
