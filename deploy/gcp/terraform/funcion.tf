@@ -18,10 +18,12 @@
 # pasado var.funcion_audio.plazo_reintentos la función deja de pedir más
 # entregas (queda registrado como queue.task_dead_letter).
 #
-# Código: deploy/gcp/preparar-funcion.sh arma var.dir_codigo_funcion (módulo
-# del backend + FFmpeg estático); aquí se comprime, se sube con su MD5 en el
+# Código: deploy/gcp/preparar-funcion.sh arma var.zip_funcion (módulo del
+# backend + FFmpeg estático, zip determinista); aquí se sube con su MD5 en el
 # nombre (un cambio de código crea un objeto nuevo y redespliega) y la
-# función se construye con Cloud Build a partir de él.
+# función se construye con Cloud Build a partir de él. No se usa archive_file:
+# en CI el apply corre el plan guardado en otra máquina, donde ese data source
+# no se vuelve a leer y el zip no existiría.
 
 # --- Topic ---------------------------------------------------------------------------
 
@@ -67,19 +69,14 @@ resource "google_storage_bucket" "codigo" {
   }
 }
 
-data "archive_file" "funcion_audio" {
-  type        = "zip"
-  source_dir  = startswith(var.dir_codigo_funcion, "/") ? var.dir_codigo_funcion : "${path.module}/${var.dir_codigo_funcion}"
-  output_path = "${path.module}/.build/funcion-audio.zip"
-  # Permisos explícitos: el código se arma también en Windows, donde se
-  # pierde el bit de ejecución de bin/ffmpeg y bin/ffprobe.
-  output_file_mode = "0755"
+locals {
+  zip_funcion = startswith(var.zip_funcion, "/") ? var.zip_funcion : "${path.module}/${var.zip_funcion}"
 }
 
 resource "google_storage_bucket_object" "funcion_audio" {
-  name   = "audio/${data.archive_file.funcion_audio.output_md5}.zip"
+  name   = "audio/${filemd5(local.zip_funcion)}.zip"
   bucket = google_storage_bucket.codigo.name
-  source = data.archive_file.funcion_audio.output_path
+  source = local.zip_funcion
 }
 
 resource "google_storage_bucket_iam_member" "build_codigo" {

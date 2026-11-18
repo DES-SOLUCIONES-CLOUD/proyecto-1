@@ -76,7 +76,7 @@ if [[ "$modo" == aplicar ]]; then
   IFS=$'\t' read -r PROYECTO PREFIJO REGION <<<"$vars_plan"
   asegurar_clave_insignias "$PROYECTO" "$PREFIJO" "$REGION"
   # El plan apunta al zip de la función: se vuelve a armar en este runner.
-  "$DIR_GCP/preparar-funcion.sh"
+  bash "$DIR_GCP/preparar-funcion.sh"
   # Un plan guardado se aplica sin preguntar: la revisión fue antes. Si el
   # estado cambió desde que se generó, Terraform lo rechaza por obsoleto.
   tf apply -input=false "$archivo"
@@ -98,7 +98,7 @@ REGION="${REGION:-us-central1}"
 habilitar_apis "$PROYECTO" "${APIS[@]}"
 
 # Entrega 5: código de la Cloud Function (funcion.tf lo comprime y lo sube).
-"$DIR_GCP/preparar-funcion.sh"
+bash "$DIR_GCP/preparar-funcion.sh"
 
 # run_tag no tiene valor por defecto (Terraform gestiona las imágenes de Cloud
 # Run). Si no llega con -var ni en terraform.tfvars, se usa la que corre hoy,

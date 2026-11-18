@@ -11,11 +11,6 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
-    # Entrega 5: comprime el código de la Cloud Function (funcion.tf).
-    archive = {
-      source  = "hashicorp/archive"
-      version = "~> 2.4"
-    }
   }
 
   # Estado remoto en Cloud Storage, compartido por los portátiles del equipo

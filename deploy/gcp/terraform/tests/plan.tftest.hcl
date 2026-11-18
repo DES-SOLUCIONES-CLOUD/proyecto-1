@@ -11,14 +11,12 @@ mock_provider "google" {
   mock_resource "google_sql_database_instance" { defaults = { service_account_email_address = "p123@gcp-sa-cloud-sql.iam.gserviceaccount.com", private_ip_address = "10.30.0.3" } }
 }
 mock_provider "random" {}
-# El zip de la función no se arma en las pruebas.
-mock_provider "archive" {
-  mock_data "archive_file" { defaults = { output_md5 = "0123456789abcdef0123456789abcdef", output_path = ".build/funcion-audio.zip" } }
-}
 
 variables {
   project_id = "mi-proyecto"
   run_tag    = "abc123def456"
+  # Un zip de prueba: el real lo arma preparar-funcion.sh.
+  zip_funcion = "tests/funcion-falsa.zip"
 }
 
 run "completo" {
@@ -152,7 +150,7 @@ run "completo" {
   }
   # El código se sube con su MD5 en el nombre: código nuevo, despliegue nuevo.
   assert {
-    condition     = google_storage_bucket_object.funcion_audio.name == "audio/0123456789abcdef0123456789abcdef.zip"
+    condition     = google_storage_bucket_object.funcion_audio.name == "audio/${filemd5("tests/funcion-falsa.zip")}.zip"
     error_message = "objeto del código"
   }
   # La función solo lee originales (resources/) y escribe en el bucket HLS.

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Entrega 5: arma el código desplegable de la Cloud Function de audio en
-# deploy/gcp/terraform/.build/funcion-audio/ (ignorado por git). Terraform lo
-# comprime (archive_file), lo sube al bucket de código y despliega la función
-# con él (funcion.tf). Hay que correrlo antes de `terraform plan` y cada vez
-# que cambie backend/ o se quiera otra versión de FFmpeg.
+# deploy/gcp/terraform/.build/funcion-audio.zip (ignorado por git). Terraform
+# lo sube al bucket de código y despliega la función con él (funcion.tf).
+# Hay que correrlo antes de `terraform plan` y cada vez que cambie backend/ o
+# se quiera otra versión de FFmpeg (desplegar-infra.sh ya lo llama).
 #
 #   deploy/gcp/preparar-funcion.sh
 #   FFMPEG_URL=https://.../ffmpeg-7.0.2-amd64-static.tar.xz deploy/gcp/preparar-funcion.sh
@@ -25,6 +25,7 @@ requiere curl tar xz md5sum
 FFMPEG_URL="${FFMPEG_URL:-https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz}"
 BUILD="$DIR_TF/.build"
 DESTINO="$BUILD/funcion-audio"
+ZIP="$BUILD/funcion-audio.zip"
 CACHE="$BUILD/cache"
 BACKEND="$RAIZ/backend"
 
@@ -58,5 +59,34 @@ cp "$BACKEND/funciones/audio/funcion.go" "$DESTINO/funcion.go"
 tar -xJf "$paquete" -C "$DESTINO/bin" --strip-components 1 --wildcards '*/ffmpeg' '*/ffprobe'
 chmod 0755 "$DESTINO/bin/ffmpeg" "$DESTINO/bin/ffprobe"
 
-aviso "código de la función listo en $DESTINO ($(du -sh "$DESTINO" | awk '{print $1}'))"
-aviso "siguiente: terraform plan / apply (funcion.tf lo comprime y lo sube)"
+# --- Zip determinista ------------------------------------------------------------
+#
+# En CI el plan y el apply corren en máquinas distintas y el apply usa el plan
+# guardado: el zip se vuelve a armar en la segunda y tiene que salir idéntico
+# (su MD5 va en el nombre del objeto que planificó la primera). Por eso no se
+# usa archive_file ni `zip`: aquí van rutas ordenadas, fecha fija y permisos
+# 0755 (también para bin/ffmpeg cuando se arma en Windows).
+PY="$(command -v python3 || command -v python || true)"
+[[ -n "$PY" ]] || morir "falta python3 para armar el zip"
+"$PY" - "$DESTINO" "$ZIP" <<'PYEOF'
+import os, sys, zipfile
+origen, destino = sys.argv[1], sys.argv[2]
+rutas = []
+for raiz, dirs, archivos in os.walk(origen):
+    dirs.sort()
+    for a in sorted(archivos):
+        rutas.append(os.path.join(raiz, a))
+tmp = destino + ".tmp"
+with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+    for ruta in rutas:
+        nombre = os.path.relpath(ruta, origen).replace(os.sep, "/")
+        info = zipfile.ZipInfo(nombre, date_time=(2020, 1, 1, 0, 0, 0))
+        info.external_attr = (0o100755 & 0xFFFF) << 16
+        info.compress_type = zipfile.ZIP_DEFLATED
+        with open(ruta, "rb") as f:
+            z.writestr(info, f.read(), compresslevel=6)
+os.replace(tmp, destino)
+PYEOF
+
+aviso "código de la función listo: $ZIP ($(du -h "$ZIP" | awk '{print $1}'), md5 $(md5sum "$ZIP" | awk '{print $1}'))"
+aviso "siguiente: terraform plan / apply (funcion.tf lo sube y despliega la función)"

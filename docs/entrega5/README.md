@@ -144,7 +144,7 @@ Lo prueban [`funcion_test.go`](../../backend/funciones/audio/funcion_test.go)
 |---|---|---|
 | Servicios de Cloud Run, **imágenes**, configuración y escalamiento | [`cloudrun.tf`](../../deploy/gcp/terraform/cloudrun.tf), [`variables.tf`](../../deploy/gcp/terraform/variables.tf) | `google_cloud_run_v2_service` api, frontend, worker. La imagen es `…/mooc-<servicio>:${var.run_tag}` (Entrega 5: ya no se ignora). `run_api`, `run_frontend`, `run_worker`: mín./máx., CPU, memoria, concurrencia, timeout. |
 | Topics, suscripciones e integración con los consumidores | [`pubsub.tf`](../../deploy/gcp/terraform/pubsub.tf), [`funcion.tf`](../../deploy/gcp/terraform/funcion.tf) | `mooc-tareas`, `mooc-tareas-dlq`, `mooc-audio`; suscripción push OIDC al worker; DLQ; publicador para la API. |
-| Cloud Function, código desplegable y disparador | [`funcion.tf`](../../deploy/gcp/terraform/funcion.tf) | `archive_file` (zip del código), bucket `<proyecto>-mooc-funciones` y su objeto (`audio/<md5>.zip`), `google_cloudfunctions2_function` con `event_trigger` de Pub/Sub (`RETRY_POLICY_RETRY`), invocador de Eventarc. |
+| Cloud Function, código desplegable y disparador | [`funcion.tf`](../../deploy/gcp/terraform/funcion.tf) | bucket `<proyecto>-mooc-funciones` y el zip del código como objeto `audio/<md5>.zip` (lo arma `preparar-funcion.sh` de forma determinista), `google_cloudfunctions2_function` con `event_trigger` de Pub/Sub (`RETRY_POLICY_RETRY`), invocador de Eventarc. |
 | Cuentas de servicio, permisos, secretos y dependencias | [`identidades.tf`](../../deploy/gcp/terraform/identidades.tf), [`almacenamiento.tf`](../../deploy/gcp/terraform/almacenamiento.tf), [`funcion.tf`](../../deploy/gcp/terraform/funcion.tf), [`main.tf`](../../deploy/gcp/terraform/main.tf) | Clave HMAC y secreto `mooc-hmac-funcion-audio-secret`; `secretAccessor` por secreto y por cuenta; permisos por bucket con condición de prefijo; logWriter/metricWriter; firewall de Cloud SQL por etiqueta de red; VPC, Cloud SQL, buckets, Artifact Registry, balanceador. |
 
 ### 3.2 Parametrización
@@ -234,7 +234,7 @@ TAG=$(git rev-parse --short=12 HEAD)
 MOOC_TAG=$TAG deploy/gcp/publicar.sh           # o deploy/gcp/publicar-cloudbuild.sh sin Docker local
 
 # Código de la función: módulo del backend + funcion.go en la raíz + FFmpeg estático
-# verificado por MD5 -> deploy/gcp/terraform/.build/funcion-audio/ (ignorado por git).
+# verificado por MD5 -> deploy/gcp/terraform/.build/funcion-audio.zip (zip determinista, ignorado por git).
 deploy/gcp/preparar-funcion.sh
 ```
 

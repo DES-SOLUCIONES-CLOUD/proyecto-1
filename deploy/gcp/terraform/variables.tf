@@ -355,10 +355,10 @@ variable "pubsub_max_entregas" {
 
 # --- Entrega 5: Cloud Function de audio ------------------------------------------
 
-variable "dir_codigo_funcion" {
-  description = "Directorio con el código desplegable de la función de audio (lo arma deploy/gcp/preparar-funcion.sh)."
+variable "zip_funcion" {
+  description = "Zip con el código desplegable de la función de audio (lo arma deploy/gcp/preparar-funcion.sh). Relativo a deploy/gcp/terraform o absoluto."
   type        = string
-  default     = ".build/funcion-audio"
+  default     = ".build/funcion-audio.zip"
 }
 
 variable "funcion_audio" {
