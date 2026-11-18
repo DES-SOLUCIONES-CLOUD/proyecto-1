@@ -40,3 +40,8 @@ e1765a8b8a88a0a1350d0a3afb5179635b3df62a:docs/entrega3/evidencias/sonar/puerta.j
 # "una-clave-de-10-o-mas" en el comentario de uso de data/catalogo/poblar.mjs:
 # es el texto de ejemplo que explica qué poner, no una contraseña real.
 0e39838e255a422623eddda5bb505efac6a4f58c:data/catalogo/poblar.mjs:generic-api-key:10
+
+# "abc123def456" en la prueba de Terraform de la Entrega 5: es la etiqueta de
+# imagen (run_tag) inventada con la que se comprueba que Cloud Run despliega
+# mooc-api:<run_tag>. Parece un hash corto, no es ninguna credencial.
+b54ac8e54c0d0c487cc02881f8482817e796053a:deploy/gcp/terraform/tests/plan.tftest.hcl:generic-api-key:125
