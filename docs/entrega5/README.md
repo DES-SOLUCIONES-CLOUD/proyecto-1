@@ -119,7 +119,7 @@ payload. Por eso:
 | Entrega duplicada mientras otra lo procesa | `queue.Arrendado` → devuelve error → reintento con backoff | Espera a que la primera termine (arrendamiento de 30 min) |
 | Fallo transitorio (base, red, Storage) | El activo queda `failed` y se devuelve error → Eventarc reentrega; la siguiente entrega lo vuelve a reclamar | Reprocesa el mismo original y **sobrescribe las mismas claves** |
 | Original sin pista de audio | Activo `failed` + `asynq.SkipRetry` → se confirma | No se reintenta lo que no tiene arreglo |
-| Mensaje con más de `plazo_reintentos` (1 h) que sigue fallando | Se confirma y se registra `queue.task_dead_letter` | Reemplaza a la DLQ, que Eventarc no deja configurar |
+| Mensaje con más de `plazo_reintentos` (2 h) que sigue fallando | Se confirma y se registra `queue.task_dead_letter` | Reemplaza a la DLQ, que Eventarc no deja configurar |
 | Mensaje de otro tipo en `mooc-audio` | Se confirma y se registra | La función solo ejecuta el audio |
 
 Lo prueban [`funcion_test.go`](../../backend/funciones/audio/funcion_test.go)

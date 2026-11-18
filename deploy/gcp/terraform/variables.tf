@@ -369,7 +369,7 @@ variable "funcion_audio" {
   # 2 GiB: /tmp vive en memoria y guarda el original y los segmentos. 540 s es
   # el máximo de una función activada por eventos; un audio de una hora se
   # transcodifica en menos de un minuto.
-  default = { runtime = "go126", memoria = "2Gi", cpu = "1", timeout = 540, max = 3, plazo_reintentos = "1h" }
+  default = { runtime = "go126", memoria = "2Gi", cpu = "1", timeout = 540, max = 3, plazo_reintentos = "2h" }
   validation {
     condition     = var.funcion_audio.max <= 3 && var.funcion_audio.timeout <= 540 && var.funcion_audio.timeout >= 60
     error_message = "Máximo 3 instancias; timeout entre 60 y 540 s (límite de las funciones activadas por eventos)."
