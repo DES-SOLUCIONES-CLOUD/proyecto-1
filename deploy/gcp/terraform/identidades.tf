@@ -5,75 +5,84 @@
 # el worker firman contra Cloud Storage. Así los permisos sobre los buckets
 # son distintos por componente, como pide el enunciado.
 
-# Las cuentas las crea deploy/gcp/bootstrap-ci.sh, no Terraform. Crear
-# cuentas de servicio exige iam.serviceAccountAdmin de proyecto, que también
-# da setIamPolicy sobre TODAS las cuentas del proyecto, incluida la de CI: con
-# él, la cuenta de despliegue podría darse tokenCreator sobre cualquiera, o
-# dárselo a un tercero y tener acceso fuera de GitHub. Creadas aparte, la
-# cuenta de CI solo necesita actAs sobre estas (serviceAccountUser a
-# nivel de cuenta, también del bootstrap).
-data "google_service_account" "web" {
-  account_id = "${var.prefijo}-web"
-}
-
-data "google_service_account" "worker" {
-  account_id = "${var.prefijo}-worker"
-}
-
-# VM de Redis (Entrega 3). Sin claves HMAC ni secretos: solo escribe
-# registros y métricas y baja imágenes. Es el destino de las reglas de
-# firewall del 6379 y del SMTP.
-data "google_service_account" "redis" {
-  account_id = "${var.prefijo}-redis"
-}
-
-# Entrega 4. El frontend de Cloud Run corre con una cuenta sin permisos, y la
-# suscripción push firma sus entregas con mooc-pubsub-push, que solo puede
-# invocar el servicio de workers (cloudrun.tf). Las dos las crea
-# bootstrap-ci.sh, igual que las demás.
-data "google_service_account" "frontend" {
-  account_id = "${var.prefijo}-frontend"
-}
-
-data "google_service_account" "pubsub_push" {
-  account_id = "${var.prefijo}-pubsub-push"
-}
-
-# Entrega 5 (funcion.tf). La función de audio corre con su propia cuenta:
-# lee originales, escribe HLS y lee dos secretos; nada más. Cloud Build
-# construye la función con mooc-build (la misma de publicar-cloudbuild.sh).
-# Las dos las crea bootstrap-ci.sh, por la misma razón que las demás.
-data "google_service_account" "funcion_audio" {
-  account_id = "${var.prefijo}-fn-audio"
-}
-
-data "google_service_account" "build" {
-  account_id = "${var.prefijo}-build"
-}
-
-# Estados anteriores a este cambio tienen las cuentas como recursos. Se
-# olvidan sin borrarlas: siguen existiendo y ahora se leen como data.
-removed {
-  from = google_service_account.web
-  lifecycle {
-    destroy = false
+# Cuentas de servicio, una por componente (Entrega 5: las gestiona Terraform).
+#
+# Hasta la Entrega 4 las creaba deploy/gcp/bootstrap-ci.sh y aquí solo se
+# leían. La guía de la Entrega 5 pide que Terraform gestione las cuentas, así
+# que ahora son recursos. Las que ya existen en el proyecto se importan al
+# estado con los bloques import de abajo (no se borran ni se recrean).
+#
+# Lo que no cambia es la seguridad: la cuenta de CI (mooc-deployer) no recibe
+# iam.serviceAccountAdmin. Después de importarlas, un plan de CI solo las lee
+# (le basta el actAs que ya tiene sobre cada una). Crearlas en un proyecto
+# nuevo lo hace el primer apply del dueño del proyecto (README de la Entrega 5).
+locals {
+  cuentas_de_servicio = {
+    web = {
+      sufijo      = "web"
+      nombre      = "MOOC API (mig-api)"
+      descripcion = "Instancias de API y frontend: firma cargas y descargas, lee Secret Manager y Artifact Registry."
+    }
+    worker = {
+      sufijo      = "worker"
+      nombre      = "MOOC Workers (mig-workers)"
+      descripcion = "Instancias de worker: leen originales, escriben derivados HLS y PDFs de presentaciones."
+    }
+    # VM de Redis (Entrega 3): solo registros, métricas e imágenes.
+    redis = {
+      sufijo      = "redis"
+      nombre      = "MOOC Redis"
+      descripcion = "VM fija de Redis y Mailpit: solo registros, métricas e imágenes."
+    }
+    # Entrega 4: frontend sin permisos e identidad OIDC de la suscripción push.
+    frontend = {
+      sufijo      = "frontend"
+      nombre      = "MOOC frontend (Entrega 4)"
+      descripcion = null
+    }
+    pubsub_push = {
+      sufijo      = "pubsub-push"
+      nombre      = "MOOC pubsub-push (Entrega 4)"
+      descripcion = null
+    }
+    # Entrega 5: la función de audio y Cloud Build (construye la función).
+    funcion_audio = {
+      sufijo      = "fn-audio"
+      nombre      = "MOOC Cloud Function de audio"
+      descripcion = null
+    }
+    build = {
+      sufijo      = "build"
+      nombre      = "MOOC Cloud Build"
+      descripcion = null
+    }
   }
 }
 
-removed {
-  from = google_service_account.worker
-  lifecycle {
-    destroy = false
-  }
+resource "google_service_account" "cuenta" {
+  for_each     = local.cuentas_de_servicio
+  account_id   = "${var.prefijo}-${each.value.sufijo}"
+  display_name = each.value.nombre
+  description  = each.value.descripcion
+}
+
+# Recursos existentes: con importar_cuentas_existentes = true (el valor por
+# defecto, porque en plasma-sol-513002-k6 ya existen) el plan las importa al
+# estado en lugar de crearlas. Una vez en el estado, el bloque no hace nada.
+# En un proyecto nuevo se pone en false y el apply las crea.
+import {
+  for_each = var.importar_cuentas_existentes ? local.cuentas_de_servicio : {}
+  to       = google_service_account.cuenta[each.key]
+  id       = "projects/${var.project_id}/serviceAccounts/${var.prefijo}-${each.value.sufijo}@${var.project_id}.iam.gserviceaccount.com"
 }
 
 locals {
   cuentas = {
-    web    = data.google_service_account.web
-    worker = data.google_service_account.worker
-    redis  = data.google_service_account.redis
+    web    = google_service_account.cuenta["web"]
+    worker = google_service_account.cuenta["worker"]
+    redis  = google_service_account.cuenta["redis"]
     # Entrega 5: la Cloud Function de audio.
-    funcion-audio = data.google_service_account.funcion_audio
+    funcion-audio = google_service_account.cuenta["funcion_audio"]
   }
 }
 
@@ -100,17 +109,17 @@ resource "google_project_iam_member" "metricas" {
 # usuario); el secret va a Secret Manager y a ningún archivo.
 
 resource "google_storage_hmac_key" "web" {
-  service_account_email = data.google_service_account.web.email
+  service_account_email = google_service_account.cuenta["web"].email
 }
 
 resource "google_storage_hmac_key" "worker" {
-  service_account_email = data.google_service_account.worker.email
+  service_account_email = google_service_account.cuenta["worker"].email
 }
 
 # Entrega 5: la función firma con su propia cuenta, no con la del worker, para
 # que sus permisos sobre los buckets sean solo los suyos (funcion.tf).
 resource "google_storage_hmac_key" "funcion_audio" {
-  service_account_email = data.google_service_account.funcion_audio.email
+  service_account_email = google_service_account.cuenta["funcion_audio"].email
 }
 
 # --- Secret Manager ------------------------------------------------------------
@@ -191,7 +200,7 @@ locals {
 resource "google_secret_manager_secret_iam_member" "badge_web" {
   secret_id = "projects/${var.project_id}/secrets/${local.secreto_badge}"
   role      = "roles/secretmanager.secretAccessor"
-  member    = data.google_service_account.web.member
+  member    = google_service_account.cuenta["web"].member
 }
 
 # --- Artifact Registry ---------------------------------------------------------

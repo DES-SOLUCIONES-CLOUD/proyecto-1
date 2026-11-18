@@ -145,7 +145,7 @@ Lo prueban [`funcion_test.go`](../../backend/funciones/audio/funcion_test.go)
 | Servicios de Cloud Run, **imágenes**, configuración y escalamiento | [`cloudrun.tf`](../../deploy/gcp/terraform/cloudrun.tf), [`variables.tf`](../../deploy/gcp/terraform/variables.tf) | `google_cloud_run_v2_service` api, frontend, worker. La imagen es `…/mooc-<servicio>:${var.run_tag}` (Entrega 5: ya no se ignora). `run_api`, `run_frontend`, `run_worker`: mín./máx., CPU, memoria, concurrencia, timeout. |
 | Topics, suscripciones e integración con los consumidores | [`pubsub.tf`](../../deploy/gcp/terraform/pubsub.tf), [`funcion.tf`](../../deploy/gcp/terraform/funcion.tf) | `mooc-tareas`, `mooc-tareas-dlq`, `mooc-audio`; suscripción push OIDC al worker; DLQ; publicador para la API. |
 | Cloud Function, código desplegable y disparador | [`funcion.tf`](../../deploy/gcp/terraform/funcion.tf) | bucket `<proyecto>-mooc-funciones` y el zip del código como objeto `audio/<md5>.zip` (lo arma `preparar-funcion.sh` de forma determinista), `google_cloudfunctions2_function` con `event_trigger` de Pub/Sub (`RETRY_POLICY_RETRY`), invocador de Eventarc. |
-| Cuentas de servicio, permisos, secretos y dependencias | [`identidades.tf`](../../deploy/gcp/terraform/identidades.tf), [`almacenamiento.tf`](../../deploy/gcp/terraform/almacenamiento.tf), [`funcion.tf`](../../deploy/gcp/terraform/funcion.tf), [`main.tf`](../../deploy/gcp/terraform/main.tf) | Clave HMAC y secreto `mooc-hmac-funcion-audio-secret`; `secretAccessor` por secreto y por cuenta; permisos por bucket con condición de prefijo; logWriter/metricWriter; firewall de Cloud SQL por etiqueta de red; VPC, Cloud SQL, buckets, Artifact Registry, balanceador. |
+| Cuentas de servicio, permisos, secretos y dependencias | [`identidades.tf`](../../deploy/gcp/terraform/identidades.tf), [`apis.tf`](../../deploy/gcp/terraform/apis.tf), [`almacenamiento.tf`](../../deploy/gcp/terraform/almacenamiento.tf), [`funcion.tf`](../../deploy/gcp/terraform/funcion.tf), [`main.tf`](../../deploy/gcp/terraform/main.tf) | Las 7 cuentas de servicio (importadas si ya existen) y las APIs del proyecto; clave HMAC y secreto `mooc-hmac-funcion-audio-secret`; `secretAccessor` por secreto y por cuenta; permisos por bucket con condición de prefijo; logWriter/metricWriter; firewall de Cloud SQL por etiqueta de red; VPC, Cloud SQL, buckets, Artifact Registry, balanceador. |
 
 ### 3.2 Parametrización
 
@@ -187,22 +187,39 @@ Eventarc desde el proyecto.
 - **CI** se autentica con Workload Identity Federation: no hay llaves de
   cuentas de servicio.
 
-### 3.5 Recursos que existen antes de Terraform
+### 3.5 Recursos existentes y lo que queda fuera de Terraform
 
-Terraform **lee** estos recursos pero no los crea. Es una decisión de
-seguridad documentada desde la Entrega 3:
+**Cuentas de servicio y APIs (Entrega 5).** Hasta la Entrega 4 las cuentas de
+servicio las creaba `bootstrap-ci.sh` y las APIs las habilitaba
+`desplegar-infra.sh`; Terraform solo las leía. Ahora son recursos de Terraform:
+`google_service_account.cuenta` (las 7 cuentas, en
+[`identidades.tf`](../../deploy/gcp/terraform/identidades.tf)),
+`google_project_service.api` y el rol `roles/cloudbuild.builds.builder` de
+`mooc-build` (en [`apis.tf`](../../deploy/gcp/terraform/apis.tf)).
 
-| Recurso | Quién lo crea | Por qué fuera de Terraform |
+**Recursos que ya existían.** Las 7 cuentas ya existían en
+`plasma-sol-513002-k6`. Con `importar_cuentas_existentes = true` (el valor por
+defecto), los bloques `import` de `identidades.tf` las traen al estado en el
+primer `plan`/`apply`, sin borrarlas ni recrearlas; después el bloque no hace
+nada. En un proyecto nuevo se pone en `false` y el `apply` las crea. Las APIs
+ya habilitadas y el rol ya concedido se registran en el estado sin cambios.
+`destruir.sh` saca las cuentas del estado antes del `destroy`, así que
+sobreviven y se vuelven a importar en el siguiente `apply`.
+
+**Seguridad.** La cuenta de CI (`mooc-deployer`) no recibe
+`iam.serviceAccountAdmin`: después de la importación, un `plan` de CI solo
+lee las cuentas, para lo que le basta el `actAs` que tiene sobre cada una.
+Crear cuentas en un proyecto nuevo lo hace el primer `apply` del dueño del
+proyecto.
+
+**Lo único que queda fuera de Terraform**, porque tiene que existir antes de
+que Terraform corra o no debe depender de él:
+
+| Recurso | Quién lo crea | Por qué |
 |---|---|---|
-| Cuentas de servicio (`mooc-web`, `-worker`, `-redis`, `-frontend`, `-pubsub-push`, **`-fn-audio`**, **`-build`**) | `deploy/gcp/bootstrap-ci.sh`, una vez, el dueño del proyecto | Crearlas desde Terraform exige `iam.serviceAccountAdmin`, que da `setIamPolicy` sobre **todas** las cuentas del proyecto, incluida la de CI. Con ese rol, la cuenta de despliegue podría darse `tokenCreator` sobre cualquiera. Así, CI solo tiene `actAs` sobre estas cuentas. Los **permisos** de cada cuenta sí los gestiona Terraform. |
 | Bucket del estado `<proyecto>-tfstate` | `bootstrap-ci.sh` | Tiene que existir antes de `terraform init`. |
+| Cuenta de CI `mooc-deployer`, Workload Identity Federation y su `actAs` sobre las cuentas | `bootstrap-ci.sh` | Es la identidad que ejecuta Terraform en CI; si Terraform la gestionara, CI podría darse permisos a sí misma. |
 | Clave de firma de insignias `mooc-badge-signing-key` | `desplegar-infra.sh` (si falta) | Debe sobrevivir a un `terraform destroy`: con otra clave, las insignias ya emitidas dejan de verificarse. |
-| APIs del proyecto (`run`, `pubsub`, `cloudfunctions`, `cloudbuild`, `eventarc`, …) | `desplegar-infra.sh` (`habilitar_apis`) | Habilitar APIs necesita `serviceusage.admin`, que CI no tiene. |
-| `roles/cloudbuild.builds.builder` para `mooc-build` | `bootstrap-ci.sh` | Es un rol de proyecto, y CI solo puede conceder logWriter y metricWriter. |
-
-Todo lo demás (Cloud Run, Pub/Sub, la función, su código y su disparador,
-permisos, secretos, red, Cloud SQL, buckets y balanceador) se crea y
-actualiza solo con Terraform.
 
 ## 4. Despliegue reproducible
 
@@ -217,8 +234,9 @@ git clone https://github.com/DES-SOLUCIONES-CLOUD/proyecto-1.git && cd proyecto-
 gcloud config set project plasma-sol-513002-k6
 gcloud auth application-default login       # credenciales para Terraform
 
-# Cuentas de servicio (incluidas mooc-fn-audio y mooc-build), bucket del
-# estado y permisos de CI.
+# Bucket del estado, cuenta de CI (Workload Identity) y su actAs sobre las
+# cuentas de servicio. En un proyecto nuevo, volver a correrlo después del
+# primer terraform apply, que es el que crea las cuentas.
 deploy/gcp/bootstrap-ci.sh --proyecto plasma-sol-513002-k6
 
 # Variables del entorno (sin secretos).

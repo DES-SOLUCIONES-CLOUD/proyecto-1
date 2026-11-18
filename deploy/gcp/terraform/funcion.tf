@@ -38,7 +38,7 @@ resource "google_pubsub_topic" "audio" {
 resource "google_pubsub_topic_iam_member" "api_publica_audio" {
   topic  = google_pubsub_topic.audio.id
   role   = "roles/pubsub.publisher"
-  member = data.google_service_account.web.member
+  member = google_service_account.cuenta["web"].member
 }
 
 # --- Código desplegable -------------------------------------------------------------
@@ -82,7 +82,7 @@ resource "google_storage_bucket_object" "funcion_audio" {
 resource "google_storage_bucket_iam_member" "build_codigo" {
   bucket = google_storage_bucket.codigo.name
   role   = "roles/storage.objectViewer"
-  member = data.google_service_account.build.member
+  member = google_service_account.cuenta["build"].member
 }
 
 # --- Función ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ resource "google_cloudfunctions2_function" "audio" {
     # Cloud Build corre con mooc-build (lee el zip, escribe la imagen en el
     # repositorio mooc y sus registros), no con la cuenta por defecto de
     # Compute, a la que bootstrap-ci.sh le quitó Editor.
-    service_account   = data.google_service_account.build.id
+    service_account   = google_service_account.cuenta["build"].id
     docker_repository = google_artifact_registry_repository.imagenes.id
 
     source {
@@ -110,7 +110,7 @@ resource "google_cloudfunctions2_function" "audio" {
   }
 
   service_config {
-    service_account_email = data.google_service_account.funcion_audio.email
+    service_account_email = google_service_account.cuenta["funcion_audio"].email
     available_memory      = var.funcion_audio.memoria
     available_cpu         = var.funcion_audio.cpu
     timeout_seconds       = var.funcion_audio.timeout
@@ -152,7 +152,7 @@ resource "google_cloudfunctions2_function" "audio" {
     retry_policy   = "RETRY_POLICY_RETRY"
     # La misma identidad que firma las entregas push al worker: solo puede
     # invocar a los consumidores de las tareas.
-    service_account_email = data.google_service_account.pubsub_push.email
+    service_account_email = google_service_account.cuenta["pubsub_push"].email
   }
 
   depends_on = [
@@ -160,6 +160,7 @@ resource "google_cloudfunctions2_function" "audio" {
     google_storage_bucket_iam_member.build_codigo,
     google_artifact_registry_repository_iam_member.build_escribe,
     google_project_iam_member.build_registros,
+    google_project_iam_member.build_constructor,
   ]
 }
 
@@ -169,7 +170,7 @@ resource "google_cloud_run_service_iam_member" "funcion_audio_invocador" {
   location = google_cloudfunctions2_function.audio.location
   service  = google_cloudfunctions2_function.audio.service_config[0].service
   role     = "roles/run.invoker"
-  member   = data.google_service_account.pubsub_push.member
+  member   = google_service_account.cuenta["pubsub_push"].member
 }
 
 locals {
@@ -208,7 +209,7 @@ locals {
 resource "google_storage_bucket_iam_member" "funcion_audio_objetos_lectura" {
   bucket = google_storage_bucket.objetos.name
   role   = "roles/storage.objectViewer"
-  member = data.google_service_account.funcion_audio.member
+  member = google_service_account.cuenta["funcion_audio"].member
 
   condition {
     title       = "solo-originales"
@@ -222,7 +223,7 @@ resource "google_storage_bucket_iam_member" "funcion_audio_objetos_lectura" {
 resource "google_storage_bucket_iam_member" "funcion_audio_hls" {
   bucket = google_storage_bucket.hls.name
   role   = "roles/storage.objectUser"
-  member = data.google_service_account.funcion_audio.member
+  member = google_service_account.cuenta["funcion_audio"].member
 }
 
 # --- Cloud Build de la función -----------------------------------------------------
@@ -231,11 +232,11 @@ resource "google_artifact_registry_repository_iam_member" "build_escribe" {
   location   = google_artifact_registry_repository.imagenes.location
   repository = google_artifact_registry_repository.imagenes.name
   role       = "roles/artifactregistry.writer"
-  member     = data.google_service_account.build.member
+  member     = google_service_account.cuenta["build"].member
 }
 
 resource "google_project_iam_member" "build_registros" {
   project = var.project_id
   role    = "roles/logging.logWriter"
-  member  = data.google_service_account.build.member
+  member  = google_service_account.cuenta["build"].member
 }

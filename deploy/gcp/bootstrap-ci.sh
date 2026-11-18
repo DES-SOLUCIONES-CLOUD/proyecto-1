@@ -264,64 +264,25 @@ for rol in roles/iam.serviceAccountAdmin roles/iam.serviceAccountUser; do
   fi
 done
 
-# Cuentas de las VM. Terraform las lee (data en identidades.tf) y las usa
-# en las VM, el firewall, las claves HMAC y los permisos sobre buckets y
-# secretos. mooc-deployer puede usarlas (actAs: crear la VM con ellas y
-# entrar por OS Login) pero no cambiar su IAM ni crear otras.
+# Cuentas de los componentes. Desde la Entrega 5 las crea Terraform
+# (google_service_account.cuenta en identidades.tf) y las que ya existían se
+# importan al estado. Aquí solo se le da a mooc-deployer actAs sobre cada una
+# (usarlas en Cloud Run, la función y la VM), sin poder cambiar su IAM ni
+# crear otras. En un proyecto nuevo las cuentas aparecen con el primer
+# terraform apply del dueño: después hay que volver a correr este script.
 for rol_vm in web worker redis frontend pubsub-push fn-audio build; do
   cuenta="$PREFIJO-$rol_vm@$PROYECTO.iam.gserviceaccount.com"
   if ! gcloud iam service-accounts describe "$cuenta" --project "$PROYECTO" >/dev/null 2>&1; then
-    aviso "creando la cuenta de servicio $cuenta"
-    case "$rol_vm" in
-      web)
-        gcloud iam service-accounts create "$PREFIJO-web" --project "$PROYECTO" \
-          --display-name "MOOC API (mig-api)" \
-          --description "Instancias de API y frontend: firma cargas y descargas, lee Secret Manager y Artifact Registry." ;;
-      worker)
-        gcloud iam service-accounts create "$PREFIJO-worker" --project "$PROYECTO" \
-          --display-name "MOOC Workers (mig-workers)" \
-          --description "Instancias de worker: leen originales, escriben derivados HLS y PDFs de presentaciones." ;;
-      redis)
-        gcloud iam service-accounts create "$PREFIJO-redis" --project "$PROYECTO" \
-          --display-name "MOOC Redis" \
-          --description "VM fija de Redis y Mailpit: solo registros, métricas e imágenes." ;;
-      frontend)
-        gcloud iam service-accounts create "$PREFIJO-frontend" --project "$PROYECTO" \
-          --display-name "MOOC Frontend (Cloud Run)" \
-          --description "Servicio de Cloud Run del frontend: sin permisos sobre recursos." ;;
-      pubsub-push)
-        gcloud iam service-accounts create "$PREFIJO-pubsub-push" --project "$PROYECTO" \
-          --display-name "MOOC Pub/Sub push" \
-          --description "Identidad OIDC de la suscripción push: solo roles/run.invoker sobre el servicio de workers." ;;
-      fn-audio)
-        gcloud iam service-accounts create "$PREFIJO-fn-audio" --project "$PROYECTO" \
-          --display-name "MOOC Cloud Function de audio" \
-          --description "Entrega 5: lee originales, escribe HLS y lee la contraseña de la base y su clave HMAC." ;;
-      build)
-        gcloud iam service-accounts create "$PREFIJO-build" --project "$PROYECTO" \
-          --display-name "MOOC Cloud Build" \
-          --description "Construye las imágenes (publicar-cloudbuild.sh) y la Cloud Function de audio." ;;
-    esac
-    for _ in $(seq 1 20); do
-      gcloud iam service-accounts describe "$cuenta" --project "$PROYECTO" >/dev/null 2>&1 && break
-      sleep 3
-    done
+    aviso "  $cuenta no existe todavía: la crea terraform apply; volver a correr este script después"
+    continue
   fi
   gcloud iam service-accounts add-iam-policy-binding "$cuenta" --project "$PROYECTO" \
     --member "serviceAccount:$SA" --role roles/iam.serviceAccountUser --condition None >/dev/null
   aviso "  roles/iam.serviceAccountUser sobre $cuenta"
 done
 
-# Entrega 5: Cloud Functions copia el código a su propio bucket de fuentes y
-# lo construye con Cloud Build usando mooc-build (funcion.tf), que necesita
-# leer ese bucket, escribir la imagen y sus registros. Es un rol de proyecto,
-# y la cuenta de CI solo puede conceder logWriter y metricWriter (abajo), así
-# que se da aquí, una vez.
-con_reintento gcloud projects add-iam-policy-binding "$PROYECTO" \
-  --member "serviceAccount:$PREFIJO-build@$PROYECTO.iam.gserviceaccount.com" \
-  --role roles/cloudbuild.builds.builder --condition None --quiet >/dev/null \
-  || morir "no se pudo conceder roles/cloudbuild.builds.builder a $PREFIJO-build"
-aviso "  roles/cloudbuild.builds.builder para $PREFIJO-build"
+# Entrega 5: el rol roles/cloudbuild.builds.builder de mooc-build lo concede
+# Terraform (apis.tf, google_project_iam_member.build_constructor).
 
 # La cuenta por defecto de Compute Engine (<número>-compute@...) nace con
 # roles/editor en proyectos sin organización. Nada de este despliegue la usa:

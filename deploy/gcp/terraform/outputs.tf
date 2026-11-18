@@ -61,11 +61,11 @@ output "pubsub_dlq" {
 }
 
 output "sa_frontend" {
-  value = data.google_service_account.frontend.email
+  value = google_service_account.cuenta["frontend"].email
 }
 
 output "sa_pubsub_push" {
-  value = data.google_service_account.pubsub_push.email
+  value = google_service_account.cuenta["pubsub_push"].email
 }
 
 output "vm_redis" {
@@ -158,15 +158,15 @@ output "secreto_badge" {
 }
 
 output "sa_web" {
-  value = data.google_service_account.web.email
+  value = google_service_account.cuenta["web"].email
 }
 
 output "sa_worker" {
-  value = data.google_service_account.worker.email
+  value = google_service_account.cuenta["worker"].email
 }
 
 output "sa_redis" {
-  value = data.google_service_account.redis.email
+  value = google_service_account.cuenta["redis"].email
 }
 
 output "nat_activa" {
@@ -190,5 +190,5 @@ output "topic_audio" {
 }
 
 output "sa_funcion_audio" {
-  value = data.google_service_account.funcion_audio.email
+  value = google_service_account.cuenta["funcion_audio"].email
 }

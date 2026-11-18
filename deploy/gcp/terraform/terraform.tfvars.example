@@ -33,3 +33,7 @@ bd_retencion_backups = 3
 cuenta_facturacion = ""
 presupuesto_monto  = 50
 presupuesto_moneda = "USD"
+
+# Entrega 5: las cuentas de servicio ya existen en este proyecto y se importan
+# al estado. En un proyecto nuevo, false (el apply las crea).
+importar_cuentas_existentes = true

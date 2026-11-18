@@ -141,15 +141,15 @@ resource "google_compute_address" "redis_interna" {
 # al MIG de API.
 
 resource "google_compute_firewall" "redis" {
-  name                    = "${var.prefijo}-permitir-redis"
-  network                 = google_compute_network.vpc.id
-  direction               = "INGRESS"
-  priority                = 1000
+  name      = "${var.prefijo}-permitir-redis"
+  network   = google_compute_network.vpc.id
+  direction = "INGRESS"
+  priority  = 1000
   # Entrega 4: la API y los workers son Cloud Run con Direct VPC egress, que
   # sale con IP de las subredes api y workers. Las reglas por cuenta de
   # servicio no aplican a ese tráfico, así que el origen son las subredes.
   source_ranges           = [var.cidr_api, var.cidr_workers]
-  target_service_accounts = [data.google_service_account.redis.email]
+  target_service_accounts = [google_service_account.cuenta["redis"].email]
 
   # Redis no tiene contraseña (la API y el worker no la soportan): lo
   # protegen esta regla, que la VM no tiene IP externa y que el contenedor
@@ -167,7 +167,7 @@ resource "google_compute_firewall" "smtp" {
   direction               = "INGRESS"
   priority                = 1000
   source_ranges           = [var.cidr_api]
-  target_service_accounts = [data.google_service_account.redis.email]
+  target_service_accounts = [google_service_account.cuenta["redis"].email]
 
   allow {
     protocol = "tcp"
@@ -184,8 +184,8 @@ resource "google_compute_firewall" "ssh_iap" {
   # `gcloud compute ssh --tunnel-through-iap`: el puerto 22 no está abierto a
   # Internet y quién entra lo decide IAM (roles/iap.tunnelResourceAccessor y
   # OS Login), no una llave repartida.
-  source_ranges = ["35.235.240.0/20"]
-  target_service_accounts = [data.google_service_account.redis.email]
+  source_ranges           = ["35.235.240.0/20"]
+  target_service_accounts = [google_service_account.cuenta["redis"].email]
 
   allow {
     protocol = "tcp"
@@ -199,10 +199,10 @@ resource "google_compute_firewall" "ssh_iap" {
 # llegan al rango de Private Service Access, y solo al 5432. La VM de Redis y
 # cualquier otra que se cree en la VPC quedan fuera.
 resource "google_compute_firewall" "sql_permitir" {
-  name                    = "${var.prefijo}-permitir-egress-sql"
-  network                 = google_compute_network.vpc.id
-  direction               = "EGRESS"
-  priority                = 900
+  name               = "${var.prefijo}-permitir-egress-sql"
+  network            = google_compute_network.vpc.id
+  direction          = "EGRESS"
+  priority           = 900
   destination_ranges = [local.rango_psa]
   # Las salidas de Cloud Run llevan estas etiquetas de red (cloudrun.tf).
   # Entrega 5: también la Cloud Function de audio (funcion.tf).

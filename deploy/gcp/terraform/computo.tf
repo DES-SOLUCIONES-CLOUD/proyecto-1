@@ -67,7 +67,7 @@ resource "google_compute_instance" "redis" {
   }
 
   service_account {
-    email = data.google_service_account.redis.email
+    email = google_service_account.cuenta["redis"].email
     # cloud-platform porque los alcances son un mecanismo heredado y Google
     # recomienda este con los permisos acotados por IAM. Lo que la VM puede
     # hacer es lo que tiene su cuenta de servicio (identidades.tf).

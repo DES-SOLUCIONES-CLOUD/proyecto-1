@@ -114,7 +114,7 @@ resource "google_cloud_run_v2_service" "api" {
   }
 
   template {
-    service_account                  = data.google_service_account.web.email
+    service_account                  = google_service_account.cuenta["web"].email
     timeout                          = "${var.run_api.timeout}s"
     max_instance_request_concurrency = var.run_api.concurrencia
     execution_environment            = "EXECUTION_ENVIRONMENT_GEN2"
@@ -223,7 +223,7 @@ resource "google_cloud_run_v2_service" "frontend" {
     # Cuenta propia y sin ningún permiso: el frontend no toca la base, los
     # buckets ni los secretos. Cloud Run baja la imagen con su agente de
     # servicio, no con esta cuenta.
-    service_account                  = data.google_service_account.frontend.email
+    service_account                  = google_service_account.cuenta["frontend"].email
     timeout                          = "${var.run_frontend.timeout}s"
     max_instance_request_concurrency = var.run_frontend.concurrencia
 
@@ -286,7 +286,7 @@ resource "google_cloud_run_v2_service" "worker" {
   }
 
   template {
-    service_account = data.google_service_account.worker.email
+    service_account = google_service_account.cuenta["worker"].email
     # Igual al ack deadline de la suscripción (600 s): si la tarea pasa de ahí,
     # Pub/Sub da la entrega por perdida y Cloud Run corta la petición a la vez.
     timeout = "${var.run_worker.timeout}s"
@@ -374,5 +374,5 @@ resource "google_cloud_run_v2_service_iam_member" "worker_invocador" {
   name     = google_cloud_run_v2_service.worker.name
   location = google_cloud_run_v2_service.worker.location
   role     = "roles/run.invoker"
-  member   = data.google_service_account.pubsub_push.member
+  member   = google_service_account.cuenta["pubsub_push"].member
 }

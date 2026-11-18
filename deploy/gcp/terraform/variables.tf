@@ -375,3 +375,9 @@ variable "funcion_audio" {
     error_message = "Máximo 3 instancias; timeout entre 60 y 540 s (límite de las funciones activadas por eventos)."
   }
 }
+
+variable "importar_cuentas_existentes" {
+  description = "Entrega 5: importar al estado las cuentas de servicio que ya existen en el proyecto (identidades.tf). true en plasma-sol-513002-k6, donde las creó bootstrap-ci.sh; false en un proyecto nuevo, donde las crea el apply."
+  type        = bool
+  default     = true
+}

@@ -1,6 +1,6 @@
 mock_provider "google" {
   mock_data "google_project" { defaults = { number = "123456789" } }
-  mock_data "google_service_account" { defaults = { email = "sa@p.iam.gserviceaccount.com", member = "serviceAccount:sa@p.iam.gserviceaccount.com" } }
+  mock_resource "google_service_account" { defaults = { email = "sa@p.iam.gserviceaccount.com", member = "serviceAccount:sa@p.iam.gserviceaccount.com", id = "projects/p/serviceAccounts/sa@p.iam.gserviceaccount.com" } }
   mock_resource "google_compute_network" { defaults = { id = "projects/mi-proyecto/global/networks/mooc-vpc" } }
   mock_resource "google_compute_subnetwork" { defaults = { id = "projects/mi-proyecto/regions/us-central1/subnetworks/s" } }
   mock_resource "google_compute_address" { defaults = { address = "10.0.1.5" } }
@@ -13,8 +13,10 @@ mock_provider "google" {
 mock_provider "random" {}
 
 variables {
-  project_id = "mi-proyecto"
-  run_tag    = "abc123def456"
+  # Las pruebas no hablan con GCP: no hay cuentas que importar.
+  importar_cuentas_existentes = false
+  project_id                  = "mi-proyecto"
+  run_tag                     = "abc123def456"
   # Un zip de prueba: el real lo arma preparar-funcion.sh.
   zip_funcion = "tests/funcion-falsa.zip"
 }
@@ -53,7 +55,7 @@ run "completo" {
   }
   # Las cuentas de las VM las crea bootstrap-ci.sh; aquí solo se leen.
   assert {
-    condition     = google_compute_instance.redis.service_account[0].email == data.google_service_account.redis.email
+    condition     = google_compute_instance.redis.service_account[0].email == google_service_account.cuenta["redis"].email
     error_message = "cuenta de servicio de Redis"
   }
 
@@ -87,12 +89,12 @@ run "completo" {
   assert {
     condition = (google_cloud_run_v2_service.worker.template[0].max_instance_request_concurrency == 1 &&
       google_cloud_run_v2_service.worker.ingress == "INGRESS_TRAFFIC_INTERNAL_ONLY" &&
-    google_cloud_run_v2_service_iam_member.worker_invocador.member == data.google_service_account.pubsub_push.member)
+    google_cloud_run_v2_service_iam_member.worker_invocador.member == google_service_account.cuenta["pubsub_push"].member)
     error_message = "workers protegidos"
   }
   # Suscripción push autenticada, con dead-letter y ack deadline = timeout.
   assert {
-    condition = (google_pubsub_subscription.push.push_config[0].oidc_token[0].service_account_email == data.google_service_account.pubsub_push.email &&
+    condition = (google_pubsub_subscription.push.push_config[0].oidc_token[0].service_account_email == google_service_account.cuenta["pubsub_push"].email &&
       google_pubsub_subscription.push.push_config[0].push_endpoint == "https://mooc-worker-abc-uc.a.run.app/pubsub/push" &&
       google_pubsub_subscription.push.dead_letter_policy[0].max_delivery_attempts == 10 &&
     google_pubsub_subscription.push.ack_deadline_seconds == 600)
@@ -140,7 +142,7 @@ run "completo" {
       google_cloudfunctions2_function.audio.service_config[0].max_instance_count == 3 &&
       google_cloudfunctions2_function.audio.service_config[0].max_instance_request_concurrency == 1 &&
       google_cloudfunctions2_function.audio.service_config[0].ingress_settings == "ALLOW_INTERNAL_ONLY" &&
-    google_cloudfunctions2_function.audio.service_config[0].service_account_email == data.google_service_account.funcion_audio.email)
+    google_cloudfunctions2_function.audio.service_config[0].service_account_email == google_service_account.cuenta["funcion_audio"].email)
     error_message = "función de audio"
   }
   assert {

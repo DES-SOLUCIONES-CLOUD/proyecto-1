@@ -49,6 +49,11 @@ fi
 VARS=(-var permitir_borrar_buckets=true -var bd_proteccion_terraform=false -var bd_proteccion_api=false)
 aviso "bajando protecciones (buckets con objetos, instancia de Cloud SQL)"
 tf apply -input=false "${VARS[@]}"
+# Entrega 5: las cuentas de servicio son recursos de Terraform, pero tienen
+# permisos que da bootstrap-ci.sh (actAs de la cuenta de CI). Se sacan del
+# estado antes de destruir para que sobrevivan, como antes de esta entrega; el
+# siguiente apply las vuelve a importar (importar_cuentas_existentes).
+tf state list 2>/dev/null | grep '^google_service_account\.cuenta' | while read -r r; do tf state rm "$r" >/dev/null; done
 aviso "destruyendo la infraestructura"
 tf destroy -input=false "${VARS[@]}"
 rm -f "${DIR_TF:?}/bd.auto.tfvars"

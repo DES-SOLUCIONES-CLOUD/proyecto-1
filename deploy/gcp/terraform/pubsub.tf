@@ -57,7 +57,7 @@ resource "google_pubsub_subscription" "push" {
     # cuenta, y Cloud Run lo valida (firma, audiencia y que la cuenta tenga
     # run.invoker) antes de que la petición llegue al contenedor.
     oidc_token {
-      service_account_email = data.google_service_account.pubsub_push.email
+      service_account_email = google_service_account.cuenta["pubsub_push"].email
       audience              = google_cloud_run_v2_service.worker.uri
     }
     # Sin no_wrapper: el worker lee messageId, atributos y deliveryAttempt del
@@ -91,7 +91,7 @@ resource "google_pubsub_subscription" "push" {
 resource "google_pubsub_topic_iam_member" "api_publica" {
   topic  = google_pubsub_topic.tareas.id
   role   = "roles/pubsub.publisher"
-  member = data.google_service_account.web.member
+  member = google_service_account.cuenta["web"].member
 }
 
 # El agente de servicio de Pub/Sub mueve los mensajes agotados a la

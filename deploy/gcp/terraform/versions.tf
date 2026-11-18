@@ -1,5 +1,5 @@
 terraform {
-  # 1.7: bloques removed (identidades.tf) y mock_provider de las pruebas.
+  # 1.7: bloques import con for_each (identidades.tf) y mock_provider de las pruebas.
   required_version = ">= 1.7"
 
   required_providers {
