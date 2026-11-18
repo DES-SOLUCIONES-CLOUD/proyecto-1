@@ -63,6 +63,19 @@ la infraestructura coinciden.
 
 ![Apply en GitHub Actions](evidencias/02-apply.png)
 
+### 1.6 Cuentas de servicio y APIs gestionadas por Terraform
+
+Las 7 cuentas de servicio ya existían (las había creado `bootstrap-ci.sh`).
+Con el cambio de `identidades.tf` y `apis.tf`, el `plan` mostró
+`7 to import, 20 to add, 0 to change, 0 to destroy`: importa las cuentas al
+estado sin tocarlas y registra las 19 APIs y el rol de Cloud Build de
+`mooc-build`. El `apply`:
+
+![Importación de las cuentas](evidencias/terraform-importar-cuentas.png)
+
+Un segundo `terraform plan` con el mismo código respondió `No changes. Your
+infrastructure matches the configuration.`
+
 ## 2. Tarea real: Pub/Sub → función → resultado
 
 Curso borrador "Entrega 5 - Audio en una Cloud Function", recurso de tipo
