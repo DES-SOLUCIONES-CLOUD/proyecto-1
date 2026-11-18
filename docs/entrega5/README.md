@@ -15,7 +15,7 @@ actualiza con `terraform init`, `terraform plan` y `terraform apply`.
 | Código de la función | [`backend/funciones/audio/funcion.go`](../../backend/funciones/audio/funcion.go) |
 | Terraform | [`deploy/gcp/terraform/`](../../deploy/gcp/terraform/) (la función: [`funcion.tf`](../../deploy/gcp/terraform/funcion.tf)) |
 | Guía de despliegue | [Sección 4](#4-despliegue-reproducible) |
-| Evidencias | [`evidencias.md`](evidencias.md) |
+| Evidencias | [`evidencias.md`](evidencias.md) (despliegue con Terraform del 17 de noviembre, tarea real de audio y reentrega sin duplicados) y el documento [`Documento Entrega 5.docx`](Documento%20Entrega%205.docx) |
 | Video de sustentación | _(pendiente: enlace)_ |
 
 ---
