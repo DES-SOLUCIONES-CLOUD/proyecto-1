@@ -27,6 +27,15 @@ import (
 	"github.com/DES-SOLUCIONES-CLOUD/proyecto-1/backend/internal/platform/storage"
 )
 
+// BinarioFFmpeg y BinarioFFprobe son los ejecutables que se invocan. El
+// worker los toma del PATH (la imagen instala ffmpeg); la Cloud Function de
+// audio (funciones/audio) lleva los suyos dentro del código desplegado y
+// cambia estas rutas al arrancar.
+var (
+	BinarioFFmpeg  = "ffmpeg"
+	BinarioFFprobe = "ffprobe"
+)
+
 type rendition struct {
 	Height  int
 	Bitrate string
@@ -215,7 +224,7 @@ func (p *Processor) transcodeVideo(ctx context.Context, log *slog.Logger, payloa
 		segmentPattern := filepath.Join(workDir, name+"_%03d.ts")
 
 		empezo := time.Now()
-		cmd := exec.CommandContext(ctx, "ffmpeg", "-y", "-i", srcPath,
+		cmd := exec.CommandContext(ctx, BinarioFFmpeg, "-y", "-i", srcPath,
 			"-vf", fmt.Sprintf("scale=-2:%d", r.Height),
 			"-c:v", "h264", "-b:v", r.Bitrate, "-c:a", "aac",
 			"-hls_time", "6", "-hls_playlist_type", "vod",
@@ -302,7 +311,7 @@ func (p *Processor) transcodeAudio(ctx context.Context, log *slog.Logger, payloa
 	playlist := filepath.Join(workDir, "audio.m3u8")
 	segmentPattern := filepath.Join(workDir, "audio_%03d.ts")
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-y", "-i", srcPath,
+	cmd := exec.CommandContext(ctx, BinarioFFmpeg, "-y", "-i", srcPath,
 		"-c:a", "aac", "-b:a", "128k", "-vn",
 		"-hls_time", "6", "-hls_playlist_type", "vod",
 		"-hls_segment_filename", segmentPattern, playlist)
@@ -374,7 +383,7 @@ var ErrEntradaInvalida = errors.New("el original no contiene una pista reproduci
 
 // probePista comprueba que ffprobe vea al menos un flujo del tipo pedido.
 func probePista(ctx context.Context, path, selector string) error {
-	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", selector,
+	cmd := exec.CommandContext(ctx, BinarioFFprobe, "-v", "error", "-select_streams", selector,
 		"-show_entries", "stream=codec_type", "-of", "csv=p=0", path)
 	out, err := cmd.CombinedOutput()
 	if ctx.Err() != nil {
@@ -392,7 +401,7 @@ func probePista(ctx context.Context, path, selector string) error {
 
 // probeDimensiones lee ancho y alto del primer flujo de video.
 func probeDimensiones(ctx context.Context, path string) (ancho, alto int, err error) {
-	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v:0",
+	cmd := exec.CommandContext(ctx, BinarioFFprobe, "-v", "error", "-select_streams", "v:0",
 		"-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", path)
 	out, err := cmd.CombinedOutput()
 	if ctx.Err() != nil {

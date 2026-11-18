@@ -75,6 +75,8 @@ if [[ "$modo" == aplicar ]]; then
   vars_plan="$(tf show -json "$archivo" | jq -r '[.variables.project_id.value, (.variables.prefijo.value // "mooc"), (.variables.region.value // "us-central1")] | @tsv')"
   IFS=$'\t' read -r PROYECTO PREFIJO REGION <<<"$vars_plan"
   asegurar_clave_insignias "$PROYECTO" "$PREFIJO" "$REGION"
+  # El plan apunta al zip de la función: se vuelve a armar en este runner.
+  "$DIR_GCP/preparar-funcion.sh"
   # Un plan guardado se aplica sin preguntar: la revisión fue antes. Si el
   # estado cambió desde que se generó, Terraform lo rechaza por obsoleto.
   tf apply -input=false "$archivo"
@@ -94,6 +96,19 @@ REGION="${REGION:-us-central1}"
 
 # Terraform necesita las APIs habilitadas para planificar.
 habilitar_apis "$PROYECTO" "${APIS[@]}"
+
+# Entrega 5: código de la Cloud Function (funcion.tf lo comprime y lo sube).
+"$DIR_GCP/preparar-funcion.sh"
+
+# run_tag no tiene valor por defecto (Terraform gestiona las imágenes de Cloud
+# Run). Si no llega con -var ni en terraform.tfvars, se usa la que corre hoy,
+# y si los servicios no existen todavía, el commit actual.
+if [[ "$*" != *"run_tag="* && -z "$(valor_tfvars run_tag)" ]]; then
+  TAG="$(tag_en_cloud_run "$PROYECTO" "$PREFIJO" "$REGION")"
+  TAG="${TAG:-$(git -C "$RAIZ" rev-parse --short=12 HEAD)}"
+  aviso "run_tag=$TAG (imágenes de Cloud Run)"
+  set -- -var "run_tag=$TAG" "$@"
+fi
 
 tf_init
 

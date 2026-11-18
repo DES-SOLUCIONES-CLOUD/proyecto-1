@@ -20,6 +20,10 @@ dominio_web = ""
 # (false) y el Worker sigue funcionando por Private Google Access.
 habilitar_nat = true
 
+# Entrega 5: etiqueta (commit) de las imágenes de Cloud Run. Sin valor por
+# defecto; desplegar-infra.sh la rellena con la que corre hoy si no está aquí.
+# run_tag = "abc123def456"
+
 bd_tier              = "db-custom-1-3840"
 bd_disco_gb          = 10
 bd_retencion_backups = 3

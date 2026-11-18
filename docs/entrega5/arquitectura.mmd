@@ -1,0 +1,57 @@
+flowchart LR
+  U([Navegador]) -->|HTTPS 443| LB
+
+  subgraph GCP["GCP us-central1 · Terraform"]
+    LB["Balanceador de aplicaciones externo<br/>&lt;ip&gt;.sslip.io · TLS 1.2+"]
+
+    subgraph RUN["Cloud Run (máx. 3 instancias por servicio)"]
+      FE["mooc-frontend<br/>Next.js · público"]
+      API["mooc-api<br/>API REST · público<br/>SA mooc-web"]
+      WK["mooc-worker<br/>video (FFmpeg) · presentaciones (LibreOffice)<br/>ingress interno · SA mooc-worker"]
+    end
+
+    LB -->|"/* · NEG serverless"| FE
+    LB -->|"/api/* · NEG serverless"| API
+
+    subgraph PS["Cloud Pub/Sub"]
+      T[["topic mooc-tareas<br/>media:process · document:convert"]]
+      S["suscripción push mooc-tareas-push<br/>10 entregas · DLQ mooc-tareas-dlq"]
+      TA[["topic mooc-audio<br/>media:process-audio"]]
+    end
+
+    API -->|"publish"| T
+    API ==>|"publish (Entrega 5)"| TA
+    T --> S
+    S -->|"POST /pubsub/push · OIDC mooc-pubsub-push"| WK
+
+    EA{{"Eventarc<br/>messagePublished · RETRY_POLICY_RETRY<br/>identidad mooc-pubsub-push"}}
+    FN["Cloud Function 2ª gen. mooc-audio<br/>Go 1.26 · FFmpeg estático · 2 GiB · 540 s<br/>máx. 3 · 1 audio por instancia<br/>ingress interno · SA mooc-fn-audio"]
+    TA ==> EA ==>|"CloudEvent"| FN
+
+    subgraph VPC["VPC mooc-vpc (Direct VPC egress)"]
+      SQL[("Cloud SQL PostgreSQL<br/>IP privada · arrendamiento del activo")]
+      R[("VM mooc-redis<br/>Redis + Mailpit")]
+    end
+
+    API -->|5432| SQL
+    WK -->|5432| SQL
+    FN ==>|"5432 · reclamar / ready / failed"| SQL
+    API -->|6379| R
+    WK -->|6379| R
+
+    GCS[("Cloud Storage<br/>objetos (privado) · hls (lectura pública)")]
+    API -->|"HMAC mooc-web"| GCS
+    WK -->|"HMAC mooc-worker"| GCS
+    FN ==>|"lee resources/ · escribe hls/ (HMAC mooc-fn-audio)"| GCS
+
+    SM["Secret Manager"]
+    SM -.-> API
+    SM -.-> WK
+    SM -.->|"bd-password · hmac-funcion-audio-secret"| FN
+
+    CB["Cloud Build (SA mooc-build)<br/>zip en gs://…-mooc-funciones"]
+    CB -.->|"construye"| FN
+    AR["Artifact Registry mooc"]
+    AR -.-> RUN
+    CB -.-> AR
+  end

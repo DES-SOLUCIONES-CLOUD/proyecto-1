@@ -17,6 +17,11 @@ const (
 	TaskProcessMedia    = "media:process"
 	TaskConvertDocument = "document:convert"
 	TaskIssueBadge      = "badge:issue"
+	// TaskProcessAudio es la transcodificación de una pista de audio. Lleva el
+	// mismo payload y el mismo manejador que TaskProcessMedia, pero un tipo
+	// propio para poder enrutarla aparte: en Cloud Run (Entrega 5) la ejecuta
+	// la Cloud Function mooc-audio y no el worker (ver Enrutador).
+	TaskProcessAudio = "media:process-audio"
 )
 
 // MaxRetry es el número de reintentos antes de que un trabajo se considere
@@ -145,6 +150,10 @@ func AtributosDeLaTarea(ctx context.Context) []any {
 	// Entregada por la suscripción push de Pub/Sub: el identificador es el
 	// del mensaje y el intento, el deliveryAttempt de la entrega.
 	if e, ok := entregaDe(ctx); ok {
+		if e.Intento == 0 {
+			// Eventarc (Cloud Function) no informa el intento.
+			return []any{"message_id", e.MessageID}
+		}
 		return []any{"message_id", e.MessageID, "intento", e.Intento}
 	}
 	id, _ := asynq.GetTaskID(ctx)

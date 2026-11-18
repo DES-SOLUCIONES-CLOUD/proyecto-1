@@ -47,6 +47,9 @@ locals {
     S3_USE_SSL       = "true"
     S3_CREATE_BUCKET = "false"
     QUEUE_BACKEND    = "pubsub"
+    # Entrega 5: el audio va a su topic y lo procesa la Cloud Function;
+    # con esto la API lo publica ahí y el worker deja de ejecutarlo.
+    PUBSUB_TOPIC_AUDIO = google_pubsub_topic.audio.name
   }
 
   env_api = merge(local.env_backend, {
@@ -185,10 +188,10 @@ resource "google_cloud_run_v2_service" "api" {
     google_secret_manager_secret_iam_member.badge_web,
   ]
 
-  # La imagen la cambia desplegar-imagenes.sh (y el push a main en CI) sin
-  # pasar por Terraform; run_tag solo fija la de la creación.
+  # Entrega 5: la imagen la gestiona Terraform (var.run_tag); una etiqueta
+  # nueva crea una revisión nueva. Solo se ignora lo que escribe gcloud.
   lifecycle {
-    ignore_changes = [template[0].containers[0].image, client, client_version]
+    ignore_changes = [client, client_version]
   }
 }
 
@@ -248,10 +251,10 @@ resource "google_cloud_run_v2_service" "frontend" {
     }
   }
 
-  # La imagen la cambia desplegar-imagenes.sh (y el push a main en CI) sin
-  # pasar por Terraform; run_tag solo fija la de la creación.
+  # Entrega 5: la imagen la gestiona Terraform (var.run_tag); una etiqueta
+  # nueva crea una revisión nueva. Solo se ignora lo que escribe gcloud.
   lifecycle {
-    ignore_changes = [template[0].containers[0].image, client, client_version]
+    ignore_changes = [client, client_version]
   }
 }
 
@@ -358,10 +361,10 @@ resource "google_cloud_run_v2_service" "worker" {
 
   depends_on = [google_secret_manager_secret_iam_member.lector]
 
-  # La imagen la cambia desplegar-imagenes.sh (y el push a main en CI) sin
-  # pasar por Terraform; run_tag solo fija la de la creación.
+  # Entrega 5: la imagen la gestiona Terraform (var.run_tag); una etiqueta
+  # nueva crea una revisión nueva. Solo se ignora lo que escribe gcloud.
   lifecycle {
-    ignore_changes = [template[0].containers[0].image, client, client_version]
+    ignore_changes = [client, client_version]
   }
 }
 

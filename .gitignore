@@ -45,6 +45,30 @@ yarn-error.log*
 .env.*.local
 *.pem
 
+# Terraform: el estado guarda en claro las contraseñas y claves que genera,
+# y terraform.tfvars lleva el proyecto y el correo del administrador. El
+# estado vive en el bucket remoto (versions.tf); aquí no se versiona nada de
+# eso. El .terraform.lock.hcl sí se podría versionar, pero CI lo guarda con el
+# plan (desplegar-gcp.yml), así que también queda fuera.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+# Código de la Cloud Function armado por deploy/gcp/preparar-funcion.sh
+# (fuente + FFmpeg estático) y el zip que sube Terraform.
+deploy/gcp/terraform/.build/
+# Estado local entre scripts de deploy/gcp (último tag, último export).
+deploy/gcp/.estado
+
 # Sistema operativo / editores
 .DS_Store
 Thumbs.db

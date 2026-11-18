@@ -5,9 +5,11 @@
 #
 #   deploy/gcp/desplegar-imagenes.sh [<etiqueta>]   # por defecto, el commit actual
 #
-# Terraform crea los servicios y fija su configuración (cloudrun.tf) pero
-# ignora la imagen después de crearlos: así un push a main despliega sin un
-# apply, igual que desplegar-vm.sh en la Entrega 3.
+# Lo usa el push a main en CI para desplegar sin un apply. Desde la Entrega 5
+# Terraform gestiona la imagen (run_tag), y desplegar-infra.sh toma como
+# run_tag la etiqueta que este script dejó corriendo: el siguiente plan no ve
+# diferencia ni devuelve los servicios a una imagen anterior. A mano, lo
+# preferible es deploy/gcp/desplegar-run.sh (publicar + apply).
 source "$(dirname "$0")/lib.sh"
 comprobar_gcloud
 requiere_infra

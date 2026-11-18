@@ -196,7 +196,7 @@ publicación de una versión nueva.
 |   |-- internal/platform/  Adaptadores: HTTP, PostgreSQL, Redis, S3/MinIO, cola
 |   `-- migrations/         Migraciones SQL de PostgreSQL
 |-- frontend/           Next.js 16 (App Router), React 18, TypeScript y CSS propio
-|-- docs/               OpenAPI, arquitectura local, Entregas 2, 3 y 4 (`docs/entrega2/`, `docs/entrega3/`, `docs/entrega4/`)
+|-- docs/               OpenAPI, arquitectura local, Entregas 2 a 5 (`docs/entrega2/` … `docs/entrega5/`)
 |-- postman/            Colección que recorre los nueve segmentos de la demostración
 |-- load/               k6: Etapa 1, Escenarios 1 y 2 de capacidad, métricas
 |-- deploy/             Despliegue en GCP: Terraform, scripts y un compose por VM
@@ -325,6 +325,13 @@ Para la autoría y la administración hace falta un profesor o un administrador,
 que por diseño no se crean por registro público: un administrador invita
 profesores desde http://localhost:3000/admin, y el primer administrador se
 siembra con `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env`.
+
+## Entrega 5 — Funciones serverless e infraestructura como código
+
+* **Análisis de oportunidades serverless y cambio implementado** (transcodificación de audio en una Cloud Function de 2ª generación activada por Pub/Sub): [docs/entrega5/README.md](docs/entrega5/README.md).
+* **Diagrama:** [docs/entrega5/arquitectura.png](docs/entrega5/arquitectura.png).
+* **Código de la función:** [backend/funciones/audio/](backend/funciones/audio/). **Terraform:** [deploy/gcp/terraform/](deploy/gcp/terraform/) ([funcion.tf](deploy/gcp/terraform/funcion.tf)).
+* **Evidencias:** [docs/entrega5/evidencias.md](docs/entrega5/evidencias.md).
 
 ## Entrega 4 — Cloud Run y Cloud Pub/Sub
 

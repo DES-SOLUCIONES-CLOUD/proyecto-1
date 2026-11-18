@@ -166,7 +166,24 @@ APIS=(
   # Entrega 4
   run.googleapis.com
   pubsub.googleapis.com
+  # Entrega 5: Cloud Function de audio (se construye con Cloud Build y la
+  # activa Eventarc).
+  cloudfunctions.googleapis.com
+  cloudbuild.googleapis.com
+  eventarc.googleapis.com
 )
+
+# tag_en_cloud_run <proyecto> <prefijo> <region>: etiqueta de la imagen que
+# corre hoy en el servicio de workers; vacío si el servicio aún no existe.
+# desplegar-infra.sh la usa como run_tag cuando no se pasa otra, para que un
+# apply de infraestructura no cambie las imágenes.
+tag_en_cloud_run() {
+  local imagen
+  imagen="$(gcloud run services describe "$2-worker" --project "$1" --region "$3" \
+    --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || true)"
+  [[ -n "$imagen" ]] && echo "${imagen##*:}"
+  return 0
+}
 
 # habilitar_apis <proyecto> <api>...: habilita solo las que faltan. Listar
 # pide un permiso de lectura; habilitar, uno de administración que en CI no

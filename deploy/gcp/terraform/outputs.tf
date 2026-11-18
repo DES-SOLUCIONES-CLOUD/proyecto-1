@@ -172,3 +172,23 @@ output "sa_redis" {
 output "nat_activa" {
   value = var.habilitar_nat
 }
+
+# --- Entrega 5 -----------------------------------------------------------------
+
+output "funcion_audio" {
+  description = "Nombre de la Cloud Function que transcodifica el audio."
+  value       = google_cloudfunctions2_function.audio.name
+}
+
+output "funcion_audio_servicio" {
+  description = "Servicio de Cloud Run que hay debajo de la función (para sus registros y métricas)."
+  value       = google_cloudfunctions2_function.audio.service_config[0].service
+}
+
+output "topic_audio" {
+  value = google_pubsub_topic.audio.name
+}
+
+output "sa_funcion_audio" {
+  value = data.google_service_account.funcion_audio.email
+}

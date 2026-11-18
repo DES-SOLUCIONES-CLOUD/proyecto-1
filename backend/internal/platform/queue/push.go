@@ -54,6 +54,14 @@ func conEntrega(ctx context.Context, e entregaPush) context.Context {
 	return context.WithValue(ctx, claveEntrega{}, e)
 }
 
+// ConMensajePubSub deja el mensaje en el contexto para que los registros del
+// manejador lo lleven (AtributosDeLaTarea). Lo usa la Cloud Function de audio,
+// que recibe el mensaje por Eventarc: ahí no hay deliveryAttempt, así que el
+// intento queda en 0 y no se registra.
+func ConMensajePubSub(ctx context.Context, messageID string) context.Context {
+	return conEntrega(ctx, entregaPush{MessageID: messageID})
+}
+
 func entregaDe(ctx context.Context) (entregaPush, bool) {
 	e, ok := ctx.Value(claveEntrega{}).(entregaPush)
 	return e, ok

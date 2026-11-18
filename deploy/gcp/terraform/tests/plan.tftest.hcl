@@ -11,9 +11,14 @@ mock_provider "google" {
   mock_resource "google_sql_database_instance" { defaults = { service_account_email_address = "p123@gcp-sa-cloud-sql.iam.gserviceaccount.com", private_ip_address = "10.30.0.3" } }
 }
 mock_provider "random" {}
+# El zip de la función no se arma en las pruebas.
+mock_provider "archive" {
+  mock_data "archive_file" { defaults = { output_md5 = "0123456789abcdef0123456789abcdef", output_path = ".build/funcion-audio.zip" } }
+}
 
 variables {
   project_id = "mi-proyecto"
+  run_tag    = "abc123def456"
 }
 
 run "completo" {
@@ -27,7 +32,7 @@ run "completo" {
     error_message = "bucket_hls"
   }
   assert {
-    condition     = length(google_secret_manager_secret_iam_member.lector) == 5
+    condition     = length(google_secret_manager_secret_iam_member.lector) == 7
     error_message = "lectores de secretos: ${length(google_secret_manager_secret_iam_member.lector)}"
   }
   assert {
@@ -113,6 +118,47 @@ run "completo" {
   assert {
     condition     = google_compute_managed_ssl_certificate.web.managed[0].domains[0] == "203.0.113.10.sslip.io" && google_compute_ssl_policy.tls12.min_tls_version == "TLS_1_2"
     error_message = "certificado y TLS"
+  }
+
+  # Entrega 5: Terraform gestiona la imagen de los servicios (run_tag).
+  assert {
+    condition     = google_cloud_run_v2_service.api.template[0].containers[0].image == "us-central1-docker.pkg.dev/mi-proyecto/mooc/mooc-api:abc123def456"
+    error_message = "imagen de la api: ${google_cloud_run_v2_service.api.template[0].containers[0].image}"
+  }
+  # La API y el worker saben que el audio va a la función.
+  assert {
+    condition = alltrue([for s in [google_cloud_run_v2_service.api, google_cloud_run_v2_service.worker] :
+    contains([for e in s.template[0].containers[0].env : "${e.name}=${coalesce(e.value, "-")}"], "PUBSUB_TOPIC_AUDIO=mooc-audio")])
+    error_message = "PUBSUB_TOPIC_AUDIO"
+  }
+  # La función: Pub/Sub por Eventarc con reintentos, su propia cuenta, una
+  # tarea por instancia, solo tráfico interno y secretos como referencias.
+  assert {
+    condition = (google_cloudfunctions2_function.audio.event_trigger[0].event_type == "google.cloud.pubsub.topic.v1.messagePublished" &&
+      google_cloudfunctions2_function.audio.event_trigger[0].retry_policy == "RETRY_POLICY_RETRY" &&
+      google_cloudfunctions2_function.audio.event_trigger[0].pubsub_topic == google_pubsub_topic.audio.id &&
+      google_cloudfunctions2_function.audio.build_config[0].runtime == "go126" &&
+      google_cloudfunctions2_function.audio.build_config[0].entry_point == "TranscodificarAudio" &&
+      google_cloudfunctions2_function.audio.service_config[0].max_instance_count == 3 &&
+      google_cloudfunctions2_function.audio.service_config[0].max_instance_request_concurrency == 1 &&
+      google_cloudfunctions2_function.audio.service_config[0].ingress_settings == "ALLOW_INTERNAL_ONLY" &&
+    google_cloudfunctions2_function.audio.service_config[0].service_account_email == data.google_service_account.funcion_audio.email)
+    error_message = "función de audio"
+  }
+  assert {
+    condition = (length(google_cloudfunctions2_function.audio.service_config[0].secret_environment_variables) == 2 &&
+    !contains(keys(google_cloudfunctions2_function.audio.service_config[0].environment_variables), "DB_PASSWORD"))
+    error_message = "secretos de la función"
+  }
+  # El código se sube con su MD5 en el nombre: código nuevo, despliegue nuevo.
+  assert {
+    condition     = google_storage_bucket_object.funcion_audio.name == "audio/0123456789abcdef0123456789abcdef.zip"
+    error_message = "objeto del código"
+  }
+  # La función solo lee originales (resources/) y escribe en el bucket HLS.
+  assert {
+    condition     = strcontains(google_storage_bucket_iam_member.funcion_audio_objetos_lectura.condition[0].expression, "/objects/resources/") && google_storage_bucket_iam_member.funcion_audio_hls.bucket == "mi-proyecto-mooc-hls"
+    error_message = "permisos de storage de la función"
   }
 }
 
