@@ -18,11 +18,21 @@
 #
 # FFmpeg va dentro porque la imagen base por defecto de Cloud Run functions
 # para Go (google-24) no lo trae, y la función usa exactamente los mismos
-# comandos que el worker. Se verifica con el MD5 que publica el sitio.
+# comandos que el worker.
+#
+# De dónde sale FFmpeg, en orden:
+#   1. la copia local (.build/cache), si su MD5 es FFMPEG_MD5;
+#   2. la copia del proyecto en gs://<bucket del estado>/cache/ (FFMPEG_GCS);
+#   3. el sitio de origen (FFMPEG_URL), y si llega bien se guarda en (2).
+# El sitio bloquea con una página anti-bots a los runners de GitHub, así que
+# en CI la fuente real es (2). FFMPEG_MD5 fija la versión: sin él, una
+# versión nueva publicada en el sitio cambiaría la función sin pasar por git.
 source "$(dirname "$0")/lib.sh"
 requiere curl tar xz md5sum
 
 FFMPEG_URL="${FFMPEG_URL:-https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz}"
+# ffmpeg-7.0.2-amd64-static (release de johnvansickle.com, agosto de 2024).
+FFMPEG_MD5="${FFMPEG_MD5:-7fa72b652e19bf84c9461e332ea1cdf3}"
 BUILD="$DIR_TF/.build"
 DESTINO="$BUILD/funcion-audio"
 ZIP="$BUILD/funcion-audio.zip"
@@ -32,37 +42,60 @@ BACKEND="$RAIZ/backend"
 mkdir -p "$CACHE"
 
 # --- FFmpeg ----------------------------------------------------------------------
-#
-# El sitio a veces responde con una página de espera anti-bots ("One moment,
-# please...") en lugar del archivo, con código 200. Por eso no basta con que
-# curl termine bien: se comprueba que lo descargado sea un .tar.xz íntegro
-# (xz -t) y, si no, se reintenta con espera creciente.
-paquete="$CACHE/$(basename "$FFMPEG_URL")"
-if [[ -s "$paquete" ]] && ! xz -t "$paquete" 2>/dev/null; then
-  rm -f "$paquete"
-fi
-intento=1
-while [[ ! -s "$paquete" ]]; do
-  aviso "descargando $FFMPEG_URL (intento $intento)"
-  if curl -fsSL --retry 3 -A "mooc-deploy (curl)" -o "$paquete.tmp" "$FFMPEG_URL" && xz -t "$paquete.tmp" 2>/dev/null; then
-    mv "$paquete.tmp" "$paquete"
-    break
+nombre="$(basename "$FFMPEG_URL")"
+paquete="$CACHE/$nombre"
+if [[ -z "${FFMPEG_GCS:-}" ]]; then
+  # bucket_estado sale con `morir` si no hay TF_STATE_BUCKET ni tfvars: sin
+  # bucket simplemente no hay copia en GCS.
+  bucket="$(bucket_estado 2>/dev/null)" || bucket=""
+  if [[ -n "$bucket" ]]; then
+    FFMPEG_GCS="gs://$bucket/cache/$FFMPEG_MD5-$nombre"
   fi
-  rm -f "$paquete.tmp"
-  (( intento < 6 )) || morir "no se pudo descargar FFmpeg de $FFMPEG_URL (el sitio no entregó un .tar.xz válido); probar más tarde o pasar otro FFMPEG_URL"
-  sleep $(( intento * 15 ))
-  intento=$(( intento + 1 ))
-done
+fi
 
-# MD5 publicado por el sitio, solo si lo que devuelve es de verdad un hash (la
-# misma página de espera puede llegar en lugar del .md5).
-esperado="$(curl -fsSL --retry 3 -A "mooc-deploy (curl)" "$FFMPEG_URL.md5" 2>/dev/null | awk 'NR==1 {print $1}' || true)"
-obtenido="$(md5sum "$paquete" | awk '{print $1}')"
-if [[ "$esperado" =~ ^[0-9a-f]{32}$ ]]; then
-  [[ "$esperado" == "$obtenido" ]] || { rm -f "$paquete"; morir "MD5 de FFmpeg no coincide ($obtenido != $esperado); se borró la descarga"; }
-  aviso "FFmpeg verificado (md5 $obtenido)"
+# valido <archivo>: .tar.xz íntegro y con el MD5 esperado.
+valido() {
+  [[ -s "$1" ]] && xz -t "$1" 2>/dev/null && [[ "$(md5sum "$1" | awk '{print $1}')" == "$FFMPEG_MD5" ]]
+}
+
+if valido "$paquete"; then
+  aviso "FFmpeg: copia local (md5 $FFMPEG_MD5)"
 else
-  aviso "AVISO: el sitio no entregó el .md5; FFmpeg verificado solo como .tar.xz íntegro (md5 $obtenido)"
+  rm -f "$paquete"
+  if [[ -n "${FFMPEG_GCS:-}" ]] && command -v gcloud >/dev/null 2>&1 \
+     && gcloud storage cp --quiet "$FFMPEG_GCS" "$paquete.tmp" >/dev/null 2>&1 && valido "$paquete.tmp"; then
+    mv "$paquete.tmp" "$paquete"
+    aviso "FFmpeg: copia del proyecto $FFMPEG_GCS (md5 $FFMPEG_MD5)"
+  else
+    rm -f "$paquete.tmp"
+    # El sitio a veces responde con una página de espera anti-bots ("One
+    # moment, please...") con código 200: se exige un .tar.xz íntegro con el
+    # MD5 fijado, y si no, se reintenta con espera creciente.
+    intento=1
+    until valido "$paquete"; do
+      aviso "descargando $FFMPEG_URL (intento $intento)"
+      if curl -fsSL --retry 3 -A "mooc-deploy (curl)" -o "$paquete.tmp" "$FFMPEG_URL" && valido "$paquete.tmp"; then
+        mv "$paquete.tmp" "$paquete"
+        break
+      fi
+      if [[ -s "$paquete.tmp" ]] && xz -t "$paquete.tmp" 2>/dev/null; then
+        rm -f "$paquete.tmp"
+        morir "el sitio publicó otro FFmpeg (md5 distinto de $FFMPEG_MD5): para usarlo, fijar FFMPEG_MD5 a propósito"
+      fi
+      rm -f "$paquete.tmp"
+      (( intento < 4 )) || morir "no se pudo obtener FFmpeg: ni ${FFMPEG_GCS:-(sin copia en GCS)} ni $FFMPEG_URL (bloqueado por el sitio). Subir la copia: gcloud storage cp <ffmpeg.tar.xz> ${FFMPEG_GCS:-gs://<bucket>/cache/$FFMPEG_MD5-$nombre}"
+      sleep $(( intento * 15 ))
+      intento=$(( intento + 1 ))
+    done
+    aviso "FFmpeg: descargado del sitio (md5 $FFMPEG_MD5)"
+    if [[ -n "${FFMPEG_GCS:-}" ]] && command -v gcloud >/dev/null 2>&1; then
+      if gcloud storage cp --quiet "$paquete" "$FFMPEG_GCS" >/dev/null 2>&1; then
+        aviso "FFmpeg: guardado en $FFMPEG_GCS para los próximos despliegues"
+      else
+        aviso "AVISO: no se pudo guardar FFmpeg en $FFMPEG_GCS"
+      fi
+    fi
+  fi
 fi
 
 # --- Código ----------------------------------------------------------------------
