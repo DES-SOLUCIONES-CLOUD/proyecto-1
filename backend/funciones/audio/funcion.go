@@ -25,7 +25,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -263,38 +262,23 @@ func existe(ruta string) bool {
 	return err == nil && !info.IsDir()
 }
 
-// ejecutable devuelve una ruta que se puede ejecutar. El zip se arma con
-// permisos 0755, pero si el bit se perdió y el código está en un sistema de
-// archivos de solo lectura, se copia a /tmp.
+// ejecutable devuelve la ruta absoluta si el archivo tiene permiso de
+// ejecución. preparar-funcion.sh arma el zip con 0755 en todos los archivos
+// (también desde Windows), así que no se cambian permisos ni se copia nada
+// aquí: si falta el bit, el zip está mal armado y conviene que se vea.
 func ejecutable(ruta string) (string, error) {
 	abs, err := filepath.Abs(ruta)
 	if err != nil {
 		return "", err
 	}
-	if info, err := os.Stat(abs); err == nil && info.Mode()&0o111 != 0 {
-		return abs, nil
-	}
-	if err := os.Chmod(abs, 0o755); err == nil { //nolint:gosec // es un ejecutable
-		return abs, nil
-	}
-	destino := filepath.Join(os.TempDir(), "mooc-bin", filepath.Base(abs))
-	if err := os.MkdirAll(filepath.Dir(destino), 0o700); err != nil {
-		return "", err
-	}
-	origen, err := os.Open(abs)
+	info, err := os.Stat(abs)
 	if err != nil {
 		return "", err
 	}
-	defer origen.Close()
-	copia, err := os.OpenFile(destino, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o700) //nolint:gosec // ruta fija bajo TempDir
-	if err != nil {
-		return "", err
+	if info.Mode()&0o111 == 0 {
+		return "", fmt.Errorf("audio: %s no es ejecutable (%v): volver a armar el zip con deploy/gcp/preparar-funcion.sh", abs, info.Mode())
 	}
-	if _, err := io.Copy(copia, origen); err != nil {
-		copia.Close()
-		return "", err
-	}
-	return destino, copia.Close()
+	return abs, nil
 }
 
 func getEnv(clave, defecto string) string {
