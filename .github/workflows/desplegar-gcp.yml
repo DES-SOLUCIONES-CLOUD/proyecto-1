@@ -190,7 +190,11 @@ jobs:
             # lock de providers viaja con él: el apply tiene que usar las
             # mismas versiones.
             objeto="gs://$TF_STATE_BUCKET/planes/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-            gcloud storage cp "$plan" deploy/gcp/terraform/.terraform.lock.hcl "$objeto/"
+            # Entrega 5: el zip de la Cloud Function viaja con el plan. Su MD5
+            # está en el nombre del objeto planificado, y así el apply sube
+            # exactamente ese zip sin volver a descargar FFmpeg.
+            gcloud storage cp "$plan" deploy/gcp/terraform/.terraform.lock.hcl \
+              deploy/gcp/terraform/.build/funcion-audio.zip "$objeto/"
             echo "cambios=true" >> "$GITHUB_OUTPUT"
             echo "objeto=$objeto" >> "$GITHUB_OUTPUT"
           else
@@ -229,6 +233,8 @@ jobs:
         run: |
           gcloud storage cp "$OBJETO/infra.tfplan" "$RUNNER_TEMP/infra.tfplan"
           gcloud storage cp "$OBJETO/.terraform.lock.hcl" deploy/gcp/terraform/.terraform.lock.hcl
+          mkdir -p deploy/gcp/terraform/.build
+          gcloud storage cp "$OBJETO/funcion-audio.zip" deploy/gcp/terraform/.build/funcion-audio.zip
           bash deploy/gcp/desplegar-infra.sh --aplicar "$RUNNER_TEMP/infra.tfplan"
 
       - name: Borrar el plan guardado

@@ -32,19 +32,37 @@ BACKEND="$RAIZ/backend"
 mkdir -p "$CACHE"
 
 # --- FFmpeg ----------------------------------------------------------------------
+#
+# El sitio a veces responde con una página de espera anti-bots ("One moment,
+# please...") en lugar del archivo, con código 200. Por eso no basta con que
+# curl termine bien: se comprueba que lo descargado sea un .tar.xz íntegro
+# (xz -t) y, si no, se reintenta con espera creciente.
 paquete="$CACHE/$(basename "$FFMPEG_URL")"
-if [[ ! -s "$paquete" ]]; then
-  aviso "descargando $FFMPEG_URL"
-  curl -fsSL --retry 3 -o "$paquete.tmp" "$FFMPEG_URL"
-  mv "$paquete.tmp" "$paquete"
+if [[ -s "$paquete" ]] && ! xz -t "$paquete" 2>/dev/null; then
+  rm -f "$paquete"
 fi
-if curl -fsSL --retry 3 -o "$paquete.md5" "$FFMPEG_URL.md5" 2>/dev/null; then
-  esperado="$(awk '{print $1}' "$paquete.md5")"
-  obtenido="$(md5sum "$paquete" | awk '{print $1}')"
+intento=1
+while [[ ! -s "$paquete" ]]; do
+  aviso "descargando $FFMPEG_URL (intento $intento)"
+  if curl -fsSL --retry 3 -A "mooc-deploy (curl)" -o "$paquete.tmp" "$FFMPEG_URL" && xz -t "$paquete.tmp" 2>/dev/null; then
+    mv "$paquete.tmp" "$paquete"
+    break
+  fi
+  rm -f "$paquete.tmp"
+  (( intento < 6 )) || morir "no se pudo descargar FFmpeg de $FFMPEG_URL (el sitio no entregó un .tar.xz válido); probar más tarde o pasar otro FFMPEG_URL"
+  sleep $(( intento * 15 ))
+  intento=$(( intento + 1 ))
+done
+
+# MD5 publicado por el sitio, solo si lo que devuelve es de verdad un hash (la
+# misma página de espera puede llegar en lugar del .md5).
+esperado="$(curl -fsSL --retry 3 -A "mooc-deploy (curl)" "$FFMPEG_URL.md5" 2>/dev/null | awk 'NR==1 {print $1}' || true)"
+obtenido="$(md5sum "$paquete" | awk '{print $1}')"
+if [[ "$esperado" =~ ^[0-9a-f]{32}$ ]]; then
   [[ "$esperado" == "$obtenido" ]] || { rm -f "$paquete"; morir "MD5 de FFmpeg no coincide ($obtenido != $esperado); se borró la descarga"; }
   aviso "FFmpeg verificado (md5 $obtenido)"
 else
-  aviso "AVISO: no hay $FFMPEG_URL.md5; FFmpeg sin verificar"
+  aviso "AVISO: el sitio no entregó el .md5; FFmpeg verificado solo como .tar.xz íntegro (md5 $obtenido)"
 fi
 
 # --- Código ----------------------------------------------------------------------

@@ -75,8 +75,14 @@ if [[ "$modo" == aplicar ]]; then
   vars_plan="$(tf show -json "$archivo" | jq -r '[.variables.project_id.value, (.variables.prefijo.value // "mooc"), (.variables.region.value // "us-central1")] | @tsv')"
   IFS=$'\t' read -r PROYECTO PREFIJO REGION <<<"$vars_plan"
   asegurar_clave_insignias "$PROYECTO" "$PREFIJO" "$REGION"
-  # El plan apunta al zip de la función: se vuelve a armar en este runner.
-  bash "$DIR_GCP/preparar-funcion.sh"
+  # El plan apunta al zip de la función (su MD5 va en el nombre del objeto).
+  # En CI llega del job del plan junto con el plan guardado: se aplica ese
+  # mismo zip y no se vuelve a descargar FFmpeg. Solo si falta se arma aquí.
+  if [[ -s "$DIR_TF/.build/funcion-audio.zip" ]]; then
+    aviso "zip de la función: el del plan ($(md5sum "$DIR_TF/.build/funcion-audio.zip" | awk '{print $1}'))"
+  else
+    bash "$DIR_GCP/preparar-funcion.sh"
+  fi
   # Un plan guardado se aplica sin preguntar: la revisión fue antes. Si el
   # estado cambió desde que se generó, Terraform lo rechaza por obsoleto.
   tf apply -input=false "$archivo"
