@@ -95,7 +95,7 @@ func TestConfirmarDosVecesNoDuplicaElActivo(t *testing.T) {
 	if len(pubs) != 1 {
 		t.Fatalf("se esperaba un solo trabajo, hay %d", len(pubs))
 	}
-	if pubs[0].Tipo != queue.TaskProcessMedia {
+	if pubs[0].Tipo != queue.TaskProcessAudio {
 		t.Errorf("se encoló %q", pubs[0].Tipo)
 	}
 	if pubs[0].ClaveDeIdempotencia != id1 {

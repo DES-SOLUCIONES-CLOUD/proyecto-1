@@ -103,6 +103,11 @@ type Config struct {
 	// publica cuando QueueBackend es "pubsub".
 	GCPProject  string
 	PubSubTopic string
+	// PubSubTopicAudio es el topic de la transcodificación de audio, que
+	// consume la Cloud Function (Entrega 5). Definido, la API publica ahí los
+	// trabajos de audio y el worker deja de registrar su manejador; vacío,
+	// el audio va por el topic general y lo procesa el worker como antes.
+	PubSubTopicAudio string
 	// Port es el puerto HTTP del worker en modo push (Cloud Run pasa PORT).
 	Port string
 }
@@ -157,6 +162,8 @@ func Load() Config {
 		GCPProject:   getEnv("GOOGLE_CLOUD_PROJECT", ""),
 		PubSubTopic:  getEnv("PUBSUB_TOPIC", ""),
 		Port:         getEnv("PORT", "8080"),
+
+		PubSubTopicAudio: getEnv("PUBSUB_TOPIC_AUDIO", ""),
 	}
 }
 

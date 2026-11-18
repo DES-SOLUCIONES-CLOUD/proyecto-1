@@ -281,10 +281,18 @@ variable "presupuesto_moneda" {
 
 # --- Entrega 4: Cloud Run y Pub/Sub ---------------------------------------------
 
+# Sin valor por defecto (Entrega 5): Terraform gestiona la imagen de los tres
+# servicios, y un valor fijo como "desplegada" devolvería Cloud Run a la imagen
+# que tuviera esa etiqueta. desplegar-infra.sh la rellena con la que corre hoy
+# (o el commit actual si los servicios aún no existen); con terraform a mano:
+#   terraform apply -var run_tag=$(git rev-parse --short=12 HEAD)
 variable "run_tag" {
-  description = "Etiqueta de las imágenes que despliegan los servicios de Cloud Run (el commit; desplegar-run.sh la pasa). Una etiqueta nueva crea una revisión nueva."
+  description = "Etiqueta (commit) de las imágenes mooc-api, mooc-worker y mooc-frontend que despliegan los servicios de Cloud Run. Una etiqueta nueva crea una revisión nueva."
   type        = string
-  default     = "desplegada"
+  validation {
+    condition     = length(var.run_tag) > 0
+    error_message = "run_tag no puede estar vacío."
+  }
 }
 
 # Configuración de cada servicio. max = 3 es el límite del enunciado; un
@@ -343,4 +351,27 @@ variable "pubsub_max_entregas" {
   # verificación de escalamiento hubo mensajes que llegaron en el 4.º intento.
   # 10 deja margen para colas más largas sin mandar tareas sanas a la DLQ.
   default = 10
+}
+
+# --- Entrega 5: Cloud Function de audio ------------------------------------------
+
+variable "dir_codigo_funcion" {
+  description = "Directorio con el código desplegable de la función de audio (lo arma deploy/gcp/preparar-funcion.sh)."
+  type        = string
+  default     = ".build/funcion-audio"
+}
+
+variable "funcion_audio" {
+  description = "Cloud Function de audio: runtime de Go, memoria, CPU, tiempo máximo por ejecución (s), máximo de instancias y plazo tras el que un fallo deja de reintentarse."
+  type = object({
+    runtime = string, memoria = string, cpu = string, timeout = number, max = number, plazo_reintentos = string
+  })
+  # 2 GiB: /tmp vive en memoria y guarda el original y los segmentos. 540 s es
+  # el máximo de una función activada por eventos; un audio de una hora se
+  # transcodifica en menos de un minuto.
+  default = { runtime = "go126", memoria = "2Gi", cpu = "1", timeout = 540, max = 3, plazo_reintentos = "1h" }
+  validation {
+    condition     = var.funcion_audio.max <= 3 && var.funcion_audio.timeout <= 540 && var.funcion_audio.timeout >= 60
+    error_message = "Máximo 3 instancias; timeout entre 60 y 540 s (límite de las funciones activadas por eventos)."
+  }
 }

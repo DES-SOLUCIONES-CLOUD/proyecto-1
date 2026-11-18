@@ -97,6 +97,14 @@ func main() {
 	mux.Use(queue.Retirable(retiro))
 	mux.HandleFunc(queue.TaskProcessMedia, processor.HandleProcessMedia)
 	mux.HandleFunc(queue.TaskConvertDocument, convertidor.HandleConvertDocument)
+	// Entrega 5: con PUBSUB_TOPIC_AUDIO definido el audio lo transcodifica la
+	// Cloud Function mooc-audio y este worker ya no lo ejecuta. Sin él (local,
+	// asynq) sigue aquí, con el mismo manejador.
+	if cfg.PubSubTopicAudio == "" {
+		mux.HandleFunc(queue.TaskProcessAudio, processor.HandleProcessMedia)
+	} else {
+		log.Info("worker: la transcodificación de audio la ejecuta la Cloud Function", "topic", cfg.PubSubTopicAudio)
+	}
 
 	if cfg.QueueBackend == "pubsub" {
 		servirPush(ctx, cfg, log, mux, retirar)

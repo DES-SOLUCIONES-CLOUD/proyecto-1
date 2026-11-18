@@ -228,6 +228,10 @@ ROLES=(
   roles/run.admin
   # Entrega 4, pubsub.tf: topics, suscripciones y su IAM.
   roles/pubsub.admin
+  # Entrega 5, funcion.tf: crear y actualizar la Cloud Function de audio y su
+  # disparador de Eventarc. developer y no admin: no cambia el IAM de otras
+  # funciones (el invocador se da sobre el servicio de Cloud Run, run.admin).
+  roles/cloudfunctions.developer
 )
 # Sin roles de Logging ni de Monitoring: la plantilla no crea alertas,
 # paneles ni sumideros; solo da logWriter y metricWriter a las VM (abajo).
@@ -264,7 +268,7 @@ done
 # en las VM, el firewall, las claves HMAC y los permisos sobre buckets y
 # secretos. mooc-deployer puede usarlas (actAs: crear la VM con ellas y
 # entrar por OS Login) pero no cambiar su IAM ni crear otras.
-for rol_vm in web worker redis frontend pubsub-push; do
+for rol_vm in web worker redis frontend pubsub-push fn-audio build; do
   cuenta="$PREFIJO-$rol_vm@$PROYECTO.iam.gserviceaccount.com"
   if ! gcloud iam service-accounts describe "$cuenta" --project "$PROYECTO" >/dev/null 2>&1; then
     aviso "creando la cuenta de servicio $cuenta"
@@ -289,6 +293,14 @@ for rol_vm in web worker redis frontend pubsub-push; do
         gcloud iam service-accounts create "$PREFIJO-pubsub-push" --project "$PROYECTO" \
           --display-name "MOOC Pub/Sub push" \
           --description "Identidad OIDC de la suscripción push: solo roles/run.invoker sobre el servicio de workers." ;;
+      fn-audio)
+        gcloud iam service-accounts create "$PREFIJO-fn-audio" --project "$PROYECTO" \
+          --display-name "MOOC Cloud Function de audio" \
+          --description "Entrega 5: lee originales, escribe HLS y lee la contraseña de la base y su clave HMAC." ;;
+      build)
+        gcloud iam service-accounts create "$PREFIJO-build" --project "$PROYECTO" \
+          --display-name "MOOC Cloud Build" \
+          --description "Construye las imágenes (publicar-cloudbuild.sh) y la Cloud Function de audio." ;;
     esac
     for _ in $(seq 1 20); do
       gcloud iam service-accounts describe "$cuenta" --project "$PROYECTO" >/dev/null 2>&1 && break
@@ -299,6 +311,17 @@ for rol_vm in web worker redis frontend pubsub-push; do
     --member "serviceAccount:$SA" --role roles/iam.serviceAccountUser --condition None >/dev/null
   aviso "  roles/iam.serviceAccountUser sobre $cuenta"
 done
+
+# Entrega 5: Cloud Functions copia el código a su propio bucket de fuentes y
+# lo construye con Cloud Build usando mooc-build (funcion.tf), que necesita
+# leer ese bucket, escribir la imagen y sus registros. Es un rol de proyecto,
+# y la cuenta de CI solo puede conceder logWriter y metricWriter (abajo), así
+# que se da aquí, una vez.
+con_reintento gcloud projects add-iam-policy-binding "$PROYECTO" \
+  --member "serviceAccount:$PREFIJO-build@$PROYECTO.iam.gserviceaccount.com" \
+  --role roles/cloudbuild.builds.builder --condition None --quiet >/dev/null \
+  || morir "no se pudo conceder roles/cloudbuild.builds.builder a $PREFIJO-build"
+aviso "  roles/cloudbuild.builds.builder para $PREFIJO-build"
 
 # La cuenta por defecto de Compute Engine (<número>-compute@...) nace con
 # roles/editor en proyectos sin organización. Nada de este despliegue la usa:

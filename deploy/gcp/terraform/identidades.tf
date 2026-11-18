@@ -39,6 +39,18 @@ data "google_service_account" "pubsub_push" {
   account_id = "${var.prefijo}-pubsub-push"
 }
 
+# Entrega 5 (funcion.tf). La función de audio corre con su propia cuenta:
+# lee originales, escribe HLS y lee dos secretos; nada más. Cloud Build
+# construye la función con mooc-build (la misma de publicar-cloudbuild.sh).
+# Las dos las crea bootstrap-ci.sh, por la misma razón que las demás.
+data "google_service_account" "funcion_audio" {
+  account_id = "${var.prefijo}-fn-audio"
+}
+
+data "google_service_account" "build" {
+  account_id = "${var.prefijo}-build"
+}
+
 # Estados anteriores a este cambio tienen las cuentas como recursos. Se
 # olvidan sin borrarlas: siguen existiendo y ahora se leen como data.
 removed {
@@ -60,6 +72,8 @@ locals {
     web    = data.google_service_account.web
     worker = data.google_service_account.worker
     redis  = data.google_service_account.redis
+    # Entrega 5: la Cloud Function de audio.
+    funcion-audio = data.google_service_account.funcion_audio
   }
 }
 
@@ -93,6 +107,12 @@ resource "google_storage_hmac_key" "worker" {
   service_account_email = data.google_service_account.worker.email
 }
 
+# Entrega 5: la función firma con su propia cuenta, no con la del worker, para
+# que sus permisos sobre los buckets sean solo los suyos (funcion.tf).
+resource "google_storage_hmac_key" "funcion_audio" {
+  service_account_email = data.google_service_account.funcion_audio.email
+}
+
 # --- Secret Manager ------------------------------------------------------------
 
 resource "random_password" "bd" {
@@ -113,16 +133,18 @@ locals {
   # Los valores van en un mapa distinto porque son sensibles, y un for_each no
   # puede recorrer nada derivado de un valor sensible.
   secretos = {
-    bd-password        = ["web", "worker"]
-    hmac-web-secret    = ["web"]
-    hmac-worker-secret = ["worker"]
-    admin-password     = ["web"]
+    bd-password               = ["web", "worker", "funcion-audio"]
+    hmac-web-secret           = ["web"]
+    hmac-worker-secret        = ["worker"]
+    hmac-funcion-audio-secret = ["funcion-audio"]
+    admin-password            = ["web"]
   }
   valores_secretos = {
-    bd-password        = random_password.bd.result
-    hmac-web-secret    = google_storage_hmac_key.web.secret
-    hmac-worker-secret = google_storage_hmac_key.worker.secret
-    admin-password     = random_password.admin.result
+    bd-password               = random_password.bd.result
+    hmac-web-secret           = google_storage_hmac_key.web.secret
+    hmac-worker-secret        = google_storage_hmac_key.worker.secret
+    hmac-funcion-audio-secret = google_storage_hmac_key.funcion_audio.secret
+    admin-password            = random_password.admin.result
   }
   lectores_de_secretos = merge(
     [for nombre, lectores in local.secretos : { for l in lectores : "${nombre}/${l}" => { secreto = nombre, lector = l } }]...
@@ -215,7 +237,9 @@ resource "google_artifact_registry_repository" "imagenes" {
 }
 
 resource "google_artifact_registry_repository_iam_member" "lector" {
-  for_each   = local.cuentas
+  # La imagen de la función la baja el agente de servicio de Cloud Run, no
+  # su cuenta: no necesita leer el repositorio.
+  for_each   = { for k, v in local.cuentas : k => v if k != "funcion-audio" }
   location   = google_artifact_registry_repository.imagenes.location
   repository = google_artifact_registry_repository.imagenes.name
   role       = "roles/artifactregistry.reader"

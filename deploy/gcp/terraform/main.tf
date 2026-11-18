@@ -205,7 +205,8 @@ resource "google_compute_firewall" "sql_permitir" {
   priority                = 900
   destination_ranges = [local.rango_psa]
   # Las salidas de Cloud Run llevan estas etiquetas de red (cloudrun.tf).
-  target_tags = [local.tag_run_api, local.tag_run_worker]
+  # Entrega 5: también la Cloud Function de audio (funcion.tf).
+  target_tags = [local.tag_run_api, local.tag_run_worker, local.tag_funcion_audio]
 
   allow {
     protocol = "tcp"

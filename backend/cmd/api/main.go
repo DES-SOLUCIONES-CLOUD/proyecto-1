@@ -85,6 +85,16 @@ func main() {
 		}
 		encolador = queue.NuevoPublicadorPubSub(cfg.GCPProject, cfg.PubSubTopic, slog.Default())
 		log.Printf("api: trabajos asíncronos por Pub/Sub (projects/%s/topics/%s)", cfg.GCPProject, cfg.PubSubTopic)
+		// Entrega 5: el audio va a su topic, del que lo toma la Cloud Function.
+		if cfg.PubSubTopicAudio != "" {
+			encolador = &queue.Enrutador{
+				Defecto: encolador,
+				PorTipo: map[string]queue.Encolador{
+					queue.TaskProcessAudio: queue.NuevoPublicadorPubSub(cfg.GCPProject, cfg.PubSubTopicAudio, slog.Default()),
+				},
+			}
+			log.Printf("api: audio por Pub/Sub hacia la Cloud Function (projects/%s/topics/%s)", cfg.GCPProject, cfg.PubSubTopicAudio)
+		}
 	default:
 		queueClient := queue.NewClient(cfg.RedisAddr)
 		defer queueClient.Close()

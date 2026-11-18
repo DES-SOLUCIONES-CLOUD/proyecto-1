@@ -528,11 +528,14 @@ func (h *handlers) trabajoDeProcesamiento(
 		return trabajo
 	}
 
+	// El audio lleva su propio tipo para poder enrutarlo a la Cloud Function
+	// (Entrega 5). El payload y el resultado son los mismos que en el video.
 	kind := "video"
+	trabajo.Tipo = queue.TaskProcessMedia
 	if res.Type == domain.ResourceAudio {
 		kind = "audio"
+		trabajo.Tipo = queue.TaskProcessAudio
 	}
-	trabajo.Tipo = queue.TaskProcessMedia
 	trabajo.Payload = queue.MediaProcessPayload{
 		TaskID: assetID, MediaAssetID: assetID, ResourceID: resourceID,
 		SourceObjectKey: res.ObjectKey, Kind: kind,
