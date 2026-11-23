@@ -550,4 +550,4 @@ vuelve.
 Queda `data/` con su `.gitignore` heredado del repositorio original, que
 reservaba el directorio para conjuntos de datos versionados con
 [DVC](https://dvc.org). La configuración de DVC ya no está, así que hoy es solo
-un directorio reservado: puede eliminarse sin afectar a la aplicación.
+un directorio reservado, puede eliminarse sin afectar a la aplicación.
